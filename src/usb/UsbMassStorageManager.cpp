@@ -15,6 +15,8 @@ extern "C" {
 
 #include <SD.h>
 
+#include "bus/SharedSpiBus.h"
+
 namespace {
 
 #if BIKE_USB_MSC_AVAILABLE
@@ -23,6 +25,7 @@ static constexpr uint8_t kSdPdrv = 0;
 static constexpr uint32_t kSectorSize = 512;
 
 int32_t mscReadCallback(uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize) {
+  hw::SharedSpiBusGuard bus(true);
   uint8_t* out = static_cast<uint8_t*>(buffer);
   uint32_t remaining = bufsize;
   uint32_t sector = lba;
@@ -50,6 +53,7 @@ int32_t mscReadCallback(uint32_t lba, uint32_t offset, void* buffer, uint32_t bu
 }
 
 int32_t mscWriteCallback(uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize) {
+  hw::SharedSpiBusGuard bus(true);
   uint8_t* in = buffer;
   uint32_t remaining = bufsize;
   uint32_t sector = lba;
@@ -100,7 +104,11 @@ bool UsbMassStorageManager::begin(StorageManager& storage) {
   }
 
 #if BIKE_USB_MSC_AVAILABLE
-  const uint64_t cardBytes = SD.cardSize();
+  uint64_t cardBytes = 0;
+  {
+    hw::SharedSpiBusGuard bus(true);
+    cardBytes = SD.cardSize();
+  }
   if (cardBytes < kSectorSize) {
     status_ = "USB MSC error: invalid SD size";
     return false;
@@ -130,4 +138,16 @@ bool UsbMassStorageManager::begin(StorageManager& storage) {
   status_ = "USB MSC not compiled in for this Arduino-ESP32 core";
   return false;
 #endif
+}
+
+void UsbMassStorageManager::end(StorageManager& storage) {
+#if BIKE_USB_MSC_AVAILABLE
+  if (active_) {
+    g_msc.mediaPresent(false);
+    g_msc.end();
+  }
+#endif
+  active_ = false;
+  storage.setUsbModeActive(false);
+  status_ = "USB Mass Storage stopped";
 }

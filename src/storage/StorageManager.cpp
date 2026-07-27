@@ -3,24 +3,17 @@
 #include <ArduinoJson.h>
 #include <TFT_eSPI.h>
 
+#include "bus/SharedSpiBus.h"
 #include "config/hardware_config.h"
 
 namespace {
 
 class SdBusGuard {
  public:
-  SdBusGuard() {
-    digitalWrite(hw::PIN_LCD_CS, HIGH);
-    digitalWrite(hw::PIN_SD_CS, HIGH);
-    delayMicroseconds(2);
-  }
+  SdBusGuard() : bus_(true) {}
 
-  ~SdBusGuard() {
-    delayMicroseconds(2);
-    digitalWrite(hw::PIN_SD_CS, HIGH);
-    digitalWrite(hw::PIN_LCD_CS, HIGH);
-    delayMicroseconds(2);
-  }
+ private:
+  hw::SharedSpiBusGuard bus_;
 };
 
 }
@@ -31,24 +24,35 @@ bool StorageManager::begin() {
 
   pinMode(hw::PIN_LCD_CS, OUTPUT);
   pinMode(hw::PIN_SD_CS, OUTPUT);
-  digitalWrite(hw::PIN_LCD_CS, HIGH);
-  digitalWrite(hw::PIN_SD_CS, HIGH);
+  hw::releaseSharedSpiDevices();
 
-  const uint32_t frequencies[] = {hw::SD_SPI_FREQUENCY_HZ, 4000000UL, 1000000UL};
+  const uint32_t frequencies[] = {hw::SD_SPI_FREQUENCY_HZ, 1000000UL};
   sdAvailable_ = false;
   activeFrequencyHz_ = 0;
+  formattedOnMount_ = false;
+  lastStatus_ = "SD init failed";
 
   SPIClass& spi = TFT_eSPI::getSPIinstance();
   for (uint32_t frequency : frequencies) {
-    SdBusGuard bus;
-    SD.end();
-    if (SD.begin(hw::PIN_SD_CS, spi, frequency)) {
+    if (tryBeginSd(spi, frequency, false)) {
       sdAvailable_ = true;
       activeFrequencyHz_ = frequency;
       break;
     }
+    if (tryBeginSd(spi, frequency, true)) {
+      sdAvailable_ = true;
+      activeFrequencyHz_ = frequency;
+      formattedOnMount_ = true;
+      break;
+    }
   }
 
+  if (sdAvailable_) {
+    lastStatus_ = String("SD mounted at ") + String(activeFrequencyHz_ / 1000000UL) + " MHz";
+    if (formattedOnMount_) {
+      lastStatus_ += " after FAT repair";
+    }
+  }
   return sdAvailable_;
 }
 
@@ -70,7 +74,7 @@ String StorageManager::statusText() const {
     return "USB MSC";
   }
   if (!sdAvailable_) {
-    return "NO SD";
+    return lastStatus_.length() > 0 ? lastStatus_ : "NO SD";
   }
   if (!loggingEnabled()) {
     return "SD read-only";
@@ -109,6 +113,9 @@ String StorageManager::sdInfoText() const {
   text += "FS total MB: " + String(static_cast<uint32_t>(SD.totalBytes() / (1024ULL * 1024ULL))) + "\n";
   text += "FS used MB: " + String(static_cast<uint32_t>(SD.usedBytes() / (1024ULL * 1024ULL))) + "\n";
   text += "SPI MHz: " + String(activeFrequencyHz_ / 1000000UL) + "\n";
+  if (formattedOnMount_) {
+    text += "FS repaired on mount\n";
+  }
   return text;
 }
 
@@ -328,6 +335,19 @@ bool StorageManager::ensureDir(const char* path) {
     return true;
   }
   return SD.mkdir(path);
+}
+
+bool StorageManager::tryBeginSd(SPIClass& spi, uint32_t frequency, bool formatIfEmpty) {
+  SdBusGuard bus;
+  SD.end();
+  if (SD.begin(hw::PIN_SD_CS, spi, frequency, "/sd", 5, formatIfEmpty)) {
+    return true;
+  }
+  lastStatus_ = String("SD mount failed at ") + String(frequency / 1000000UL) + " MHz";
+  if (formatIfEmpty) {
+    lastStatus_ += " with FAT repair";
+  }
+  return false;
 }
 
 bool StorageManager::writeTextFile(const char* path, const String& content, String& error) {

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <esp_heap_caps.h>
 
+#include "bus/SharedSpiBus.h"
 #include "config/hardware_config.h"
 
 #if __has_include(<esp_arduino_version.h>)
@@ -13,28 +14,25 @@ namespace {
 
 constexpr uint16_t kFrameTransferRows = 4;
 
-void releaseSdForDisplay() {
-  digitalWrite(hw::PIN_SD_CS, HIGH);
-  digitalWrite(hw::PIN_LCD_CS, HIGH);
-  delayMicroseconds(2);
-}
-
 }
 
 bool DisplayManager::begin(uint8_t brightnessPercent) {
   pinMode(hw::PIN_LCD_CS, OUTPUT);
   pinMode(hw::PIN_SD_CS, OUTPUT);
-  releaseSdForDisplay();
+  hw::releaseSharedSpiDevices();
 
   pinMode(hw::PIN_LCD_BACKLIGHT, OUTPUT);
   setBrightness(0);
 
-  tft_.init();
-  tft_.setRotation(hw::DISPLAY_ROTATION);
-  tft_.setTextFont(2);
-  tft_.setTextColor(TFT_WHITE, TFT_BLACK);
-  releaseSdForDisplay();
-  tft_.fillScreen(TFT_BLACK);
+  {
+    hw::SharedSpiBusGuard bus;
+    tft_.init();
+    tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
+    tft_.setRotation(hw::DISPLAY_ROTATION);
+    tft_.setTextFont(2);
+    tft_.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft_.fillScreen(TFT_BLACK);
+  }
 
   ready_ = true;
   frame_.setColorDepth(16);
@@ -60,23 +58,28 @@ void DisplayManager::setBrightness(uint8_t percent) {
     percent = 100;
   }
   brightnessPercent_ = percent;
-  const uint8_t duty = static_cast<uint8_t>((static_cast<uint16_t>(percent) * 255U) / 100U);
+  uint8_t duty = static_cast<uint8_t>((static_cast<uint16_t>(percent) * 255U) / 100U);
+  if (!hw::LCD_BACKLIGHT_ACTIVE_HIGH) {
+    duty = 255U - duty;
+  }
 
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
   static bool attached = false;
   if (!attached) {
-    ledcAttach(hw::PIN_LCD_BACKLIGHT, 5000, 8);
+    ledcAttach(hw::PIN_LCD_BACKLIGHT, hw::LCD_BACKLIGHT_PWM_FREQUENCY_HZ,
+               hw::LCD_BACKLIGHT_PWM_RESOLUTION_BITS);
     attached = true;
   }
   ledcWrite(hw::PIN_LCD_BACKLIGHT, duty);
 #else
   static bool attached = false;
   if (!attached) {
-    ledcSetup(0, 5000, 8);
-    ledcAttachPin(hw::PIN_LCD_BACKLIGHT, 0);
+    ledcSetup(hw::LCD_BACKLIGHT_PWM_CHANNEL, hw::LCD_BACKLIGHT_PWM_FREQUENCY_HZ,
+              hw::LCD_BACKLIGHT_PWM_RESOLUTION_BITS);
+    ledcAttachPin(hw::PIN_LCD_BACKLIGHT, hw::LCD_BACKLIGHT_PWM_CHANNEL);
     attached = true;
   }
-  ledcWrite(0, duty);
+  ledcWrite(hw::LCD_BACKLIGHT_PWM_CHANNEL, duty);
 #endif
 }
 
@@ -89,13 +92,20 @@ int16_t DisplayManager::height() {
 }
 
 void DisplayManager::clear(uint16_t color) {
-  tft().fillScreen(color);
+  if (frameActive_ && frameBufferReady_) {
+    frame_.fillSprite(color);
+    return;
+  }
+  hw::SharedSpiBusGuard bus;
+  tft_.fillScreen(color);
 }
 
 void DisplayManager::beginFrame(uint16_t color) {
   if (!frameBufferReady_) {
     frameActive_ = false;
-    releaseSdForDisplay();
+    hw::lockSharedSpiBus();
+    directFrameBusLocked_ = true;
+    hw::releaseSharedSpiDevices();
     tft_.startWrite();
     tft_.fillScreen(color);
     return;
@@ -111,20 +121,21 @@ void DisplayManager::commitFrame() {
       const int16_t w = tft_.width();
       const int16_t h = tft_.height();
       const bool oldSwapBytes = tft_.getSwapBytes();
-      releaseSdForDisplay();
+      hw::SharedSpiBusGuard bus;
       tft_.setSwapBytes(false);
       tft_.startWrite();
       tft_.setAddrWindow(0, 0, w, h);
       for (int16_t y = 0; y < h; y += frameTransferRows_) {
         const int16_t rows = min<int16_t>(frameTransferRows_, h - y);
+        const size_t pixelCount = static_cast<size_t>(w) * rows;
         memcpy(frameTransferBuffer_, framePixels + static_cast<size_t>(y) * w,
-               static_cast<size_t>(w) * rows * sizeof(uint16_t));
-        tft_.pushPixels(frameTransferBuffer_, static_cast<uint32_t>(w) * rows);
+               pixelCount * sizeof(uint16_t));
+        tft_.pushPixels(frameTransferBuffer_, static_cast<uint32_t>(pixelCount));
       }
       tft_.endWrite();
       tft_.setSwapBytes(oldSwapBytes);
     } else {
-      releaseSdForDisplay();
+      hw::SharedSpiBusGuard bus;
       frame_.pushSprite(0, 0);
     }
     frameActive_ = false;
@@ -132,10 +143,16 @@ void DisplayManager::commitFrame() {
   }
   if (!frameBufferReady_) {
     tft_.endWrite();
+    if (directFrameBusLocked_) {
+      hw::releaseSharedSpiDevices();
+      hw::unlockSharedSpiBus();
+      directFrameBusLocked_ = false;
+    }
   }
 }
 
 void DisplayManager::showBoot(const String& line1, const String& line2) {
+  hw::SharedSpiBusGuard bus;
   TFT_eSPI& gfx = tft();
   gfx.fillScreen(TFT_BLACK);
   gfx.setTextDatum(MC_DATUM);

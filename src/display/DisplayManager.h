@@ -33,5 +33,6 @@ class DisplayManager {
   bool ready_ = false;
   bool frameBufferReady_ = false;
   bool frameActive_ = false;
+  bool directFrameBusLocked_ = false;
   uint8_t brightnessPercent_ = 0;
 };

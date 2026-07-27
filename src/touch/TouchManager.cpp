@@ -31,7 +31,7 @@ bool TouchManager::update() {
   }
 
   const uint32_t nowMs = millis();
-  if (nowMs - lastReadAttemptMs_ < 20) {
+  if (nowMs - lastReadAttemptMs_ < 8) {
     return true;
   }
   lastReadAttemptMs_ = nowMs;

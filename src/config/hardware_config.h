@@ -19,16 +19,27 @@ static constexpr int PIN_USB_DM = 19;
 static constexpr int PIN_USB_DP = 20;
 static constexpr int PIN_HALL_SENSOR = 4;
 static constexpr int PIN_LCD_BACKLIGHT = 47;
+static constexpr bool LCD_BACKLIGHT_ACTIVE_HIGH = true;
+static constexpr uint8_t LCD_BACKLIGHT_PWM_CHANNEL = 7;
+static constexpr uint32_t LCD_BACKLIGHT_PWM_FREQUENCY_HZ = 200;
+static constexpr uint8_t LCD_BACKLIGHT_PWM_RESOLUTION_BITS = 8;
 
 static constexpr int BATTERY_ADC_PIN = -1;
 static constexpr bool BATTERY_MONITOR_ENABLED = false;
+static constexpr float BATTERY_VOLTAGE_DIVIDER_RATIO = 2.0f;
+static constexpr float BATTERY_ADC_CALIBRATION_MULTIPLIER = 1.0f;
+static constexpr float BATTERY_ADC_CALIBRATION_OFFSET_V = 0.0f;
+static constexpr uint32_t BATTERY_SAMPLE_INTERVAL_MS = 1500;
+static constexpr float BATTERY_CHARGE_DELTA_V = 0.03f;
+static constexpr float BATTERY_FULL_VOLTAGE = 4.18f;
 
 static constexpr uint32_t TFT_SPI_FREQUENCY_HZ = 20000000UL;
-static constexpr uint32_t SD_SPI_FREQUENCY_HZ = 10000000UL;
+static constexpr uint32_t SD_SPI_FREQUENCY_HZ = 4000000UL;
 static constexpr uint32_t TOUCH_I2C_FREQUENCY_HZ = 400000UL;
 
 static constexpr uint8_t FT6336_I2C_ADDRESS = 0x38;
 static constexpr uint8_t DISPLAY_ROTATION = 1;
+static constexpr bool DISPLAY_INVERT_COLORS = true;
 static constexpr int16_t DISPLAY_WIDTH = 480;
 static constexpr int16_t DISPLAY_HEIGHT = 320;
 

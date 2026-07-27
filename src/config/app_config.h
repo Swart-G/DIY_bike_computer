@@ -28,7 +28,7 @@ struct AppSettings {
   uint32_t uiUpdateIntervalMs = 200;
   uint32_t logSampleIntervalMs = 1000;
   uint32_t graphWindowSeconds = 60;
-  uint8_t displayBrightnessPercent = 80;
+  uint8_t displayBrightnessPercent = 100;
 
   bool sensorPullupEnabled = true;
   int sensorActiveLevel = LOW;
@@ -100,9 +100,7 @@ inline void validateSettings(AppSettings& settings) {
   if (settings.graphWindowSeconds < 10 || settings.graphWindowSeconds > 300) {
     settings.graphWindowSeconds = 60;
   }
-  if (settings.displayBrightnessPercent > 100) {
-    settings.displayBrightnessPercent = 80;
-  }
+  settings.displayBrightnessPercent = 100;
   if (settings.minPulseIntervalMs < 10 || settings.minPulseIntervalMs > 1000) {
     settings.minPulseIntervalMs = 50;
   }

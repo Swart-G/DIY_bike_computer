@@ -25,6 +25,7 @@ class StorageManager {
 
   String statusText() const;
   String sdInfoText() const;
+  const String& lastStatus() const { return lastStatus_; }
   SdTestResult runSdTest();
 
   bool loadSettings(app::AppSettings& settings, String& error);
@@ -36,11 +37,14 @@ class StorageManager {
 
  private:
   bool ensureDir(const char* path);
+  bool tryBeginSd(SPIClass& spi, uint32_t frequency, bool formatIfEmpty);
   bool writeTextFile(const char* path, const String& content, String& error);
   bool readTextFile(const char* path, String& content, String& error);
 
   uint32_t activeFrequencyHz_ = 0;
+  bool formattedOnMount_ = false;
   bool sdAvailable_ = false;
   bool continueWithoutSaving_ = false;
   bool usbModeActive_ = false;
+  String lastStatus_;
 };
