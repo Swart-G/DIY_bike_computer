@@ -2,11 +2,14 @@
 
 #include "battery/BatteryMonitor.h"
 #include "config/app_config.h"
+#include "config/hardware_config.h"
 #include "display/DisplayManager.h"
 #include "speed/HallSensor.h"
 #include "speed/RideStateMachine.h"
 #include "speed/SpeedCalculator.h"
 #include "storage/StorageManager.h"
+#include "storage/RideLogger.h"
+#include "storage/RideRepository.h"
 #include "touch/TouchManager.h"
 #include "ui/UiApp.h"
 #include "usb/UsbMassStorageManager.h"
@@ -22,6 +25,8 @@ HallSensor g_sensor;
 SpeedCalculator g_speed;
 RideStateMachine g_ride;
 BatteryMonitor g_battery;
+RideLogger g_rideLogger;
+RideRepository g_rideRepository;
 UiApp g_ui;
 
 void printBootInfo() {
@@ -81,15 +86,17 @@ void setup() {
   }
 
   const bool sensorOk = g_sensor.begin(g_settings);
-  logInitResult("Hall sensor GPIO4", sensorOk);
+  const String hallLabel = String("Hall sensor GPIO") + String(hw::PIN_HALL_SENSOR);
+  logInitResult(hallLabel.c_str(), sensorOk);
 
-  const bool batteryOk = g_battery.begin();
+  const bool batteryOk = g_battery.begin(g_settings);
   Serial.print("Battery monitor: ");
-  Serial.println(batteryOk ? "enabled" : "disabled");
+  Serial.println(batteryOk ? "enabled" : "initialization failed");
 
   g_speed.reset();
   g_ride.begin(&g_settings);
-  g_ui.begin(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed, g_ride, g_battery, g_settings);
+  g_ui.begin(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed, g_ride, g_battery,
+             g_rideLogger, g_rideRepository, g_settings);
 
   Serial.println("Boot complete");
 }

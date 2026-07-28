@@ -1,5 +1,6 @@
 #include "speed/HallSensor.h"
 
+#include <esp_timer.h>
 #include "config/hardware_config.h"
 
 HallSensor* HallSensor::instance_ = nullptr;
@@ -14,7 +15,9 @@ bool HallSensor::begin(const app::AppSettings& settings) {
 }
 
 void HallSensor::updateSettings(const app::AppSettings& settings) {
-  minPulseIntervalUs_ = settings.minPulseIntervalMs * 1000UL;
+  minPulseIntervalUs_ = static_cast<uint64_t>(settings.minPulseIntervalMs) * 1000ULL;
+  const float metersPerPulse = settings.wheelCircumferenceM / settings.pulsesPerRevolution;
+  maxPulseIntervalUs_ = static_cast<uint64_t>((metersPerPulse * 3.6f / settings.maxPlausibleSpeedKmh) * 1000000.0f);
   pullupEnabled_ = settings.sensorPullupEnabled;
   interruptMode_ = settings.sensorInterruptMode;
   if (started_) {
@@ -29,8 +32,8 @@ HallSensorSnapshot HallSensor::snapshot() const {
   noInterrupts();
   result.pulseCount = pulseCount_;
   result.rejectedPulseCount = rejectedPulseCount_;
-  result.lastPulseMs = lastPulseUs_ / 1000UL;
-  result.lastIntervalMs = lastIntervalUs_ / 1000UL;
+  result.lastPulseUs = lastPulseUs_;
+  result.lastIntervalUs = lastIntervalUs_;
   interrupts();
   result.pinLevel = digitalRead(hw::PIN_HALL_SENSOR);
   return result;
@@ -43,9 +46,9 @@ void IRAM_ATTR HallSensor::isrThunk() {
 }
 
 void IRAM_ATTR HallSensor::handleInterrupt() {
-  const uint32_t nowUs = micros();
-  const uint32_t deltaUs = nowUs - lastPulseUs_;
-  if (lastPulseUs_ != 0 && deltaUs < minPulseIntervalUs_) {
+  const uint64_t nowUs = static_cast<uint64_t>(esp_timer_get_time());
+  const uint64_t deltaUs = nowUs - lastPulseUs_;
+  if (lastPulseUs_ != 0 && (deltaUs < minPulseIntervalUs_ || (maxPulseIntervalUs_ && deltaUs < maxPulseIntervalUs_))) {
     ++rejectedPulseCount_;
     return;
   }

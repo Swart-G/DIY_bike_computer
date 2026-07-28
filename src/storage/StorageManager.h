@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <SD.h>
+#include <ArduinoJson.h>
 
 #include "config/app_config.h"
 #include "speed/RideStateMachine.h"
@@ -34,6 +35,11 @@ class StorageManager {
   bool saveRecovery(const RideRecoveryData& recovery, String& error);
   bool loadRecovery(RideRecoveryData& recovery, String& error);
   bool clearRecovery(String& error);
+  bool writeJsonAtomic(const char* path, JsonDocument& document, String& error);
+  bool readJson(const char* path, JsonDocument& document, String& error);
+  bool removePath(const char* path, String& error);
+  void reportIoFailure(const char* context);
+  uint32_t activeFrequencyHz() const { return activeFrequencyHz_; }
 
  private:
   bool ensureDir(const char* path);

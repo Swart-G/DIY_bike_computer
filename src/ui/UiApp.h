@@ -8,6 +8,8 @@
 #include "speed/RideStateMachine.h"
 #include "speed/SpeedCalculator.h"
 #include "storage/StorageManager.h"
+#include "storage/RideLogger.h"
+#include "storage/RideRepository.h"
 #include "touch/TouchManager.h"
 #include "usb/UsbMassStorageManager.h"
 
@@ -15,7 +17,8 @@ class UiApp {
  public:
   void begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
              UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
-             RideStateMachine& ride, BatteryMonitor& battery, app::AppSettings& settings);
+             RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
+             RideRepository& repository, app::AppSettings& settings);
   void loop();
 
  private:
@@ -23,6 +26,8 @@ class UiApp {
     SdMissing,
     Recovery,
     MainMenu,
+    History,
+    HistoryDetail,
     Diagnostics,
     DisplayTest,
     TouchRawTest,
@@ -35,6 +40,8 @@ class UiApp {
     Settings,
     About,
     Ride,
+    FinishConfirm,
+    RideSummary,
   };
 
   void enter(Screen screen);
@@ -49,6 +56,8 @@ class UiApp {
   void drawSdMissing();
   void drawRecovery();
   void drawMainMenu();
+  void drawHistory();
+  void drawHistoryDetail();
   void drawDiagnostics();
   void drawDisplayTest();
   void drawTouchRawTest();
@@ -61,6 +70,8 @@ class UiApp {
   void drawSettings();
   void drawAbout();
   void drawRide();
+  void drawFinishConfirm();
+  void drawRideSummary();
 
   void drawStatusBar(const String& title, const String& status = String());
   void drawStorageStatusIcon(int16_t x, int16_t y);
@@ -78,7 +89,7 @@ class UiApp {
   void drawTextBlock(const String& text, int16_t x, int16_t y, int16_t lineHeight,
                      uint16_t color = TFT_WHITE, uint16_t bg = TFT_BLACK, uint8_t font = 2);
   bool hit(int16_t x, int16_t y, int16_t bx, int16_t by, int16_t bw, int16_t bh) const;
-  String durationText(uint32_t ms) const;
+  String durationText(uint64_t ms) const;
   String storageStatusShort() const;
   String batteryStatusShort() const;
   String rideStatusLine() const;
@@ -95,6 +106,8 @@ class UiApp {
   SpeedCalculator* speed_ = nullptr;
   RideStateMachine* ride_ = nullptr;
   BatteryMonitor* battery_ = nullptr;
+  RideLogger* logger_ = nullptr;
+  RideRepository* repository_ = nullptr;
   app::AppSettings* settings_ = nullptr;
 
   Screen screen_ = Screen::MainMenu;
@@ -123,4 +136,9 @@ class UiApp {
   uint8_t ridePage_ = 0;
   float graphSamples_[120] = {0.0f};
   uint8_t graphWriteIndex_ = 0;
+  RideSummaryItem history_[12];
+  uint8_t historyCount_ = 0;
+  uint8_t historySelected_ = 0;
+  bool batteryLowEventLogged_ = false;
+  bool batteryCriticalEventLogged_ = false;
 };

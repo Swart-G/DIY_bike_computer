@@ -184,7 +184,8 @@ void drawPanel(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, uint16
 
 void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
                   UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
-                  RideStateMachine& ride, BatteryMonitor& battery, app::AppSettings& settings) {
+                  RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
+                  RideRepository& repository, app::AppSettings& settings) {
   display_ = &display;
   touch_ = &touch;
   storage_ = &storage;
@@ -193,12 +194,15 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   speed_ = &speed;
   ride_ = &ride;
   battery_ = &battery;
+  logger_ = &logger;
+  repository_ = &repository;
   settings_ = &settings;
 
   String recoveryError;
   hasPendingRecovery_ = storage_->loadRecovery(pendingRecovery_, recoveryError);
   if (hasPendingRecovery_) {
     ride_->restorePaused(pendingRecovery_, millis(), sensor_->snapshot().pulseCount);
+    if (storage_->loggingEnabled()) { String logError; logger_->resume(*storage_, pendingRecovery_, logError); }
     enter(Screen::Recovery);
   } else if (!storage_->sdAvailable()) {
     enter(Screen::SdMissing);
@@ -233,7 +237,7 @@ void UiApp::loop() {
   wasTouched_ = touchedNow;
 
   const bool dynamicScreen = screen_ == Screen::Ride || screen_ == Screen::TouchRawTest ||
-                             screen_ == Screen::SensorTest || screen_ == Screen::SystemInfo;
+                             screen_ == Screen::SensorTest || screen_ == Screen::BatteryTest || screen_ == Screen::SystemInfo;
   if (dirty_ || (dynamicScreen && now - lastUiDrawMs_ >= settings_->uiUpdateIntervalMs)) {
     draw();
     dirty_ = false;
@@ -257,9 +261,17 @@ void UiApp::enter(Screen screen) {
 void UiApp::updateModel(uint32_t nowMs) {
   sensorSnapshot_ = sensor_->snapshot();
   speed_->update(sensorSnapshot_, *settings_, nowMs);
-  ride_->update(nowMs, speed_->currentKmh(), sensorSnapshot_.pulseCount);
+  ride_->update(nowMs, speed_->filteredKmh(), sensorSnapshot_.pulseCount, sensorSnapshot_.rejectedPulseCount);
   battery_->update(nowMs);
   recordGraphSample(nowMs);
+  if (logger_->active()) {
+    logger_->logSample(*storage_, *ride_, *speed_, sensorSnapshot_, *battery_, nowMs);
+    logger_->retryPending(*storage_, *ride_);
+    ride_->setRecoveryIdentity(logger_->rideId(), logger_->folder(), logger_->sampleIndex(), logger_->loggingGap());
+    ride_->setRecoveryBattery(logger_->batteryStartVoltage(), logger_->batteryMinVoltage(), logger_->batteryMaxVoltage());
+    if (battery_->state() == BatteryState::Critical && !batteryCriticalEventLogged_) { logger_->event(*storage_, *ride_, "BATTERY_CRITICAL", "battery critical"); batteryCriticalEventLogged_=true; }
+    if (battery_->state() == BatteryState::Low && !batteryLowEventLogged_) { logger_->event(*storage_, *ride_, "BATTERY_LOW", "battery low"); batteryLowEventLogged_=true; }
+  }
   saveRecoveryIfNeeded(nowMs, false);
 }
 
@@ -369,15 +381,25 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       if (hit(x, y, 24, 70, 132, 82)) {
         enter(Screen::Ride);
       } else if (hit(x, y, 174, 70, 132, 82)) {
-        enter(Screen::Diagnostics);
+        String error; historyCount_ = repository_->list(*storage_, history_, 12, error); enter(Screen::History);
       } else if (hit(x, y, 324, 70, 132, 82)) {
+        enter(Screen::Diagnostics);
+      } else if (hit(x, y, 24, 170, 132, 82)) {
         enter(Screen::Settings);
-      } else if (hit(x, y, 24, 170, 132, 82) && storage_->sdAvailable()) {
+      } else if (hit(x, y, 174, 170, 132, 82) && storage_->sdAvailable()) {
         startUsbMode();
         enter(Screen::UsbStorage);
-      } else if (hit(x, y, 174, 170, 132, 82)) {
+      } else if (hit(x, y, 324, 170, 132, 82)) {
         enter(Screen::About);
       }
+      break;
+    case Screen::History:
+      if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::MainMenu);
+      else if (historyCount_ && y >= 52 && y < 52 + historyCount_ * 32) { historySelected_ = (y-52)/32; enter(Screen::HistoryDetail); }
+      break;
+    case Screen::HistoryDetail:
+      if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::History);
+      else if (hit(x,y,20,270,130,40)) { String error; RideRecoveryData active=ride_->recoveryData(); lastMessage_=repository_->remove(*storage_,history_[historySelected_],active,error)?"Ride deleted":error; String listError;historyCount_=repository_->list(*storage_,history_,12,listError);enter(Screen::History); }
       break;
 
     case Screen::Diagnostics:
@@ -405,12 +427,18 @@ void UiApp::handleTap(int16_t x, int16_t y) {
 
     case Screen::DisplayTest:
     case Screen::TouchRawTest:
-    case Screen::BatteryTest:
     case Screen::SystemInfo:
     case Screen::SensorTest:
       if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
         enter(Screen::Diagnostics);
       }
+      break;
+
+    case Screen::BatteryTest:
+      if (hit(x,y,20,270,80,40)) { settings_->batteryCalibrationFactor -= 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
+      else if (hit(x,y,120,270,80,40)) { settings_->batteryCalibrationFactor += 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
+      else if (hit(x,y,220,270,110,40)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?"Calibration saved":e; dirty_=true; }
+      else if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::Diagnostics);
       break;
 
     case Screen::About:
@@ -439,10 +467,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
 
     case Screen::UsbStorage:
       if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
-        if (usb_->active()) {
-          usb_->end(*storage_);
-        }
-        enter(Screen::MainMenu);
+        if (usb_->active()) ESP.restart(); else enter(Screen::MainMenu);
       }
       break;
 
@@ -463,12 +488,18 @@ void UiApp::handleTap(int16_t x, int16_t y) {
         settings_->sensorActiveLevel = settings_->sensorActiveLevel == LOW ? HIGH : LOW;
       } else if (hit(x, y, 284, 192, 174, 32)) {
         settings_->sensorPullupEnabled = !settings_->sensorPullupEnabled;
+      } else if (hit(x, y, 252, 228, 42, 32)) {
+        settings_->displayBrightnessPercent -= 5;
+      } else if (hit(x, y, 416, 228, 42, 32)) {
+        settings_->displayBrightnessPercent += 5;
       } else if (hit(x, y, 14, 270, 110, 40)) {
         app::validateSettings(*settings_);
         display_->setBrightness(settings_->displayBrightnessPercent);
         sensor_->updateSettings(*settings_);
         String error;
-        lastMessage_ = storage_->saveSettings(*settings_, error) ? "Settings saved" : error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        if (saved && logger_->active()) logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "settings saved");
+        lastMessage_ = saved ? "Settings saved" : error;
       } else if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
         app::validateSettings(*settings_);
         display_->setBrightness(settings_->displayBrightnessPercent);
@@ -487,27 +518,35 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       } else if (hit(x, y, 0, kControlY, 160, kControlH)) {
         if (ride_->state() == RideState::IDLE || ride_->state() == RideState::FINISHED) {
           ride_->start(millis(), sensorSnapshot_.pulseCount);
+          batteryLowEventLogged_ = false; batteryCriticalEventLogged_ = false;
+          String error; if (storage_->loggingEnabled() && logger_->start(*storage_, *settings_, *battery_, error)) logger_->event(*storage_, *ride_, "START", "user started ride"); else if (error.length()) lastMessage_=error;
           saveRecoveryIfNeeded(millis(), true);
         }
         dirty_ = true;
       } else if (hit(x, y, 160, kControlY, 160, kControlH)) {
         if (ride_->state() == RideState::RIDING) {
+          logger_->event(*storage_, *ride_, "PAUSE", "user paused ride");
           ride_->pause(millis());
         } else if (ride_->state() == RideState::PAUSED) {
           ride_->resume(millis());
+          logger_->event(*storage_, *ride_, "RESUME", "user resumed ride");
         }
         saveRecoveryIfNeeded(millis(), true);
         dirty_ = true;
       } else if (hit(x, y, 320, kControlY, 160, kControlH)) {
         if (ride_->state() == RideState::RIDING || ride_->state() == RideState::PAUSED) {
-          const uint32_t nowMs = millis();
-          ride_->update(nowMs, speed_->currentKmh(), sensorSnapshot_.pulseCount);
-          ride_->finish(nowMs);
-          clearRecovery();
-          ride_->newRide(nowMs, sensorSnapshot_.pulseCount);
+          enter(Screen::FinishConfirm);
         }
         dirty_ = true;
       }
+      break;
+    case Screen::FinishConfirm:
+      if (hit(x,y,92,210,130,50)) enter(Screen::Ride);
+      else if (hit(x,y,258,210,130,50)) { const uint32_t now=millis(); ride_->update(now,speed_->filteredKmh(),sensorSnapshot_.pulseCount,sensorSnapshot_.rejectedPulseCount); ride_->finish(now); String error; if(!logger_->finish(*storage_,*ride_,*battery_,error)) lastMessage_=error; else clearRecovery(); enter(Screen::RideSummary); }
+      break;
+    case Screen::RideSummary:
+      if(hit(x,y,70,260,150,44)){ ride_->newRide(millis(),sensorSnapshot_.pulseCount); enter(Screen::Ride); }
+      else if(hit(x,y,260,260,150,44)) enter(Screen::MainMenu);
       break;
   }
 }
@@ -541,6 +580,12 @@ void UiApp::draw() {
       break;
     case Screen::MainMenu:
       drawMainMenu();
+      break;
+    case Screen::History:
+      drawHistory();
+      break;
+    case Screen::HistoryDetail:
+      drawHistoryDetail();
       break;
     case Screen::Diagnostics:
       drawDiagnostics();
@@ -577,6 +622,12 @@ void UiApp::draw() {
       break;
     case Screen::Ride:
       drawRide();
+      break;
+    case Screen::FinishConfirm:
+      drawFinishConfirm();
+      break;
+    case Screen::RideSummary:
+      drawRideSummary();
       break;
   }
   display_->commitFrame();
@@ -763,17 +814,19 @@ void UiApp::drawGraphCard(int16_t x, int16_t y, int16_t w, int16_t h) {
   const int16_t gy = y + 52;
   const int16_t gw = w - 78;
   const int16_t gh = h - 84;
-  const float maxSpeed = 40.0f;
+  float maxSpeed = 10.0f;
+  for (uint8_t i = 0; i < 120; ++i) if (graphSamples_[i] > maxSpeed) maxSpeed = graphSamples_[i];
+  maxSpeed = ceilf(maxSpeed / 5.0f) * 5.0f;
 
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
   for (uint8_t i = 0; i < 5; ++i) {
     const int16_t lineY = gy + gh - (i * gh) / 4;
     tft.drawFastHLine(gx, lineY, gw, ui::UI_GRID);
-    tft.drawString(String(i * 10), gx - 10, lineY, 2);
+    tft.drawString(String((maxSpeed * i) / 4, 0), gx - 10, lineY, 2);
   }
   tft.setTextDatum(TL_DATUM);
-  tft.drawString("-120s", gx, gy + gh + 12, 2);
+  tft.drawString("-" + String(settings_->graphWindowSeconds) + "s", gx, gy + gh + 12, 2);
   tft.setTextDatum(TR_DATUM);
   tft.drawString("now", gx + gw, gy + gh + 12, 2);
   tft.drawFastVLine(gx + gw, gy, gh, ui::UI_MUTED);
@@ -892,10 +945,22 @@ void UiApp::drawMainMenu() {
   drawStorageStatusIcon(416, 17);
   drawBatteryStatusIcon(452, 17);
   drawMenuTile(24, 70, 132, 82, "Ride", true, true);
-  drawMenuTile(174, 70, 132, 82, "Diagnostics", false, true);
-  drawMenuTile(324, 70, 132, 82, "Settings", false, true);
-  drawMenuTile(24, 170, 132, 82, "Storage", false, storage_->sdAvailable());
-  drawMenuTile(174, 170, 132, 82, "About", false, true);
+  drawMenuTile(174, 70, 132, 82, "History", false, storage_->sdAvailable());
+  drawMenuTile(324, 70, 132, 82, "Diagnostics", false, true);
+  drawMenuTile(24, 170, 132, 82, "Settings", false, true);
+  drawMenuTile(174, 170, 132, 82, "Storage", false, storage_->sdAvailable());
+  drawMenuTile(324, 170, 132, 82, "About", false, true);
+}
+
+void UiApp::drawHistory() {
+  display_->clear(ui::UI_BG); drawStatusBar("Ride History", storage_->sdAvailable()?"SD":"NO SD");
+  TFT_eSPI& tft=display_->tft();
+  if(!historyCount_) { tft.setTextDatum(MC_DATUM);tft.setTextColor(ui::UI_MUTED,ui::UI_BG);tft.drawString("No completed rides",240,130,2); }
+  for(uint8_t i=0;i<historyCount_ && i<6;++i){ const RideSummaryItem& r=history_[i]; const int16_t y=52+i*32; drawPanel(tft,16,y,448,28,ui::UI_PANEL,ui::UI_LINE_SOFT); tft.setTextDatum(ML_DATUM);tft.setTextColor(r.complete?ui::UI_TEXT:ui::UI_ORANGE,ui::UI_PANEL); char line[110];snprintf(line,sizeof(line),"ride_%06lu  %s  %.2f km  avg %.1f",static_cast<unsigned long>(r.id),r.complete?"":"Incomplete",r.distanceM/1000.f,r.avgKmh);tft.drawString(line,26,y+14,2); }
+  drawBackButton();
+}
+void UiApp::drawHistoryDetail() {
+  display_->clear(ui::UI_BG); drawStatusBar("Ride details"); if(historySelected_>=historyCount_){drawBackButton();return;} const RideSummaryItem&r=history_[historySelected_]; char text[256];snprintf(text,sizeof(text),"ride_%06lu\n%s\nDistance: %.2f km\nElapsed: %s\nMoving: %s\nAverage: %.1f km/h\nMaximum: %.1f km/h\nBattery: %.2f -> %.2f V",static_cast<unsigned long>(r.id),r.complete?"Finished":"Incomplete",r.distanceM/1000.f,durationText(r.elapsedMs).c_str(),durationText(r.movingMs).c_str(),r.avgKmh,r.maxKmh,r.batteryStart,r.batteryEnd);drawTextBlock(text,28,52,23,ui::UI_TEXT,ui::UI_BG);drawSoftButton(20,270,130,40,"DELETE",ui::UI_RED);drawBackButton();
 }
 
 void UiApp::drawDiagnostics() {
@@ -1005,7 +1070,7 @@ void UiApp::drawUsbStorage() {
 
 void UiApp::drawSensorTest() {
   display_->clear(ui::UI_BG);
-  drawStatusBar("Sensor test", "GPIO4");
+  drawStatusBar("Sensor test", String("GPIO") + String(hw::PIN_HALL_SENSOR));
   String text;
   text += "Pin: GPIO";
   text += String(hw::PIN_HALL_SENSOR);
@@ -1017,9 +1082,9 @@ void UiApp::drawSensorTest() {
   text += app::interruptModeToString(settings_->sensorInterruptMode);
   text += "\nPulse count: " + String(sensorSnapshot_.pulseCount);
   text += "\nRejected pulses: " + String(sensorSnapshot_.rejectedPulseCount);
-  text += "\nLast pulse ms: " + String(sensorSnapshot_.lastPulseMs);
-  text += "\nInterval ms: " + String(sensorSnapshot_.lastIntervalMs);
-  text += "\nSpeed km/h: " + String(speed_->currentKmh(), 1);
+  text += "\nLast interval ms: " + String(static_cast<unsigned long>(sensorSnapshot_.lastIntervalUs / 1000ULL));
+  text += "\nSince pulse ms: " + String(static_cast<unsigned long>(speed_->timeSincePulseUs() / 1000ULL));
+  text += "\nRaw / filtered: " + String(speed_->rawKmh(), 1) + " / " + String(speed_->filteredKmh(),1);
   drawTextBlock(text, 26, 48, 22, ui::UI_TEXT, ui::UI_BG);
   drawBackButton();
 }
@@ -1028,7 +1093,10 @@ void UiApp::drawBatteryTest() {
   display_->clear(ui::UI_BG);
   drawStatusBar("Battery test", battery_->enabled() ? battery_->stateText() : "BAT N/A");
   drawBatteryStatusIcon(452, 17);
-  drawTextBlock(battery_->diagnosticText(), 32, 72, 24, ui::UI_MUTED, ui::UI_BG);
+  drawTextBlock(battery_->diagnosticText(), 28, 48, 18, ui::UI_MUTED, ui::UI_BG);
+  drawSoftButton(20,270,80,40,"CAL -",ui::UI_CYAN);
+  drawSoftButton(120,270,80,40,"CAL +",ui::UI_CYAN);
+  drawSoftButton(220,270,110,40,"SAVE",ui::UI_GREEN);
   drawBackButton();
 }
 
@@ -1051,14 +1119,20 @@ void UiApp::drawSystemInfo() {
   text += psramText();
   text += "\nFree heap: ";
   text += String(ESP.getFreeHeap());
+  text += "\nMin heap: ";
+  text += String(ESP.getMinFreeHeap());
+  text += "\nUptime: ";
+  text += durationText(millis());
   text += "\nDisplay: ";
   text += app::DISPLAY_NAME;
   text += "\nTouch: ";
   text += touch_->isReady() ? "OK" : "not found";
-  text += "\nBattery: disabled";
+  text += "\nSD: "; text += storage_->statusText();
+  text += "\nBattery: " + battery_->statusText();
   text += "\nUSB: ";
   text += usb_->active() ? "active" : "inactive";
-  drawTextBlock(text, 26, 46, 21, ui::UI_TEXT, ui::UI_BG);
+  text += "\nRide: "; text += ride_->stateText();
+  drawTextBlock(text, 26, 42, 17, ui::UI_TEXT, ui::UI_BG);
   drawBackButton();
 }
 
@@ -1112,6 +1186,10 @@ void UiApp::drawSettings() {
   drawPill(156, app::levelToString(settings_->sensorActiveLevel));
   drawRowBase(192, "Pullup");
   drawPill(192, settings_->sensorPullupEnabled ? "ON" : "OFF");
+  drawRowBase(228, "Brightness");
+  drawStepper(252, 231, "-");
+  drawValue(228, String(settings_->displayBrightnessPercent) + "%");
+  drawStepper(416, 231, "+");
 
   drawSoftButton(14, 270, 110, 40, "SAVE", ui::UI_GREEN);
   drawBackButton();
@@ -1137,7 +1215,8 @@ void UiApp::drawAbout() {
   text += psramText();
   text += "\nSD: ";
   text += storage_->statusText();
-  text += "\nBattery monitor: disabled";
+  text += "\nBattery: "; text += battery_->statusText();
+  text += "\nGitHub: Swart-G/DIY_bike_computer";
   drawTextBlock(text, 34, 54, 23, ui::UI_TEXT, ui::UI_BG);
   drawBackButton();
 }
@@ -1180,7 +1259,7 @@ void UiApp::drawRide() {
     drawGraphCard(20, 58, 440, 160);
   } else {
     drawMetricCard(20, 46, 140, 86, "MAX SPEED", String(ride_->stats().maxSpeedKmh, 1), "km/h");
-    drawMetricCard(170, 46, 140, 86, "AVG SPEED", String(ride_->stats().avgSpeedKmh, 1), "km/h");
+    drawMetricCard(170, 46, 140, 86, "AVG SPEED", String(ride_->stats().averageMovingSpeedKmh, 1), "km/h");
     drawMetricCard(320, 46, 140, 86, "DISTANCE",
                    String(ride_->stats().distanceM / 1000.0f, 2), "km");
     drawMetricCard(20, 138, 140, 86, "MOVING", durationText(ride_->stats().movingMs));
@@ -1189,6 +1268,13 @@ void UiApp::drawRide() {
   }
   drawPageDots(ridePage_, 3);
   drawBottomRideControls();
+}
+
+void UiApp::drawFinishConfirm() {
+  display_->clear(ui::UI_BG); drawStatusBar("Finish ride"); TFT_eSPI&t=display_->tft();drawPanel(t,58,72,364,112,ui::UI_PANEL,ui::BORDER_SOFT);t.setTextDatum(MC_DATUM);t.setTextColor(ui::UI_ORANGE,ui::UI_PANEL);t.drawString("Finish this ride?",240,105,4);t.setTextColor(ui::UI_MUTED,ui::UI_PANEL);t.drawString("The ride will be saved and closed.",240,145,2);drawSoftButton(92,210,130,50,"CANCEL",ui::UI_CYAN);drawSoftButton(258,210,130,50,"FINISH",ui::UI_RED);
+}
+void UiApp::drawRideSummary() {
+  display_->clear(ui::UI_BG);drawStatusBar("Ride summary");const RideStats&s=ride_->stats();char text[230];snprintf(text,sizeof(text),"Distance: %.2f km\nAverage: %.1f km/h\nMaximum: %.1f km/h\nElapsed: %s\nMoving: %s\nStopped: %s\nPaused: %s",s.distanceM/1000.f,s.averageMovingSpeedKmh,s.maxSpeedKmh,durationText(s.elapsedMs).c_str(),durationText(s.movingMs).c_str(),durationText(s.stoppedMs).c_str(),durationText(s.pauseMs).c_str());drawTextBlock(text,72,52,25,ui::UI_TEXT,ui::UI_BG);drawSoftButton(70,260,150,44,"NEW RIDE",ui::UI_GREEN);drawSoftButton(260,260,150,44,"MENU",ui::UI_CYAN);
 }
 
 void UiApp::drawBackButton() {
@@ -1217,22 +1303,25 @@ bool UiApp::hit(int16_t x, int16_t y, int16_t bx, int16_t by, int16_t bw, int16_
   return x >= bx && x < bx + bw && y >= by && y < by + bh;
 }
 
-String UiApp::durationText(uint32_t ms) const {
-  const uint32_t totalSeconds = ms / 1000UL;
-  const uint32_t hours = totalSeconds / 3600UL;
-  const uint32_t minutes = (totalSeconds / 60UL) % 60UL;
-  const uint32_t seconds = totalSeconds % 60UL;
+String UiApp::durationText(uint64_t ms) const {
+  const uint64_t totalSeconds = ms / 1000ULL;
+  const uint64_t hours = totalSeconds / 3600ULL;
+  const uint64_t minutes = (totalSeconds / 60ULL) % 60ULL;
+  const uint64_t seconds = totalSeconds % 60ULL;
   char buf[16];
-  snprintf(buf, sizeof(buf), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours),
-           static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+  snprintf(buf, sizeof(buf), "%02llu:%02llu:%02llu", static_cast<unsigned long long>(hours),
+           static_cast<unsigned long long>(minutes), static_cast<unsigned long long>(seconds));
   return String(buf);
 }
 
 void UiApp::startUsbMode() {
   if (ride_->state() == RideState::RIDING) {
-    ride_->pause(millis());
-    saveRecoveryIfNeeded(millis(), true);
+    lastMessage_ = "Active ride: pause or finish first";
+    return;
   }
+  if (ride_->state() == RideState::PAUSED) saveRecoveryIfNeeded(millis(), true);
+  if (logger_->active()) logger_->event(*storage_, *ride_, "USB_STORAGE_REQUESTED", "USB Mass Storage requested");
+  logger_->close();
   usb_->begin(*storage_);
   dirty_ = true;
 }
@@ -1241,7 +1330,7 @@ void UiApp::saveRecoveryIfNeeded(uint32_t nowMs, bool force) {
   if (!storage_->loggingEnabled()) {
     return;
   }
-  if (!force && !ride_->needsRecoverySave(nowMs, 2000)) {
+  if (!force && !ride_->needsRecoverySave(nowMs, settings_->recoveryIntervalMs)) {
     return;
   }
   String error;
@@ -1256,7 +1345,9 @@ void UiApp::clearRecovery() {
 }
 
 void UiApp::recordGraphSample(uint32_t nowMs) {
-  if (nowMs - lastGraphSampleMs_ < 1000) {
+  uint32_t period = settings_->graphWindowSeconds * 1000UL / 120UL;
+  if (period < 100) period = 100;
+  if (nowMs - lastGraphSampleMs_ < period) {
     return;
   }
   lastGraphSampleMs_ = nowMs;

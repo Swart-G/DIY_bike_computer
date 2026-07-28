@@ -1,245 +1,28 @@
-# HARDWARE.md
+# Hardware contract
 
-Аппаратная спецификация велоспидометра.
+Плата: ESP32-S3-N16R8, 16 MB Flash, 8 MB PSRAM, Arduino/PlatformIO. Любая прошивка обязана использовать только определения из `src/config/hardware_config.h`.
 
-## Контроллер
+| GPIO | Назначение |
+|---:|---|
+| 4 | Hall sensor signal, configurable pull-up/edge; default LOW/FALLING |
+| 6 | Battery ADC1, 1S Li-Po divider |
+| 8 | FT6336 SDA |
+| 9 | ST7796 DC |
+| 10 | ST7796 CS |
+| 11 | Shared SPI MOSI |
+| 12 | Shared SPI SCK |
+| 13 | Shared SPI MISO |
+| 14 | ST7796 RESET |
+| 15 | SD CS |
+| 16 | FT6336 INT |
+| 17 | FT6336 RESET |
+| 18 | FT6336 SCL |
+| 19 | Native USB D− — never use as GPIO |
+| 20 | Native USB D+ — never use as GPIO |
+| 47 | TFT backlight PWM |
 
-```text
-Board: ESP32-S3-N16R8 Dual Type-C development board
-MCU: ESP32-S3
-Flash: 16 MB
-PSRAM: 8 MB
-Framework: PlatformIO + Arduino
-```
+TFT is ST7796, 480×320 landscape, shared SPI at 20 MHz. SD uses the same bus with separate CS, default 10 MHz and automatic fallback to 1 MHz; no automatic format is ever performed. FT6336 I²C address is `0x38`; mapping remains configurable through swap/invert constants.
 
-Внешний USB-разъём корпуса подключён к native USB линиям ESP32-S3:
+Battery divider is `BAT+ — 1 MΩ — node — 1 MΩ — GND`, with a 100 kΩ series resistor from node to GPIO6. Nominal ratio is 2.0: 4.2 V battery yields about 2.1 V ADC. There is no capacitor, so firmware intentionally discards initial samples and uses a distributed median/trimmed series. Never feed 5 V into ESP32 GPIO, TFT VCC or Hall signal. TFT and Hall are powered from 3.3 V; MH-CD42 OUT-5V goes only to ESP32 VIN through the physical switch.
 
-```text
-GPIO19  USB_D-
-GPIO20  USB_D+
-```
-
-Эти пины нельзя использовать как обычные GPIO.
-
-## Экранный модуль
-
-```text
-Display: 3.5" SPI TFT
-Official driver: ST7796
-Touch controller: FT6336
-Storage: microSD over SPI
-```
-
-Экран, тач и SD подключены через 14-контактный разъём P2.
-
-## P2 разъём экрана → ESP32-S3
-
-| № | Контакт экрана | Назначение | ESP32-S3 |
-|---:|---|---|---|
-| 1 | VCC | Питание экрана | 3V3 |
-| 2 | GND | Земля | GND |
-| 3 | LCD_CS | Chip Select дисплея | GPIO10 |
-| 4 | LCD_RST | Reset дисплея | GPIO14 |
-| 5 | LCD_RS / LCD_DC | Data/Command дисплея | GPIO9 |
-| 6 | MOSI | SPI MOSI | GPIO11 |
-| 7 | SCK | SPI Clock | GPIO12 |
-| 8 | LED / BL | Подсветка | GPIO47 |
-| 9 | MISO | SPI MISO | GPIO13 |
-| 10 | CTP_SCL | I2C SCL тача | GPIO18 |
-| 11 | CTP_RST | Reset тача | GPIO17 |
-| 12 | CTP_SDA | I2C SDA тача | GPIO8 |
-| 13 | CTP_INT | Interrupt тача | GPIO16 |
-| 14 | SD_CS | Chip Select SD | GPIO15 |
-
-## SPI
-
-Общая SPI-шина используется дисплеем и SD-картой:
-
-```text
-SPI_MOSI  GPIO11
-SPI_SCK   GPIO12
-SPI_MISO  GPIO13
-```
-
-Отдельные CS:
-
-```text
-LCD_CS    GPIO10
-SD_CS     GPIO15
-```
-
-Требования:
-
-- дисплей и SD должны корректно разделять SPI-шину;
-- перед обращением к одному устройству CS другого должен быть неактивен;
-- частоты SPI можно настраивать отдельно, если библиотека это поддерживает;
-- если SD нестабильна на высокой частоте, снизить частоту SD SPI.
-
-## TFT ST7796
-
-Пины:
-
-```text
-LCD_CS    GPIO10
-LCD_RST   GPIO14
-LCD_DC    GPIO9
-LCD_BL    GPIO47
-SPI_MOSI  GPIO11
-SPI_SCK   GPIO12
-SPI_MISO  GPIO13
-```
-
-Требования:
-
-- драйвер дисплея: ST7796;
-- ориентация экрана должна быть настроена под физический корпус;
-- подсветка должна включаться при старте;
-- желательно реализовать PWM-регулировку яркости на GPIO47, если это стабильно работает с платой.
-
-## Touch FT6336
-
-Пины:
-
-```text
-CTP_SDA   GPIO8
-CTP_SCL   GPIO18
-CTP_RST   GPIO17
-CTP_INT   GPIO16
-```
-
-Требования:
-
-- тач обязателен уже в первой тестовой версии;
-- координаты должны быть приведены к ориентации экрана;
-- в настройках должен быть Paint-тест;
-- в диагностике должен быть raw touch test с выводом координат.
-
-## SD-карта
-
-Пины:
-
-```text
-SD_SCK    GPIO12
-SD_MOSI   GPIO11
-SD_MISO   GPIO13
-SD_CS     GPIO15
-```
-
-Требования:
-
-- SD-карта должна определяться при запуске;
-- если SD не обнаружена, показать предупреждение и дать продолжить без сохранения;
-- тестовая прошивка должна создать файл `/BIKE_SPEEDOMETER_SD_TEST.txt`;
-- этот файл должен быть виден при подключении устройства к ПК как USB Mass Storage.
-
-## USB native / USB Mass Storage
-
-Пины:
-
-```text
-USB_D-    GPIO19
-USB_D+    GPIO20
-```
-
-Назначение:
-
-- подключение к ПК;
-- режим USB Mass Storage;
-- доступ к SD-карте как к флешке.
-
-Требования:
-
-- не использовать GPIO19/GPIO20 для датчиков, кнопок, подсветки или других функций;
-- при активном USB Mass Storage прошивка не должна писать на SD;
-- на экране должен быть явный режим `USB Storage Active`.
-
-## Датчик Холла
-
-Пока датчик может быть физически не припаян. Прошивка всё равно должна запускаться.
-
-Пин сигнала:
-
-```text
-HALL_SENSOR_SIGNAL  GPIO4
-```
-
-Разъём датчика:
-
-| № | Провод | Назначение |
-|---:|---|---|
-| 1 | Коричневый | 3V3 |
-| 2 | Коричневый с полоской | Signal / GPIO4 |
-| 3 | Синий | GND |
-
-Рекомендации:
-
-- датчик питать от 3.3V, если конкретный датчик это поддерживает;
-- сигнал датчика должен быть безопасен для ESP32-S3, максимум 3.3V;
-- для A3144 и похожих датчиков может потребоваться pull-up к 3.3V;
-- в прошивке сделать настройку полярности датчика;
-- использовать interrupt + debounce/min pulse interval;
-- не делать тяжёлую обработку внутри ISR.
-
-Начальная логика:
-
-```text
-GPIO4 input
-pull-up configurable
-interrupt edge configurable
-minimum pulse interval configurable
-```
-
-## Измерение напряжения аккумулятора
-
-Измерение будет выполняться напрямую с аккумулятора через резисторный делитель напряжения.
-
-На момент этого ТЗ:
-
-```text
-BATTERY_MONITOR_ENABLED = false
-BATTERY_ADC_PIN = TBD_BATTERY_ADC_PIN
-```
-
-Что нужно добавить позже:
-
-- выбрать ADC GPIO;
-- указать номиналы резисторов делителя;
-- рассчитать коэффициент делителя;
-- добавить калибровку ADC;
-- показывать raw ADC и напряжение в диагностике;
-- показывать процент батареи в статусной строке;
-- добавить предупреждение низкого заряда.
-
-Важно:
-
-- напряжение на ADC ESP32-S3 не должно превышать допустимый максимум;
-- делитель должен быть рассчитан с запасом под полностью заряженный Li-ion аккумулятор;
-- измерение должно быть отключаемым в конфиге.
-
-## Сводная таблица GPIO
-
-| GPIO | Назначение | Статус |
-|---:|---|---|
-| GPIO4 | Датчик Холла, Signal | Используется |
-| GPIO8 | CTP_SDA | Используется |
-| GPIO9 | LCD_DC | Используется |
-| GPIO10 | LCD_CS | Используется |
-| GPIO11 | SPI_MOSI | Используется |
-| GPIO12 | SPI_SCK | Используется |
-| GPIO13 | SPI_MISO | Используется |
-| GPIO14 | LCD_RST | Используется |
-| GPIO15 | SD_CS | Используется |
-| GPIO16 | CTP_INT | Используется |
-| GPIO17 | CTP_RST | Используется |
-| GPIO18 | CTP_SCL | Используется |
-| GPIO19 | USB_D- | Используется, не трогать |
-| GPIO20 | USB_D+ | Используется, не трогать |
-| GPIO47 | LCD_BACKLIGHT | Используется |
-| TBD | Battery ADC | Не выбран |
-
-## Правила для будущих подключений
-
-- Перед добавлением нового устройства проверить, не занят ли GPIO.
-- Не подключать 5V сигнал напрямую к ESP32-S3 GPIO.
-- Все новые GPIO сначала добавить в этот файл, потом в `hardware_config.h`.
-- Любое изменение распиновки должно быть явно описано в commit/message.
+The external Type-C data connector is native ESP32-S3 USB. A USB connection alone is not a charge signal; charging is inferred only from a slow voltage trend.

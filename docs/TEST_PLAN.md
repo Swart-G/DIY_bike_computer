@@ -1,469 +1,55 @@
-# TEST_PLAN.md
-
-Ручной план тестирования прошивки велоспидометра.
+# Manual production test plan
 
-## 1. Подготовка
+For every section record firmware version, SD brand and battery voltage. Failure symptoms are a reason to stop and retain the Serial log; never format a card containing evidence.
 
-Перед тестами проверить:
+## 1. Build and boot
 
-- плата ESP32-S3-N16R8 подключена к компьютеру;
-- экран припаян по `docs/HARDWARE.md`;
-- SD-карта вставлена для SD/USB тестов;
-- датчик Холла может быть не подключён;
-- измеритель батареи может быть не подключён;
-- Serial monitor открыт.
+Steps: run `pio run`, upload, open `pio device monitor`, boot with all peripherals attached. Expected: version 1.0.0, memory information and one result per init stage; splash then Menu/Recovery. Failure: compile error, boot loop, black display or repeated error spam.
 
-## 2. Build test
+## 2. Boot without optional hardware
 
-Команды:
+Steps: remove SD, then separately disconnect Hall and FT6336; reboot and press Continue on no-SD screen. Expected: no reset; Ride, Settings and diagnostics still work; status says NO SD / NO TOUCH where relevant. Failure: reset loop, frozen touch or attempt to write SD.
 
-```bash
-pio run
-pio run -t upload
-pio device monitor
-```
+## 3. Display and touch
 
-Ожидаемый результат:
+Steps: Diagnostics → Display; inspect RGB/white/black, gradients/primitives/text/orientation. Diagnostics → Touch raw; tap all four corners. Diagnostics → Paint; draw rapid diagonals, Clear, Back. Expected: 480×320 landscape, PWM brightness works, coordinates map correctly, continuous paint line. Failure: flicker, missing colours, shifted/inverted touch or UI overlap.
 
-- проект собирается без ошибок;
-- прошивка загружается;
-- в Serial видно стартовые сообщения;
-- нет циклических перезагрузок.
-
-Чеклист:
-
-```text
-[ ] pio run successful
-[ ] upload successful
-[ ] serial boot log visible
-[ ] firmware version printed
-[ ] flash size printed
-[ ] PSRAM status printed
-[ ] no boot loop
-```
+## 4. Hall and speed
 
-## 3. Boot без SD
+Steps: Diagnostics → Hall; observe unconnected level. Feed safe 3.3 V/open-drain pulses on GPIO4 at known intervals, then pulses below `min_pulse_interval_ms`. Stop pulses. Expected: accepted/rejected counters, last interval, raw/filtered speed; rejected noise; speed holds for one interval then naturally falls to zero below 3 km/h. Failure: counting without pulses, missed valid pulses, fixed timeout jump, or >3.3 V applied.
 
-Условия:
+## 5. Battery
 
-- вынуть SD-карту;
-- перезагрузить устройство.
+Steps: power from a measured 1S pack; Diagnostics → Battery; wait for several sample series; compare filtered voltage with meter; use CAL −/+ then SAVE; reboot. Expected: GPIO6 raw ADC, ADC mV, instant/filtered battery voltage, factor, SoC and trend; saved calibration survives reboot. Failure: static value, implausible voltage, fast percentage jitter or blocking UI. Verify low/critical visual state with a controlled safe supply; do not over-discharge a Li-Po.
 
-Ожидаемый результат:
+## 6. SD
 
-- устройство не зависает;
-- появляется экран `SD card not found`;
-- доступны кнопки `Retry` и `Continue without saving`;
-- после `Continue without saving` открывается главное меню;
-- в статусе видно `NO SD`.
-
-Чеклист:
+Steps: boot with FAT SD; Diagnostics → SD → Run test; inspect card type/capacity/free space/frequency and `/BIKE_SPEEDOMETER_SD_TEST.txt` on a computer. Repeat after reinserting card. Expected: read/write match, no format prompt, fallback frequency if required. Failure: UI crash, automatic format, corrupt test text or continuous retries.
 
-```text
-[ ] no SD warning shown
-[ ] Retry button works
-[ ] Continue without saving works
-[ ] main menu opens without SD
-[ ] diagnostics open without SD
-[ ] ride screen opens without SD
-[ ] no crash without SD
-```
+## 7. Ride lifecycle and statistics
 
-## 4. TFT display test
+Steps: Start, generate pulses while moving, stop without pausing, Pause, generate more pulses, Resume, then Finish and confirm. Expected: distance only grows on accepted RIDING pulses; elapsed includes pause; recording excludes pause; moving excludes standing; stopped=recording−moving; AVG=distance/moving; paused pulses are ignored. Finish shows summary and creates a new-ride/menu choice. Failure: instant finish without confirmation, reset stats before summary, or paused movement counted.
 
-Условия:
+## 8. Ride files and history
 
-- SD может быть вставлена или отсутствовать;
-- открыть `Diagnostics -> Display test`.
-
-Ожидаемый результат:
-
-- экран включён;
-- подсветка работает;
-- цвета отображаются корректно;
-- текст читается;
-- линии и прямоугольники рисуются;
-- ориентация экрана правильная.
+Steps: inspect `/rides/ride_XXXXXX/` after Finish. Expected: `meta.json`, append-only `samples.csv`, `events.csv`, `summary.json`; headers exactly match LOG_FORMAT; no fake date/GPS. Menu → History shows summary-only rows and details. Attempt deleting finished ride and active ride. Failure: malformed CSV/JSON, missing FINISH summary, active ride deletion, or history requiring samples scan.
 
-Чеклист:
+## 9. Recovery
 
-```text
-[ ] backlight on
-[ ] black fill works
-[ ] white fill works
-[ ] red fill works
-[ ] green fill works
-[ ] blue fill works
-[ ] text visible
-[ ] lines visible
-[ ] rectangles visible
-[ ] screen orientation correct
-[ ] no flickering or heavy artifacts
-```
+Steps: Start a ride, wait one recovery interval, remove power during RIDING; reboot. Repeat from PAUSED and repeat with SD removed after an NVS checkpoint. Expected: Recovery screen always offers Resume/Finish/Discard and state is PAUSED; never auto-RIDING; Resume appends existing CSV and event; Finish makes summary then removes recovery. Failure: lost stats, a new folder for resumed ride, or auto-start.
 
-## 5. Touch raw test
+## 10. SD removal during ride
 
-Открыть:
-
-```text
-Diagnostics -> Touch raw test
-```
+Steps: start and generate pulses, remove SD, keep riding 2–3 minutes, reinsert, wait for retry, finish. Expected: speed/stats/UI continue; clear SD ERROR; samples are buffered then `SD_RESTORED` is appended when card returns; summary exposes logging gap if data could not fit. Failure: reset, blocked Hall interrupt, a false claim that all data was saved.
 
-Ожидаемый результат:
+## 11. USB Mass Storage
 
-- касание определяется;
-- x/y меняются при движении пальца;
-- координаты соответствуют месту касания;
-- кнопка назад нажимается.
+Steps: from IDLE start USB; from PAUSED checkpoint then start USB; from RIDING request USB. Connect host, inspect/edit a copied file, safe eject, then reboot device. Expected: host sees SD; active screen says USB Storage Active; firmware does no FAT actions; RIDING is refused with guidance; reboot restores normal SD ownership. Failure: host corruption, concurrent logging/history, or USB exit without reinitialisation.
 
-Чеклист:
+## 12. Settings persistence
 
-```text
-[ ] touch detected
-[ ] X coordinate changes
-[ ] Y coordinate changes
-[ ] coordinates match screen orientation
-[ ] top-left area works
-[ ] top-right area works
-[ ] bottom-left area works
-[ ] bottom-right area works
-[ ] Back button works
-```
+Steps: change circumference, stop threshold, sensor edge/pull-up, brightness and battery factor; Save; reboot with SD, then without SD. Expected: ranges clamp invalid values, settings apply immediately, valid SD config supersedes NVS, NVS preserves essential values without SD. Failure: GPIO editing exposed, invalid values crash boot, or brightness/calibration does not persist.
 
-## 6. Paint test
-
-Открыть:
-
-```text
-Diagnostics -> Paint test
-```
-
-Ожидаемый результат:
-
-- палец рисует линию на экране;
-- линия появляется там, где было касание;
-- кнопка Clear очищает экран;
-- кнопка Back возвращает назад.
-
-Чеклист:
+## 13. Long-duration test
 
-```text
-[ ] drawing works
-[ ] drawing follows finger
-[ ] no coordinate inversion
-[ ] no X/Y swap
-[ ] Clear button works
-[ ] Back button works
-[ ] entire touch area usable
-```
-
-## 7. Главное меню
-
-Ожидаемый результат:
-
-- все пункты меню видны;
-- каждый пункт нажимается;
-- возврат назад работает;
-- быстрые повторные касания не ломают UI.
-
-Чеклист:
-
-```text
-[ ] Ride opens
-[ ] Diagnostics opens
-[ ] Settings opens
-[ ] USB Storage opens
-[ ] About opens
-[ ] Back navigation works
-[ ] repeated taps do not freeze UI
-```
-
-## 8. SD test
-
-Условия:
-
-- вставить SD-карту;
-- перезагрузить устройство;
-- открыть `Diagnostics -> SD test`.
-
-Ожидаемый результат:
-
-- SD обнаружена;
-- прошивка создаёт файл `/BIKE_SPEEDOMETER_SD_TEST.txt`;
-- прошивка читает файл обратно;
-- текст файла отображается на экране.
-
-Чеклист:
-
-```text
-[ ] SD detected
-[ ] SD size/type shown if available
-[ ] test file created
-[ ] test file read back
-[ ] read text matches written text
-[ ] result shown on display
-[ ] no crash on repeated SD test
-```
-
-## 9. USB Mass Storage test
-
-Условия:
-
-- SD-карта вставлена;
-- тестовый файл SD уже создан;
-- подключить внешний USB корпуса к компьютеру, если он подключён к GPIO19/GPIO20;
-- открыть `USB Storage` или `Diagnostics -> USB Mass Storage test`.
-
-Ожидаемый результат:
-
-- устройство определяется компьютером как накопитель;
-- SD-карта видна;
-- файл `/BIKE_SPEEDOMETER_SD_TEST.txt` виден на компьютере;
-- файл можно открыть и прочитать;
-- прошивка показывает экран активного USB-режима;
-- прошивка не пишет на SD во время USB-режима.
-
-Чеклист:
-
-```text
-[ ] USB Storage mode starts
-[ ] display shows USB Storage Active
-[ ] computer detects mass storage device
-[ ] SD content visible on computer
-[ ] BIKE_SPEEDOMETER_SD_TEST.txt visible
-[ ] test file content readable on computer
-[ ] firmware blocks ride logging during USB mode
-[ ] safe eject on computer works
-[ ] device can be rebooted after USB mode
-```
-
-## 10. Sensor GPIO4 test без датчика
-
-Открыть:
-
-```text
-Diagnostics -> Sensor test
-```
-
-Ожидаемый результат:
-
-- экран открывается даже без датчика;
-- видно `GPIO4`;
-- видно текущее состояние пина;
-- pulse count не растёт сам по себе или растёт только при шуме, что будет заметно;
-- прошивка не зависает.
-
-Чеклист:
-
-```text
-[ ] Sensor test opens without physical sensor
-[ ] GPIO4 shown
-[ ] pin level shown
-[ ] pulse counter shown
-[ ] last pulse time shown
-[ ] no crash without sensor
-```
-
-## 11. Sensor GPIO4 test с имитацией сигнала
-
-Условия:
-
-- безопасно имитировать сигнал на GPIO4;
-- не подавать на GPIO4 больше 3.3V.
-
-Ожидаемый результат:
-
-- изменение состояния пина видно на экране;
-- pulse count увеличивается;
-- interval меняется;
-- скорость рассчитывается при серии импульсов;
-- ложные слишком быстрые импульсы фильтруются.
-
-Чеклист:
-
-```text
-[ ] pin level changes
-[ ] pulse count increments
-[ ] last pulse time updates
-[ ] interval shown
-[ ] speed calculated
-[ ] rejected pulse count works for too-fast pulses
-[ ] no crash from bounce
-```
-
-## 12. Ride screen test
-
-Открыть:
-
-```text
-Ride
-```
-
-Ожидаемый результат:
-
-- виден главный экран заезда;
-- снизу кнопки Start/Pause/Stop;
-- сверху справа кнопка меню/настроек;
-- центральные страницы листаются;
-- скорость отображается;
-- статистика отображается.
-
-Чеклист:
-
-```text
-[ ] Ride screen opens
-[ ] Start button visible
-[ ] Pause/Resume button visible
-[ ] Stop/Finish button visible
-[ ] menu/settings button visible top-right
-[ ] speed page visible
-[ ] graph page visible
-[ ] stats page visible
-[ ] page switching works
-```
-
-## 13. Start / Pause / Resume / Finish
-
-Ожидаемый результат:
-
-- из `IDLE` можно начать заезд;
-- из `RIDING` можно поставить паузу;
-- из `PAUSED` можно продолжить;
-- из `RIDING` или `PAUSED` можно завершить;
-- после завершения показывается summary или экран итогов.
-
-Чеклист:
-
-```text
-[ ] initial state IDLE
-[ ] Start changes state to RIDING
-[ ] Pause changes state to PAUSED
-[ ] Resume changes state to RIDING
-[ ] Stop/Finish changes state to FINISHED
-[ ] summary screen shown
-[ ] New ride returns to IDLE
-```
-
-## 14. Recovery test
-
-Условия:
-
-- SD-карта вставлена;
-- начать заезд;
-- дождаться сохранения recovery;
-- перезагрузить устройство во время `RIDING`.
-
-Ожидаемый результат:
-
-- после перезагрузки устройство находит незавершённый заезд;
-- заезд восстанавливается как `PAUSED`;
-- есть кнопки `Resume`, `Finish`, `Discard`.
-
-Чеклист:
-
-```text
-[ ] unfinished ride detected
-[ ] recovered state is PAUSED
-[ ] Resume works
-[ ] Finish works
-[ ] Discard works
-[ ] ride does not auto-resume without user action
-```
-
-## 15. Settings test
-
-Открыть:
-
-```text
-Settings
-```
-
-Проверить настройки:
-
-- окружность колеса;
-- порог остановки;
-- яркость;
-- полярность датчика;
-- интервал обновления UI;
-- параметры батареи, если доступны.
-
-Ожидаемый результат:
-
-- настройки открываются;
-- значения можно менять;
-- значения сохраняются на SD, если SD доступна;
-- после перезагрузки значения загружаются.
-
-Чеклист:
-
-```text
-[ ] Settings opens
-[ ] wheel circumference editable
-[ ] stop threshold editable
-[ ] brightness editable
-[ ] sensor polarity editable
-[ ] values saved to config
-[ ] values restored after reboot
-[ ] invalid values rejected
-```
-
-## 16. Battery monitor disabled test
-
-Ожидаемый результат:
-
-- пока ADC-пин не выбран, батарейный монитор отключён;
-- UI показывает `Battery: N/A` или `Battery monitor disabled`;
-- диагностика батареи не падает.
-
-Чеклист:
-
-```text
-[ ] battery monitor disabled by default
-[ ] no ADC read from invalid pin
-[ ] Battery test screen opens
-[ ] Battery test says ADC pin not configured
-[ ] no crash
-```
-
-## 17. Error handling test
-
-Проверить ошибки:
-
-```text
-[ ] boot without SD
-[ ] SD removed before SD test
-[ ] corrupted config file
-[ ] USB Storage without SD
-[ ] touch init fail simulation if possible
-[ ] repeated reboot during ride
-```
-
-Ожидаемый результат:
-
-- ошибка показана на экране;
-- ошибка записана в Serial;
-- устройство не зависает;
-- есть безопасный путь назад.
-
-## 18. Критерии принятия первого тестового варианта
-
-Первый тестовый вариант можно считать принятым, если выполнено:
-
-```text
-[ ] firmware builds
-[ ] firmware uploads
-[ ] TFT works
-[ ] backlight works
-[ ] touch works
-[ ] Paint test works
-[ ] main menu works
-[ ] SD warning works without SD
-[ ] SD test file works with SD
-[ ] USB Mass Storage exposes SD
-[ ] sensor GPIO4 test works without sensor
-[ ] sensor GPIO4 reacts to signal
-[ ] ride screen opens
-[ ] Start/Pause/Resume/Finish state machine works
-[ ] battery monitor disabled state works
-[ ] no critical crashes during tests
-```
+Steps: run at least three hours with real or pulse-generator input; vary speed, pauses and graph pages; retain SD logs; note free/min heap at start/end. Expected: no watchdog reset, stable counters, monotonic samples, no unbounded heap decline, rolling graph and files grow normally across `millis()`-like long operation. Failure: missed pulses under UI load, fragmentation, SD corruption, stuck graph or bad timers.
