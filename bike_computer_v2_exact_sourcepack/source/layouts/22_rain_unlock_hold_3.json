@@ -1,0 +1,154 @@
+{
+  "screen_id": "22_rain_unlock_hold_3",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "11_ride_speed_active",
+    "dim_alpha": 115
+  },
+  "elements": [
+    {
+      "type": "background_ref",
+      "screen": "11_ride_speed_active"
+    },
+    {
+      "type": "rain_unlock_progress",
+      "progress": 3.0
+    },
+    {
+      "type": "modal",
+      "x": 60,
+      "y": 60,
+      "w": 360,
+      "h": 186,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 98,
+      "text": "Hold both points",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 122,
+      "text": "3.0 / 3.0 s",
+      "font": "sm_b",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "ellipse",
+      "x": 154,
+      "y": 186,
+      "w": 12,
+      "h": 12,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 142,
+      "y": 174,
+      "w": 36,
+      "h": 36,
+      "fill": null,
+      "outline": "accent",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 112,
+      "y": 144,
+      "w": 96,
+      "h": 96,
+      "fill": null,
+      "outline": "accent_dim",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 88,
+      "y": 120,
+      "w": 144,
+      "h": 144,
+      "fill": null,
+      "outline": "accent_dim",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 314,
+      "y": 186,
+      "w": 12,
+      "h": 12,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 302,
+      "y": 174,
+      "w": 36,
+      "h": 36,
+      "fill": null,
+      "outline": "accent",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 272,
+      "y": 144,
+      "w": 96,
+      "h": 96,
+      "fill": null,
+      "outline": "accent_dim",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 248,
+      "y": 120,
+      "w": 144,
+      "h": 144,
+      "fill": null,
+      "outline": "accent_dim",
+      "width": 2
+    },
+    {
+      "type": "progress_track",
+      "x": 110,
+      "y": 232,
+      "w": 260,
+      "h": 6,
+      "radius": 3,
+      "fill": "panel",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "progress_fill",
+      "x": 110,
+      "y": 232,
+      "w": 260,
+      "h": 6,
+      "radius": 3,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    }
+  ]
+}

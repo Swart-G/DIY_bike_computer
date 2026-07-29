@@ -5,6 +5,8 @@
 
 #include "bus/SharedSpiBus.h"
 #include "config/hardware_config.h"
+#include "ui/UiTheme.h"
+#include "ui_exact/exact_screen_renderer.h"
 
 #if __has_include(<esp_arduino_version.h>)
 #include <esp_arduino_version.h>
@@ -30,8 +32,8 @@ bool DisplayManager::begin(uint8_t brightnessPercent) {
     tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
     tft_.setRotation(hw::DISPLAY_ROTATION);
     tft_.setTextFont(2);
-    tft_.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft_.fillScreen(TFT_BLACK);
+    tft_.setTextColor(TFT_WHITE, ui::BG);
+    tft_.fillScreen(ui::BG);
   }
 
   ready_ = true;
@@ -39,8 +41,8 @@ bool DisplayManager::begin(uint8_t brightnessPercent) {
   frameBufferReady_ = frame_.createSprite(tft_.width(), tft_.height()) != nullptr;
   if (frameBufferReady_) {
     frame_.setTextFont(2);
-    frame_.setTextColor(TFT_WHITE, TFT_BLACK);
-    frame_.fillSprite(TFT_BLACK);
+    frame_.setTextColor(TFT_WHITE, ui::BG);
+    frame_.fillSprite(ui::BG);
     frameTransferRows_ = kFrameTransferRows;
     frameTransferBuffer_ = static_cast<uint16_t*>(
         heap_caps_malloc(tft_.width() * frameTransferRows_ * sizeof(uint16_t),
@@ -114,6 +116,14 @@ void DisplayManager::beginFrame(uint16_t color) {
   frame_.fillSprite(color);
 }
 
+void DisplayManager::beginPartialFrame() {
+  if (!frameBufferReady_) {
+    beginFrame();
+    return;
+  }
+  frameActive_ = true;
+}
+
 void DisplayManager::commitFrame() {
   if (frameBufferReady_ && frameActive_) {
     uint16_t* framePixels = static_cast<uint16_t*>(frame_.getPointer());
@@ -151,18 +161,54 @@ void DisplayManager::commitFrame() {
   }
 }
 
+void DisplayManager::commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h) {
+  if (!frameBufferReady_ || !frameActive_ || frameTransferBuffer_ == nullptr ||
+      frameTransferRows_ == 0) {
+    commitFrame();
+    return;
+  }
+  x = constrain(x, 0, tft_.width() - 1);
+  y = constrain(y, 0, tft_.height() - 1);
+  w = constrain(w, 1, tft_.width() - x);
+  h = constrain(h, 1, tft_.height() - y);
+  uint16_t* framePixels = static_cast<uint16_t*>(frame_.getPointer());
+  if (framePixels == nullptr) {
+    commitFrame();
+    return;
+  }
+
+  const int16_t frameWidth = tft_.width();
+  const bool oldSwapBytes = tft_.getSwapBytes();
+  hw::SharedSpiBusGuard bus;
+  tft_.setSwapBytes(false);
+  tft_.startWrite();
+  tft_.setAddrWindow(x, y, w, h);
+  for (int16_t row = 0; row < h; row += frameTransferRows_) {
+    const int16_t rows = min<int16_t>(frameTransferRows_, h - row);
+    for (int16_t localRow = 0; localRow < rows; ++localRow) {
+      memcpy(frameTransferBuffer_ + static_cast<size_t>(localRow) * w,
+             framePixels + static_cast<size_t>(y + row + localRow) * frameWidth + x,
+             static_cast<size_t>(w) * sizeof(uint16_t));
+    }
+    tft_.pushPixels(frameTransferBuffer_, static_cast<uint32_t>(w) * rows);
+  }
+  tft_.endWrite();
+  tft_.setSwapBytes(oldSwapBytes);
+  frameActive_ = false;
+}
+
 void DisplayManager::showBoot(const String& line1, const String& line2) {
   hw::SharedSpiBusGuard bus;
   TFT_eSPI& gfx = tft();
-  gfx.fillScreen(TFT_BLACK);
+  ui_exact::ExactScreenRenderer exact(gfx);
+  exact.draw(ui_exact::ScreenId::SCREEN_00_BOOT);
+  gfx.fillRect(90, 249, 300, 43, ui::BG);
   gfx.setTextDatum(MC_DATUM);
-  gfx.setTextColor(TFT_CYAN, TFT_BLACK);
-  gfx.drawString("Bike Speedometer", width() / 2, 82, 4);
-  gfx.setTextColor(TFT_WHITE, TFT_BLACK);
-  gfx.drawString(line1, width() / 2, 148, 2);
+  gfx.setTextColor(ui::TEXT_MUTED, ui::BG);
+  gfx.drawString(line1.length() ? line1 : "Starting services...",
+                 width() / 2, 260, 1);
   if (line2.length() > 0) {
-    gfx.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    gfx.drawString(line2, width() / 2, 178, 2);
+    gfx.drawString(line2, width() / 2, 280, 1);
   }
 }
 

@@ -27,6 +27,7 @@ bool TouchManager::update() {
   if (!ready_) {
     point_.touched = false;
     point_.points = 0;
+    clearContacts();
     return false;
   }
 
@@ -36,7 +37,9 @@ bool TouchManager::update() {
   }
   lastReadAttemptMs_ = nowMs;
 
-  uint8_t data[5] = {0};
+  // TD_STATUS + P1 (0x03..0x08) + P2 XY (0x09..0x0C). One I2C transaction
+  // guarantees both contacts come from the same FT6336 scan.
+  uint8_t data[11] = {0};
   if (!readBytes(0x02, data, sizeof(data))) {
     ++consecutiveReadFailures_;
     if (consecutiveReadFailures_ >= 3) {
@@ -44,19 +47,36 @@ bool TouchManager::update() {
     }
     point_.touched = false;
     point_.points = 0;
+    clearContacts();
     return false;
   }
   consecutiveReadFailures_ = 0;
 
-  point_.points = data[0] & 0x0F;
-  point_.touched = point_.points > 0 && point_.points < 3;
+  point_.points = min<uint8_t>(data[0] & 0x0F, 2);
+  clearContacts();
+  for (uint8_t i = 0; i < point_.points; ++i) {
+    const uint8_t base = i == 0 ? 1 : 7;
+    TouchContact& contact = point_.contacts[i];
+    contact.event = (data[base] >> 6) & 0x03;
+    contact.id = (data[base + 2] >> 4) & 0x0F;
+    contact.rawX =
+        static_cast<int16_t>(((data[base] & 0x0F) << 8) | data[base + 1]);
+    contact.rawY =
+        static_cast<int16_t>(((data[base + 2] & 0x0F) << 8) | data[base + 3]);
+    contact.valid = contact.event == 0 || contact.event == 2;
+    if (contact.valid) transformRaw(contact);
+  }
+  point_.touched = point_.contacts[0].valid || point_.contacts[1].valid;
   if (!point_.touched) {
     return true;
   }
 
-  point_.rawX = static_cast<int16_t>(((data[1] & 0x0F) << 8) | data[2]);
-  point_.rawY = static_cast<int16_t>(((data[3] & 0x0F) << 8) | data[4]);
-  transformRaw();
+  const TouchContact& primary =
+      point_.contacts[0].valid ? point_.contacts[0] : point_.contacts[1];
+  point_.rawX = primary.rawX;
+  point_.rawY = primary.rawY;
+  point_.x = primary.x;
+  point_.y = primary.y;
   point_.lastTouchMs = millis();
   return true;
 }
@@ -84,9 +104,9 @@ bool TouchManager::writeByte(uint8_t reg, uint8_t value) {
   return Wire.endTransmission() == 0;
 }
 
-void TouchManager::transformRaw() {
-  int16_t tx = point_.rawX;
-  int16_t ty = point_.rawY;
+void TouchManager::transformRaw(TouchContact& contact) {
+  int16_t tx = contact.rawX;
+  int16_t ty = contact.rawY;
   if (hw::TOUCH_SWAP_XY) {
     const int16_t tmp = tx;
     tx = ty;
@@ -98,6 +118,11 @@ void TouchManager::transformRaw() {
   if (hw::TOUCH_INVERT_Y) {
     ty = hw::DISPLAY_HEIGHT - 1 - ty;
   }
-  point_.x = constrain(tx, 0, hw::DISPLAY_WIDTH - 1);
-  point_.y = constrain(ty, 0, hw::DISPLAY_HEIGHT - 1);
+  contact.x = constrain(tx, 0, hw::DISPLAY_WIDTH - 1);
+  contact.y = constrain(ty, 0, hw::DISPLAY_HEIGHT - 1);
+}
+
+void TouchManager::clearContacts() {
+  point_.contacts[0] = TouchContact();
+  point_.contacts[1] = TouchContact();
 }

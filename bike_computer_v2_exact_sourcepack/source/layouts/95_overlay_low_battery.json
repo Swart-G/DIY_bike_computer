@@ -1,0 +1,35 @@
+{
+  "screen_id": "95_overlay_low_battery",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "11_ride_speed_active",
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "overlay",
+      "x": 138,
+      "y": 52,
+      "w": 204,
+      "h": 32,
+      "radius": 14,
+      "fill": "#2A2010",
+      "outline": "warning",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 68,
+      "text": "LOW BATTERY · 15%",
+      "font": "sm_b",
+      "color": "warning",
+      "anchor": "mm"
+    }
+  ]
+}

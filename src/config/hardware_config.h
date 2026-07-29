@@ -20,6 +20,7 @@ static constexpr int PIN_CTP_SCL = 18;
 static constexpr int PIN_USB_DM = 19;
 static constexpr int PIN_USB_DP = 20;
 static constexpr int PIN_LCD_BACKLIGHT = 47;
+static constexpr int PIN_RGB_LED = 48;
 static constexpr bool LCD_BACKLIGHT_ACTIVE_HIGH = true;
 static constexpr uint8_t LCD_BACKLIGHT_PWM_CHANNEL = 7;
 static constexpr uint32_t LCD_BACKLIGHT_PWM_FREQUENCY_HZ = 200;

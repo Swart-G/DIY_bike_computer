@@ -1,0 +1,162 @@
+{
+  "screen_id": "31_phone_pairing",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Pair phone",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "icon",
+      "kind": "phone",
+      "cx": 180,
+      "cy": 104,
+      "color": "accent",
+      "scale": 1.3
+    },
+    {
+      "type": "icon",
+      "kind": "bike",
+      "cx": 303,
+      "cy": 104,
+      "color": "accent",
+      "scale": 1.1
+    },
+    {
+      "type": "line",
+      "points": [
+        206,
+        104,
+        274,
+        104
+      ],
+      "color": "accent",
+      "width": 2
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 151,
+      "text": "Pairing mode active",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 179,
+      "text": "Open Bike Computer on Android",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "code_box",
+      "x": 115,
+      "y": 213,
+      "w": 250,
+      "h": 42,
+      "radius": 12,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 234,
+      "text": "Code  582 941",
+      "font": "lg",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 279,
+      "text": "Expires in 01:42",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    }
+  ]
+}

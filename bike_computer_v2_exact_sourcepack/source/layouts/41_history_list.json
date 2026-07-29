@@ -1,0 +1,273 @@
+{
+  "screen_id": "41_history_list",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "History",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "list_item",
+      "x": 18,
+      "y": 57,
+      "w": 444,
+      "h": 66,
+      "radius": 12,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 72,
+      "text": "Today · 21:03",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 99,
+      "text": "12.84 km",
+      "font": "lg",
+      "color": "accent",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 181,
+      "y": 100,
+      "text": "42 min",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 100,
+      "text": "18.2 km/h",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 73,
+      "text": "›",
+      "font": "lg",
+      "color": "muted",
+      "anchor": "ra"
+    },
+    {
+      "type": "list_item",
+      "x": 18,
+      "y": 132,
+      "w": 444,
+      "h": 66,
+      "radius": 12,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 147,
+      "text": "26 Jul · 18:34",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 174,
+      "text": "24.70 km",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 181,
+      "y": 175,
+      "text": "1 h 18",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 175,
+      "text": "19.0 km/h",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 148,
+      "text": "›",
+      "font": "lg",
+      "color": "muted",
+      "anchor": "ra"
+    },
+    {
+      "type": "list_item",
+      "x": 18,
+      "y": 207,
+      "w": 444,
+      "h": 66,
+      "radius": 12,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 222,
+      "text": "24 Jul · 16:11",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 249,
+      "text": "8.31 km",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 181,
+      "y": 250,
+      "text": "28 min",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 250,
+      "text": "17.5 km/h",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 450,
+      "y": 223,
+      "text": "›",
+      "font": "lg",
+      "color": "muted",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 297,
+      "text": "3 rides · 45.85 km",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    }
+  ]
+}

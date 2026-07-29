@@ -1,8 +1,20 @@
-# DIY Bike Computer
+# DIY Bike Computer 2.0
 
-Production firmware for an ESP32-S3-N16R8 bike computer with ST7796 480×320 TFT, FT6336 touch, SPI microSD, native USB Mass Storage, wired Hall sensor and 1S Li-Po monitor.
+Firmware and Android companion project for an ESP32-S3-N16R8 bike computer with
+ST7796 480×320 TFT, FT6336 touch, SPI microSD, native USB Mass Storage, wired Hall
+sensor and 1S Li-Po monitor.
 
-Features: accurate Hall speed with deceleration-to-stop, distance from pulses, Start/Pause/Resume/confirmed Finish, elapsed/recording/moving/stopped statistics, auto-scaled 60-second configurable graph, versioned SD ride logs, atomic SD+NVS recovery, ride history, safe deletion, config persistence, GPIO6 battery telemetry, diagnostics and a strict USB/firmware SD ownership model.
+Version `2.0` is the software release baseline; firmware remains marked `2.0.0-dev`
+until the real-device acceptance gates pass. The autonomous Hall speed/distance, ride
+state, logging/recovery, history, battery, diagnostics and strict USB/firmware SD
+ownership remain the reliability core. Version 2.0 adds the
+`bike_computer_v2_exact_sourcepack` UI, global two-point Rain Lock,
+Auto Pause, versioned BLE, resumable ride synchronization, Android GPS/Room
+history/export, system MediaSession controls, safe device settings and feature-gated
+experimental navigation. The built-in GPIO48 RGB LED shows the two-second display-speed
+trend with persistent tolerance and brightness settings. All 60 supplied RGB565/RLE
+screens are linked as a pixel-exact regression baseline; production screens replace only their declared
+dynamic regions with runtime data. Android remains optional.
 
 Build:
 
@@ -12,4 +24,17 @@ pio run -t upload
 pio device monitor
 ```
 
-The complete pin contract is in [docs/HARDWARE.md](docs/HARDWARE.md), file contract in [docs/LOG_FORMAT.md](docs/LOG_FORMAT.md), and real-device procedure in [docs/TEST_PLAN.md](docs/TEST_PLAN.md). Native USB pins GPIO19/20 must never be used as general GPIO. There is no GPS hardware: logs contain bike telemetry, not fabricated locations or GPX tracks.
+Android debug build:
+
+```bash
+cd android
+./gradlew testDebugUnitTest assembleDebug
+```
+
+The complete pin contract is in [docs/HARDWARE.md](docs/HARDWARE.md), version-2
+architecture in [docs/V2_ARCHITECTURE.md](docs/V2_ARCHITECTURE.md), file contract in
+[docs/LOG_FORMAT.md](docs/LOG_FORMAT.md), and real-device procedures in
+[docs/TEST_PLAN.md](docs/TEST_PLAN.md) and
+[docs/TEST_PLAN_V2.md](docs/TEST_PLAN_V2.md). Native USB pins GPIO19/20 must never be
+used as general GPIO. The ESP has no GPS hardware; route geometry is optional Android
+companion data and is never fabricated by firmware.

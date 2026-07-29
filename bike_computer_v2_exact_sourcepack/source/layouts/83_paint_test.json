@@ -1,0 +1,249 @@
+{
+  "screen_id": "83_paint_test",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Paint test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          50,
+          80
+        ],
+        [
+          72,
+          94
+        ],
+        [
+          94,
+          76
+        ],
+        [
+          117,
+          112
+        ],
+        [
+          145,
+          96
+        ],
+        [
+          164,
+          137
+        ],
+        [
+          205,
+          123
+        ],
+        [
+          235,
+          158
+        ],
+        [
+          280,
+          136
+        ],
+        [
+          315,
+          175
+        ],
+        [
+          356,
+          144
+        ],
+        [
+          409,
+          190
+        ]
+      ],
+      "color": "accent",
+      "width": 5
+    },
+    {
+      "type": "ellipse",
+      "x": 82,
+      "y": 187,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 99,
+      "y": 199,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 123,
+      "y": 181,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 146,
+      "y": 205,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 169,
+      "y": 192,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 192,
+      "y": 215,
+      "w": 6,
+      "h": 6,
+      "fill": "blue",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "button",
+      "x": 18,
+      "y": 270,
+      "w": 208,
+      "h": 37,
+      "label": "Clear",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 122,
+      "y": 288,
+      "text": "Clear",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 238,
+      "y": 270,
+      "w": 224,
+      "h": 37,
+      "label": "Back",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 350,
+      "y": 288,
+      "text": "Back",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

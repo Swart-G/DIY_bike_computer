@@ -1,0 +1,91 @@
+{
+  "screen_id": "92_dialog_reset_settings",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "74_settings_system",
+    "dim_alpha": 155
+  },
+  "elements": [
+    {
+      "type": "modal",
+      "x": 54,
+      "y": 72,
+      "w": 372,
+      "h": 176,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 99,
+      "text": "Reset settings?",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 132,
+      "text": "All device settings will return to defaults.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 151,
+      "text": "Ride files will not be deleted.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 78,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Cancel",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 156,
+      "y": 215,
+      "text": "Cancel",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 245,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Reset",
+      "kind": "danger",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 323,
+      "y": 215,
+      "text": "Reset",
+      "font": "md_b",
+      "color": "danger",
+      "anchor": "mm"
+    }
+  ]
+}

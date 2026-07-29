@@ -1,0 +1,335 @@
+{
+  "screen_id": "18_ride_summary",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "Ride complete",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 65,
+      "text": "Nice ride.",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "card",
+      "x": 24,
+      "y": 96,
+      "w": 144,
+      "h": 70,
+      "title": "DISTANCE",
+      "value": "12.84",
+      "unit": "km",
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 108,
+      "text": "DISTANCE",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 96,
+      "y": 136,
+      "text": "12.84",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 156,
+      "y": 154,
+      "text": "km",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 180,
+      "y": 96,
+      "w": 144,
+      "h": 70,
+      "title": "AVG",
+      "value": "18.2",
+      "unit": "km/h",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 192,
+      "y": 108,
+      "text": "AVG",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 252,
+      "y": 136,
+      "text": "18.2",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 312,
+      "y": 154,
+      "text": "km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 336,
+      "y": 96,
+      "w": 120,
+      "h": 70,
+      "title": "MAX",
+      "value": "38.7",
+      "unit": "km/h",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 348,
+      "y": 108,
+      "text": "MAX",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 396,
+      "y": 136,
+      "text": "38.7",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 444,
+      "y": 154,
+      "text": "km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 24,
+      "y": 180,
+      "w": 144,
+      "h": 66,
+      "title": "MOVING",
+      "value": "42:18",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 192,
+      "text": "MOVING",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 96,
+      "y": 218,
+      "text": "42:18",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 180,
+      "y": 180,
+      "w": 144,
+      "h": 66,
+      "title": "ELAPSED",
+      "value": "45:09",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 192,
+      "y": 192,
+      "text": "ELAPSED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 252,
+      "y": 218,
+      "text": "45:09",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 336,
+      "y": 180,
+      "w": 120,
+      "h": 66,
+      "title": "PHONE",
+      "value": "Synced",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 348,
+      "y": 192,
+      "text": "PHONE",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 396,
+      "y": 218,
+      "text": "Synced",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 265,
+      "w": 194,
+      "h": 42,
+      "label": "Home",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 121,
+      "y": 286,
+      "text": "Home",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 230,
+      "y": 265,
+      "w": 226,
+      "h": 42,
+      "label": "View history",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 343,
+      "y": 286,
+      "text": "View history",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    }
+  ]
+}

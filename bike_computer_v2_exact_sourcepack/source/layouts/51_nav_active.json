@@ -1,0 +1,203 @@
+{
+  "screen_id": "51_nav_active",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Navigation",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "panel",
+      "x": 24,
+      "y": 58,
+      "w": 432,
+      "h": 188,
+      "radius": 16,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 44,
+      "y": 78,
+      "text": "NEXT TURN",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "line",
+      "points": [
+        108,
+        124,
+        73,
+        124,
+        73,
+        101
+      ],
+      "color": "accent",
+      "width": 9
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          73,
+          92
+        ],
+        [
+          56,
+          107
+        ],
+        [
+          73,
+          122
+        ]
+      ],
+      "fill": "accent",
+      "outline": null
+    },
+    {
+      "type": "text",
+      "x": 145,
+      "y": 118,
+      "text": "180 m",
+      "font": "xxl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 43,
+      "y": 170,
+      "text": "Turn left",
+      "font": "xl",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 43,
+      "y": 202,
+      "text": "Leninsky Prospekt",
+      "font": "md",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 43,
+      "y": 229,
+      "text": "6.3 km left   ·   ETA 23:17",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 263,
+      "w": 432,
+      "h": 43,
+      "label": "Back to ride",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 284,
+      "text": "Back to ride",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

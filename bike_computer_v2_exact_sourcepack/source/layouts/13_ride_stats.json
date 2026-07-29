@@ -1,0 +1,375 @@
+{
+  "screen_id": "13_ride_stats",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "22:48",
+      "font": "sm_b",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "rain_button",
+      "x": 333,
+      "y": 11,
+      "w": 20,
+      "h": 18,
+      "label": "RAIN_LOCK"
+    },
+    {
+      "type": "ellipse",
+      "x": 18,
+      "y": 52,
+      "w": 6,
+      "h": 6,
+      "fill": "success",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 29,
+      "y": 55,
+      "text": "RIDING",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "status_chip",
+      "x": 18,
+      "y": 47,
+      "label": "RIDING",
+      "color": "success"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 67,
+      "text": "Ride stats",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "card",
+      "x": 24,
+      "y": 96,
+      "w": 144,
+      "h": 68,
+      "title": "AVG SPEED",
+      "value": "18.2",
+      "unit": "km/h",
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 108,
+      "text": "AVG SPEED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 96,
+      "y": 135,
+      "text": "18.2",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 156,
+      "y": 152,
+      "text": "km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 180,
+      "y": 96,
+      "w": 144,
+      "h": 68,
+      "title": "MAX SPEED",
+      "value": "38.7",
+      "unit": "km/h",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 192,
+      "y": 108,
+      "text": "MAX SPEED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 252,
+      "y": 135,
+      "text": "38.7",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 312,
+      "y": 152,
+      "text": "km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 336,
+      "y": 96,
+      "w": 120,
+      "h": 68,
+      "title": "DISTANCE",
+      "value": "12.84",
+      "unit": "km",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 348,
+      "y": 108,
+      "text": "DISTANCE",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 396,
+      "y": 135,
+      "text": "12.84",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 444,
+      "y": 152,
+      "text": "km",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 24,
+      "y": 176,
+      "w": 144,
+      "h": 68,
+      "title": "MOVING",
+      "value": "42:18",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 188,
+      "text": "MOVING",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 96,
+      "y": 215,
+      "text": "42:18",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 180,
+      "y": 176,
+      "w": 144,
+      "h": 68,
+      "title": "ELAPSED",
+      "value": "45:09",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 192,
+      "y": 188,
+      "text": "ELAPSED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 252,
+      "y": 215,
+      "text": "45:09",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 336,
+      "y": 176,
+      "w": 120,
+      "h": 68,
+      "title": "PULSES",
+      "value": "5 847",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 348,
+      "y": 188,
+      "text": "PULSES",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 396,
+      "y": 215,
+      "text": "5 847",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "page_dots",
+      "active": 1,
+      "count": 4,
+      "y": 291
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 266,
+      "w": 291,
+      "h": 41,
+      "label": "PAUSE",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 169,
+      "y": 286,
+      "text": "PAUSE",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 327,
+      "y": 266,
+      "w": 129,
+      "h": 41,
+      "label": "Finish",
+      "kind": "danger",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 391,
+      "y": 286,
+      "text": "Finish",
+      "font": "md_b",
+      "color": "danger",
+      "anchor": "mm"
+    }
+  ]
+}

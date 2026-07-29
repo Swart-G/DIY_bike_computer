@@ -4,10 +4,10 @@
 
 ## Конфигурация
 
-`/config/bike_config.json` — человекочитаемая конфигурация. Важные параметры также дублируются в NVS; корректный SD-файл имеет приоритет при старте. Некорректные значения заменяются безопасными defaults.
+`/config/bike_config.json` — человекочитаемая конфигурация. Важные параметры также дублируются в NVS; корректный SD-файл имеет приоритет при старте. Некорректные значения заменяются безопасными defaults. Legacy-поле `display_brightness_percent` читается ради совместимости, но в UI 2.0 игнорируется: backlight работает в фиксированном штатном режиме.
 
 ```json
-{"format_version":1,"wheel_circumference_m":2.194,"pulses_per_revolution":1,"stop_threshold_kmh":3.0,"max_plausible_speed_kmh":100,"display_brightness_percent":80,"battery":{"enabled":true,"adc_pin":6,"calibration_factor":1.0,"low_percent":29,"critical_percent":15}}
+{"format_version":1,"wheel_circumference_m":2.194,"pulses_per_revolution":1,"stop_threshold_kmh":3.0,"auto_pause_enabled":true,"auto_pause_delay_ms":5000,"max_plausible_speed_kmh":100,"display_brightness_percent":80,"rgb_speed_indicator":{"enabled":true,"pin":48,"comparison_window_ms":2000,"stable_tolerance_kmh":0.5,"brightness_percent":20},"battery":{"enabled":true,"adc_pin":6,"calibration_factor":1.0,"low_percent":29,"critical_percent":15}}
 ```
 
 ## Папка заезда

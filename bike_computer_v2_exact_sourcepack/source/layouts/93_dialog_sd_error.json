@@ -1,0 +1,91 @@
+{
+  "screen_id": "93_dialog_sd_error",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "11_ride_speed_active",
+    "dim_alpha": 155
+  },
+  "elements": [
+    {
+      "type": "modal",
+      "x": 54,
+      "y": 72,
+      "w": 372,
+      "h": 176,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 99,
+      "text": "SD write error",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 132,
+      "text": "Ride continues, but new samples cannot be",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 151,
+      "text": "saved until storage is available.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 78,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Dismiss",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 156,
+      "y": 215,
+      "text": "Dismiss",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 245,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Open storage",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 323,
+      "y": 215,
+      "text": "Open storage",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    }
+  ]
+}

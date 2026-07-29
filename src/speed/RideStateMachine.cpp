@@ -13,7 +13,26 @@ void RideStateMachine::update(uint32_t nowMs, float speed, uint32_t absolutePuls
   if (state_ == RideState::RIDING) {
     stats_.recordingMs += dt;
     const float threshold = settings_ ? settings_->stopThresholdKmh : 3.0f;
-    moving_ = moving_ ? speed >= threshold * 0.75f : speed >= threshold;
+    const bool speedMoving =
+        moving_ ? speed >= threshold * 0.75f : speed >= threshold;
+    if (settings_ && settings_->autoPauseEnabled) {
+      if (speedMoving) {
+        belowThresholdSinceMs_ = 0;
+        motionState_ = MotionState::MOVING;
+        moving_ = true;
+      } else {
+        if (!belowThresholdSinceMs_) belowThresholdSinceMs_ = nowMs;
+        const bool delayElapsed =
+            nowMs - belowThresholdSinceMs_ >= settings_->autoPauseDelayMs;
+        motionState_ =
+            delayElapsed ? MotionState::AUTO_PAUSED : MotionState::MOVING;
+        moving_ = !delayElapsed;
+      }
+    } else {
+      moving_ = speedMoving;
+      motionState_ = MotionState::MOVING;
+      belowThresholdSinceMs_ = 0;
+    }
     if (moving_) stats_.movingMs += dt;
     stats_.distanceM += static_cast<float>(pulses) * (settings_ ? settings_->wheelCircumferenceM / settings_->pulsesPerRevolution : 2.194f);
     stats_.pulseCount += pulses;
@@ -32,19 +51,19 @@ void RideStateMachine::updateAverages() {
   stats_.averageRecordingSpeedKmh = stats_.recordingMs ? stats_.distanceM * 3600.0f / stats_.recordingMs : 0;
 }
 void RideStateMachine::start(uint32_t nowMs, uint32_t absolute) {
-  stats_ = RideStats(); state_ = RideState::RIDING; lastUpdateMs_ = nowMs; lastAbsolutePulseCount_ = absolute;
-  lastRecoverySaveMs_ = 0; moving_ = false; rideId_ = 0; rideFolder_[0] = 0; lastSavedSampleIndex_ = 0; loggingGap_ = false; batteryStartVoltage_=batteryMinVoltage_=batteryMaxVoltage_=0;
+  stats_ = RideStats(); state_ = RideState::RIDING; motionState_ = MotionState::MOVING; lastUpdateMs_ = nowMs; lastAbsolutePulseCount_ = absolute;
+  lastRecoverySaveMs_ = 0; moving_ = false; belowThresholdSinceMs_ = 0; rideId_ = 0; rideFolder_[0] = 0; lastSavedSampleIndex_ = 0; loggingGap_ = false; batteryStartVoltage_=batteryMinVoltage_=batteryMaxVoltage_=0;
 }
-void RideStateMachine::pause(uint32_t nowMs) { if (state_ == RideState::RIDING) { update(nowMs, 0, lastAbsolutePulseCount_, stats_.rejectedPulseCount); state_ = RideState::PAUSED; moving_ = false; } }
-void RideStateMachine::resume(uint32_t nowMs) { if (state_ == RideState::PAUSED) { state_ = RideState::RIDING; lastUpdateMs_ = nowMs; moving_ = false; } }
+void RideStateMachine::pause(uint32_t nowMs) { if (state_ == RideState::RIDING) { update(nowMs, 0, lastAbsolutePulseCount_, stats_.rejectedPulseCount); state_ = RideState::PAUSED; motionState_ = MotionState::MOVING; moving_ = false; belowThresholdSinceMs_ = 0; } }
+void RideStateMachine::resume(uint32_t nowMs) { if (state_ == RideState::PAUSED) { state_ = RideState::RIDING; motionState_ = MotionState::MOVING; lastUpdateMs_ = nowMs; moving_ = false; belowThresholdSinceMs_ = 0; } }
 void RideStateMachine::finish(uint32_t nowMs) { if (state_ == RideState::RIDING || state_ == RideState::PAUSED) { update(nowMs, 0, lastAbsolutePulseCount_, stats_.rejectedPulseCount); state_ = RideState::FINISHED; } }
 void RideStateMachine::newRide(uint32_t nowMs, uint32_t absolute) {
   stats_ = RideStats(); state_ = RideState::IDLE; lastUpdateMs_ = nowMs; lastAbsolutePulseCount_ = absolute; lastRecoverySaveMs_ = 0;
-  moving_ = false; rideId_ = 0; rideFolder_[0] = 0; lastSavedSampleIndex_ = 0; loggingGap_ = false; batteryStartVoltage_=batteryMinVoltage_=batteryMaxVoltage_=0;
+  motionState_ = MotionState::MOVING; moving_ = false; belowThresholdSinceMs_ = 0; rideId_ = 0; rideFolder_[0] = 0; lastSavedSampleIndex_ = 0; loggingGap_ = false; batteryStartVoltage_=batteryMinVoltage_=batteryMaxVoltage_=0;
 }
 void RideStateMachine::restorePaused(const RideRecoveryData& r, uint32_t nowMs, uint32_t absolute) {
   stats_ = r.stats; state_ = RideState::PAUSED; lastUpdateMs_ = nowMs; lastAbsolutePulseCount_ = absolute; lastRecoverySaveMs_ = 0;
-  moving_ = false; rideId_ = r.rideId; strncpy(rideFolder_, r.rideFolder, sizeof(rideFolder_) - 1); rideFolder_[sizeof(rideFolder_)-1] = 0;
+  motionState_ = MotionState::MOVING; moving_ = false; belowThresholdSinceMs_ = 0; rideId_ = r.rideId; strncpy(rideFolder_, r.rideFolder, sizeof(rideFolder_) - 1); rideFolder_[sizeof(rideFolder_)-1] = 0;
   lastSavedSampleIndex_ = r.lastSavedSampleIndex; loggingGap_ = r.loggingGap; batteryStartVoltage_=r.batteryStartVoltage; batteryMinVoltage_=r.batteryMinVoltage; batteryMaxVoltage_=r.batteryMaxVoltage;
 }
 String RideStateMachine::stateText() const { switch (state_) { case RideState::RIDING: return "RIDING"; case RideState::PAUSED: return "PAUSED"; case RideState::FINISHED: return "FINISHED"; default: return "IDLE"; } }

@@ -1,0 +1,274 @@
+{
+  "screen_id": "86_battery_test",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Battery test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "card",
+      "x": 18,
+      "y": 58,
+      "w": 170,
+      "h": 78,
+      "title": "BATTERY",
+      "value": "4.08",
+      "unit": "V",
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 30,
+      "y": 70,
+      "text": "BATTERY",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 103,
+      "y": 102,
+      "text": "4.08",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 176,
+      "y": 124,
+      "text": "V",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 198,
+      "y": 58,
+      "w": 132,
+      "h": 78,
+      "title": "CHARGE",
+      "value": "78",
+      "unit": "%",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 210,
+      "y": 70,
+      "text": "CHARGE",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 264,
+      "y": 102,
+      "text": "78",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 318,
+      "y": 124,
+      "text": "%",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 340,
+      "y": 58,
+      "w": 122,
+      "h": 78,
+      "title": "ADC",
+      "value": "2034",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 352,
+      "y": 70,
+      "text": "ADC",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 401,
+      "y": 102,
+      "text": "2034",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 171,
+      "text": "ADC voltage",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 171,
+      "text": "2.041 V",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 204,
+      "text": "Divider ratio",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 204,
+      "text": "2.000",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 237,
+      "text": "Calibration",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 237,
+      "text": "1.000",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "button",
+      "x": 128,
+      "y": 270,
+      "w": 224,
+      "h": 37,
+      "label": "Calibrate",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 288,
+      "text": "Calibrate",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

@@ -1,0 +1,255 @@
+{
+  "screen_id": "85_sensor_test",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Sensor test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "card",
+      "x": 18,
+      "y": 58,
+      "w": 128,
+      "h": 70,
+      "title": "GPIO",
+      "value": "4",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 30,
+      "y": 70,
+      "text": "GPIO",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 82,
+      "y": 98,
+      "text": "4",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 156,
+      "y": 58,
+      "w": 148,
+      "h": 70,
+      "title": "PULSES",
+      "value": "5847",
+      "unit": null,
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 168,
+      "y": 70,
+      "text": "PULSES",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 230,
+      "y": 98,
+      "text": "5847",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 314,
+      "y": 58,
+      "w": 148,
+      "h": 70,
+      "title": "LEVEL",
+      "value": "HIGH",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 326,
+      "y": 70,
+      "text": "LEVEL",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 388,
+      "y": 98,
+      "text": "HIGH",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 159,
+      "text": "Last interval",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 159,
+      "text": "365 ms",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 191,
+      "text": "Calculated speed",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 191,
+      "text": "21.6 km/h",
+      "font": "sm_b",
+      "color": "accent",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 223,
+      "text": "Rejected pulses",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 223,
+      "text": "3",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 255,
+      "text": "Edge",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 255,
+      "text": "FALLING",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    }
+  ]
+}

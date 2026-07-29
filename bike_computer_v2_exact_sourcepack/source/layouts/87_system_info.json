@@ -1,0 +1,222 @@
+{
+  "screen_id": "87_system_info",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "System info",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 58,
+      "text": "Firmware",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 58,
+      "text": "2.0.0",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 92,
+      "text": "Board",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 92,
+      "text": "ESP32-S3-N16R8",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 126,
+      "text": "Flash / PSRAM",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 126,
+      "text": "16 MB / 8 MB",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 160,
+      "text": "Display",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 160,
+      "text": "ST7796 · 480×320",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 194,
+      "text": "Touch",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 194,
+      "text": "FT6336",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 228,
+      "text": "BLE",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 228,
+      "text": "Connected",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 262,
+      "text": "Free heap",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 262,
+      "text": "218 KB",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    }
+  ]
+}

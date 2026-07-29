@@ -1,0 +1,151 @@
+{
+  "screen_id": "01_sd_missing",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "Storage",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "icon",
+      "kind": "sd",
+      "cx": 240,
+      "cy": 93,
+      "color": "warning",
+      "scale": 1.4
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 131,
+      "text": "SD card not found",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 158,
+      "text": "Ride logging will be disabled.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 74,
+      "y": 212,
+      "w": 156,
+      "h": 42,
+      "label": "Retry",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 152,
+      "y": 233,
+      "text": "Retry",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 246,
+      "y": 212,
+      "w": 160,
+      "h": 42,
+      "label": "Continue",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 326,
+      "y": 233,
+      "text": "Continue",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

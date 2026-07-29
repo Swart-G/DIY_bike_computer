@@ -12,7 +12,7 @@ Steps: remove SD, then separately disconnect Hall and FT6336; reboot and press C
 
 ## 3. Display and touch
 
-Steps: Diagnostics → Display; inspect RGB/white/black, gradients/primitives/text/orientation. Diagnostics → Touch raw; tap all four corners. Diagnostics → Paint; draw rapid diagonals, Clear, Back. Expected: 480×320 landscape, PWM brightness works, coordinates map correctly, continuous paint line. Failure: flicker, missing colours, shifted/inverted touch or UI overlap.
+Steps: Settings → Diagnostics → Display; inspect RGB/white/black, primitives/text/orientation. Diagnostics → Touch raw; tap all four corners and test two simultaneous points. Diagnostics → Paint; draw rapid diagonals, Clear, Back. Expected: 480×320 landscape, fixed normal backlight, both FT6336 points map correctly, continuous paint line. Failure: flicker, missing colours, shifted/inverted touch or UI overlap.
 
 ## 4. Hall and speed
 
@@ -32,7 +32,7 @@ Steps: Start, generate pulses while moving, stop without pausing, Pause, generat
 
 ## 8. Ride files and history
 
-Steps: inspect `/rides/ride_XXXXXX/` after Finish. Expected: `meta.json`, append-only `samples.csv`, `events.csv`, `summary.json`; headers exactly match LOG_FORMAT; no fake date/GPS. Menu → History shows summary-only rows and details. Attempt deleting finished ride and active ride. Failure: malformed CSV/JSON, missing FINISH summary, active ride deletion, or history requiring samples scan.
+Steps: inspect `/rides/ride_XXXXXX/` after Finish. Expected: `meta.json`, append-only `samples.csv`, `events.csv`, `summary.json`; headers exactly match LOG_FORMAT; no fake date/GPS. Menu → History shows summary-only rows and details and vertically scrolls when more than three rides exist. Verify Delete requires explicit confirmation, Cancel preserves the ride, confirmed deletion removes the complete ride folder even when it contains an additional file, and USB Storage enters MSC from the detail screen. Attempt deleting finished ride and active ride. Failure: malformed CSV/JSON, missing FINISH summary, deletion without confirmation, a retained/dead History row, wrong ride opened after scrolling, active ride deletion, or history requiring samples scan.
 
 ## 9. Recovery
 
@@ -48,8 +48,19 @@ Steps: from IDLE start USB; from PAUSED checkpoint then start USB; from RIDING r
 
 ## 12. Settings persistence
 
-Steps: change circumference, stop threshold, sensor edge/pull-up, brightness and battery factor; Save; reboot with SD, then without SD. Expected: ranges clamp invalid values, settings apply immediately, valid SD config supersedes NVS, NVS preserves essential values without SD. Failure: GPIO editing exposed, invalid values crash boot, or brightness/calibration does not persist.
+Steps: change circumference, stop threshold and battery factor; Save; reboot with SD, then without SD. Also boot with a v1 config containing `display_brightness_percent`. Expected: ranges clamp invalid values, settings apply immediately, valid SD config supersedes NVS, NVS preserves essential values without SD, and the legacy brightness field is safely ignored. Failure: GPIO editing exposed, invalid values crash boot, or calibration does not persist.
 
 ## 13. Long-duration test
 
 Steps: run at least three hours with real or pulse-generator input; vary speed, pauses and graph pages; retain SD logs; note free/min heap at start/end. Expected: no watchdog reset, stable counters, monotonic samples, no unbounded heap decline, rolling graph and files grow normally across `millis()`-like long operation. Failure: missed pulses under UI load, fragmentation, SD corruption, stuck graph or bad timers.
+
+## 14. Speed trend RGB LED
+
+Steps: open Settings → Speed LED; verify enable/disable, cycle stable range and
+brightness, then reboot with and without SD. With a pulse generator, hold speed steady
+for more than two seconds, increase it beyond the configured tolerance, hold again, and
+decrease it beyond the tolerance. Expected: GPIO48 LED is green within the inclusive
+range, purple when the two-second speed delta is positive, red when negative, and off
+when disabled. Settings survive both reboot cases; Hall counts and UI remain responsive.
+Failure: wrong colour order, flicker, a blocking loop, changes inside the tolerance, or
+LED traffic from the Hall ISR.

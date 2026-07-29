@@ -1,0 +1,305 @@
+{
+  "all_exact_rgb565": true,
+  "screens": {
+    "00_boot": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "01_sd_missing": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "02_recovery": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "03_home_disconnected": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "04_home_connected": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "10_ride_idle": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "11_ride_speed_active": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "12_ride_speed_paused": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "13_ride_stats": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "14_ride_graph": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "15_ride_navigation": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "16_ride_media": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "17_ride_finish_confirm": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "18_ride_summary": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "19_rain_lock_enabled": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "20_rain_unlock_hold_1": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "21_rain_unlock_hold_2": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "22_rain_unlock_hold_3": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "23_rain_unlock_success": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "30_phone_unpaired": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "31_phone_pairing": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "32_phone_connected": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "33_phone_syncing": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "34_phone_sync_complete": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "35_phone_lost": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "40_history_empty": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "41_history_list": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "42_history_detail": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "43_history_delete_confirm": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "50_nav_waiting": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "51_nav_active": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "52_nav_rerouting": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "53_nav_arrived": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "54_nav_phone_lost": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "60_media_no_session": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "61_media_playing": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "62_media_paused": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "70_settings_main": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "71_settings_ride": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "72_settings_display": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "73_settings_phone": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "74_settings_system": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "75_settings_wheel": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "76_settings_stop_threshold": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "80_diagnostics": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "81_display_test": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "82_touch_raw": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "83_paint_test": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "84_sd_test": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "85_sensor_test": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "86_battery_test": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "87_system_info": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "88_usb_storage": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "90_about": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "91_dialog_forget_phone": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "92_dialog_reset_settings": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "93_dialog_sd_error": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "94_dialog_protocol_mismatch": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "95_overlay_low_battery": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    },
+    "96_overlay_sync_complete": {
+      "pixels": 153600,
+      "mismatches": 0,
+      "ok": true
+    }
+  }
+}

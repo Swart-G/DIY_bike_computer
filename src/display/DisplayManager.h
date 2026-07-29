@@ -16,9 +16,11 @@ class DisplayManager {
   int16_t height();
   TFT_eSPI& tft() { return frameActive_ && frameBufferReady_ ? frame_ : tft_; }
 
-  void clear(uint16_t color = TFT_BLACK);
-  void beginFrame(uint16_t color = TFT_BLACK);
+  void clear(uint16_t color = 0x0861);
+  void beginFrame(uint16_t color = 0x0861);
+  void beginPartialFrame();
   void commitFrame();
+  void commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h);
   void showBoot(const String& line1, const String& line2 = String());
   void drawHeader(const String& title, const String& status = String());
   void drawFooter(const String& status = String());

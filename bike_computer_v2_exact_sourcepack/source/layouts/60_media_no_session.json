@@ -1,0 +1,141 @@
+{
+  "screen_id": "60_media_no_session",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Media",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "icon",
+      "kind": "music",
+      "cx": 240,
+      "cy": 98,
+      "color": "muted",
+      "scale": 1.6
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 145,
+      "text": "Nothing playing",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 172,
+      "text": "Start playback on your phone.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 126,
+      "y": 226,
+      "w": 228,
+      "h": 44,
+      "label": "Back to ride",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 248,
+      "text": "Back to ride",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

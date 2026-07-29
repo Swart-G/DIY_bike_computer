@@ -1,0 +1,6 @@
+# Generated RLE arrays are emitted with cosmetic end-of-line spaces.
+src/ui_exact/generated/** whitespace=-trailing-space
+bike_computer_v2_exact_sourcepack/source/esp32/generated/** whitespace=-trailing-space
+
+# Keep the standard Gradle Windows launcher in its native CRLF form.
+android/gradlew.bat text eol=crlf whitespace=-trailing-space

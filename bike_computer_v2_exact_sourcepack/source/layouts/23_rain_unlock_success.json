@@ -1,0 +1,56 @@
+{
+  "screen_id": "23_rain_unlock_success",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "11_ride_speed_active",
+    "dim_alpha": 95
+  },
+  "elements": [
+    {
+      "type": "background_ref",
+      "screen": "11_ride_speed_active"
+    },
+    {
+      "type": "modal",
+      "x": 110,
+      "y": 92,
+      "w": 260,
+      "h": 128,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "icon",
+      "kind": "check",
+      "cx": 240,
+      "cy": 128,
+      "color": "success",
+      "scale": 1.1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 168,
+      "text": "Rain lock disabled",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 193,
+      "text": "Touch input restored",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    }
+  ]
+}

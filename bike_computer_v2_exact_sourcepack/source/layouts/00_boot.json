@@ -1,0 +1,72 @@
+{
+  "screen_id": "00_boot",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "icon",
+      "kind": "bike",
+      "cx": 240,
+      "cy": 116,
+      "color": "accent",
+      "scale": 1.7
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 170,
+      "text": "BIKE COMPUTER",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 197,
+      "text": "Version 2.0",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "progress_track",
+      "x": 120,
+      "y": 235,
+      "w": 240,
+      "h": 5,
+      "radius": 3,
+      "fill": "panel2",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "progress_fill",
+      "x": 120,
+      "y": 235,
+      "w": 162,
+      "h": 5,
+      "radius": 3,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 259,
+      "text": "Starting services…",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    }
+  ]
+}

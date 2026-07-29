@@ -1,0 +1,114 @@
+{
+  "screen_id": "19_rain_lock_enabled",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "11_ride_speed_active",
+    "dim_alpha": 115
+  },
+  "elements": [
+    {
+      "type": "background_ref",
+      "screen": "11_ride_speed_active"
+    },
+    {
+      "type": "modal",
+      "x": 60,
+      "y": 60,
+      "w": 360,
+      "h": 186,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "icon",
+      "kind": "nav",
+      "cx": 240,
+      "cy": 95,
+      "color": "warning",
+      "scale": 1.2
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 124,
+      "text": "Rain lock enabled",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 150,
+      "text": "All touches are blocked.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 173,
+      "text": "To unlock, hold both points for 3 seconds.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "ellipse",
+      "x": 142,
+      "y": 188,
+      "w": 36,
+      "h": 36,
+      "fill": null,
+      "outline": "accent",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 155,
+      "y": 201,
+      "w": 10,
+      "h": 10,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 302,
+      "y": 188,
+      "w": 36,
+      "h": 36,
+      "fill": null,
+      "outline": "accent",
+      "width": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 315,
+      "y": 201,
+      "w": 10,
+      "h": 10,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 234,
+      "text": "Place two fingers here",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    }
+  ]
+}

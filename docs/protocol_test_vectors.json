@@ -1,0 +1,92 @@
+{
+  "format": "bike_protocol_test_vectors",
+  "format_version": 1,
+  "protocol_version": 1,
+  "endianness": "little",
+  "crc": {
+    "name": "CRC-16/CCITT-FALSE",
+    "polynomial": "0x1021",
+    "initial": "0xFFFF",
+    "xor_out": "0x0000",
+    "reflected": false,
+    "crc_wire_order": "little"
+  },
+  "codec_limits": {
+    "maximum_payload_bytes": 503,
+    "maximum_frame_bytes": 514
+  },
+  "vectors": [
+    {
+      "name": "valid_empty_hello",
+      "input_hex": "4243010100010000001c34",
+      "expected": "frame",
+      "message_type": 1,
+      "sequence": 1,
+      "payload_hex": ""
+    },
+    {
+      "name": "valid_ping_payload",
+      "input_hex": "42430104002a00040078563412f669",
+      "expected": "frame",
+      "message_type": 4,
+      "sequence": 42,
+      "payload_hex": "78563412"
+    },
+    {
+      "name": "invalid_magic",
+      "input_hex": "0043010100010000001c34",
+      "expected": "invalid_magic"
+    },
+    {
+      "name": "unsupported_version",
+      "input_hex": "424302010001000000",
+      "expected": "unsupported_version",
+      "note": "Version is rejected as soon as the complete header is available; CRC is intentionally omitted."
+    },
+    {
+      "name": "crc_mismatch",
+      "input_hex": "42430104002a00040078563412f668",
+      "expected": "crc_mismatch"
+    },
+    {
+      "name": "partial_frame_part_1",
+      "input_hex": "42430104002a00",
+      "expected": "need_more_data"
+    },
+    {
+      "name": "partial_frame_part_2",
+      "input_hex": "040078563412f669",
+      "feed_after": "partial_frame_part_1",
+      "expected": "frame",
+      "message_type": 4,
+      "sequence": 42,
+      "payload_hex": "78563412"
+    },
+    {
+      "name": "multiple_frames",
+      "input_hex": "4243010100010000001c3442430104002a00040078563412f669",
+      "expected": "frames",
+      "frame_count": 2
+    },
+    {
+      "name": "maximum_payload",
+      "header_hex": "4243010400fffff701",
+      "payload_pattern": {
+        "kind": "incrementing_byte",
+        "start": 0,
+        "length": 503
+      },
+      "crc16": "0xD5CE",
+      "crc_wire_hex": "ced5",
+      "expected": "frame",
+      "message_type": 4,
+      "sequence": 65535
+    },
+    {
+      "name": "payload_too_large",
+      "input_hex": "42430104000000f801",
+      "expected": "payload_too_large",
+      "declared_payload_bytes": 504
+    }
+  ]
+}

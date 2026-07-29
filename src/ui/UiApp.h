@@ -4,6 +4,8 @@
 
 #include "battery/BatteryMonitor.h"
 #include "display/DisplayManager.h"
+#include "phone/PhoneLinkManager.h"
+#include "rain/RainLockManager.h"
 #include "speed/HallSensor.h"
 #include "speed/RideStateMachine.h"
 #include "speed/SpeedCalculator.h"
@@ -11,6 +13,7 @@
 #include "storage/RideLogger.h"
 #include "storage/RideRepository.h"
 #include "touch/TouchManager.h"
+#include "ui/UiRouter.h"
 #include "usb/UsbMassStorageManager.h"
 
 class UiApp {
@@ -18,31 +21,13 @@ class UiApp {
   void begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
              UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
              RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
-             RideRepository& repository, app::AppSettings& settings);
-  void loop();
+             RideRepository& repository, PhoneLinkManager& phone,
+             app::AppSettings& settings);
+ void loop();
+  bool rainLocked() const { return rainLock_.locked(); }
 
  private:
-  enum class Screen {
-    SdMissing,
-    Recovery,
-    MainMenu,
-    History,
-    HistoryDetail,
-    Diagnostics,
-    DisplayTest,
-    TouchRawTest,
-    PaintTest,
-    SdTest,
-    UsbStorage,
-    SensorTest,
-    BatteryTest,
-    SystemInfo,
-    Settings,
-    About,
-    Ride,
-    FinishConfirm,
-    RideSummary,
-  };
+  using Screen = UiScreen;
 
   void enter(Screen screen);
   void updateModel(uint32_t nowMs);
@@ -50,14 +35,19 @@ class UiApp {
   void handleRideTouchStart(int16_t x, int16_t y, uint32_t nowMs);
   void handleRideTouchMove(int16_t x, int16_t y);
   void handleRideTouchEnd(uint32_t nowMs);
+  void handleHistoryTouchStart(int16_t x, int16_t y, uint32_t nowMs);
+  void handleHistoryTouchMove(int16_t x, int16_t y);
+  void handleHistoryTouchEnd(uint32_t nowMs);
   void handlePaint();
   void draw();
 
   void drawSdMissing();
   void drawRecovery();
   void drawMainMenu();
+  void drawPhone();
   void drawHistory();
   void drawHistoryDetail();
+  void drawDeleteRideConfirm();
   void drawDiagnostics();
   void drawDisplayTest();
   void drawTouchRawTest();
@@ -68,7 +58,12 @@ class UiApp {
   void drawBatteryTest();
   void drawSystemInfo();
   void drawSettings();
-  void drawAbout();
+  void drawSettingsRide();
+  void drawSettingsDisplay();
+  void drawSettingsSystem();
+  void drawSettingsWheel();
+  void drawSettingsStopThreshold();
+  void drawSettingsRgbLed();
   void drawRide();
   void drawFinishConfirm();
   void drawRideSummary();
@@ -76,13 +71,6 @@ class UiApp {
   void drawStatusBar(const String& title, const String& status = String());
   void drawStorageStatusIcon(int16_t x, int16_t y);
   void drawBatteryStatusIcon(int16_t x, int16_t y);
-  void drawBottomRideControls();
-  void drawPageDots(uint8_t activePage, uint8_t pageCount);
-  void drawMetricCard(int16_t x, int16_t y, int16_t w, int16_t h, const String& label,
-                      const String& value, const String& unit = String());
-  void drawMenuTile(int16_t x, int16_t y, int16_t w, int16_t h, const String& title, bool selected,
-                    bool enabled);
-  void drawGraphCard(int16_t x, int16_t y, int16_t w, int16_t h);
   void drawSoftButton(int16_t x, int16_t y, int16_t w, int16_t h, const String& label,
                       uint16_t accentColor, bool enabled = true, uint16_t fillColor = 0xFFFF);
   void drawBackButton();
@@ -91,12 +79,15 @@ class UiApp {
   bool hit(int16_t x, int16_t y, int16_t bx, int16_t by, int16_t bw, int16_t bh) const;
   String durationText(uint64_t ms) const;
   String storageStatusShort() const;
-  String batteryStatusShort() const;
-  String rideStatusLine() const;
   void startUsbMode();
+  bool settingsLockedDuringRide() const;
+  void showSettingsLockedNotice();
   void saveRecoveryIfNeeded(uint32_t nowMs, bool force);
   void clearRecovery();
   void recordGraphSample(uint32_t nowMs);
+  uint8_t ridePageCount() const;
+  bool rideMediaPage() const;
+  String currentClockText() const;
 
   DisplayManager* display_ = nullptr;
   TouchManager* touch_ = nullptr;
@@ -108,10 +99,14 @@ class UiApp {
   BatteryMonitor* battery_ = nullptr;
   RideLogger* logger_ = nullptr;
   RideRepository* repository_ = nullptr;
+  PhoneLinkManager* phone_ = nullptr;
   app::AppSettings* settings_ = nullptr;
+  RainLockManager rainLock_;
 
-  Screen screen_ = Screen::MainMenu;
+  UiRouter router_;
   bool dirty_ = true;
+  bool partialRainFrame_ = false;
+  bool partialRideFrame_ = false;
   bool wasTouched_ = false;
   bool lastPaintValid_ = false;
   int16_t lastPaintX_ = 0;
@@ -126,6 +121,12 @@ class UiApp {
   int16_t rideTouchLastX_ = 0;
   int16_t rideTouchLastY_ = 0;
   uint32_t rideTouchStartMs_ = 0;
+  bool historyTouchActive_ = false;
+  int16_t historyTouchStartX_ = 0;
+  int16_t historyTouchStartY_ = 0;
+  int16_t historyTouchLastX_ = 0;
+  int16_t historyTouchLastY_ = 0;
+  uint32_t historyTouchStartMs_ = 0;
 
   HallSensorSnapshot sensorSnapshot_;
   RideRecoveryData pendingRecovery_;
@@ -139,6 +140,20 @@ class UiApp {
   RideSummaryItem history_[12];
   uint8_t historyCount_ = 0;
   uint8_t historySelected_ = 0;
+  uint8_t historyScrollOffset_ = 0;
+  String historyMessage_;
   bool batteryLowEventLogged_ = false;
   bool batteryCriticalEventLogged_ = false;
+  bool exactPreviewActive_ = false;
+  uint16_t exactPreviewIndex_ = 0;
+  bool settingsOpenedFromRide_ = false;
+  uint32_t settingsNoticeUntilMs_ = 0;
+  uint8_t lastPhoneLinkState_ = 0xFF;
+  uint32_t lastPairingCode_ = 0;
+  uint32_t lastMediaRevision_ = 0;
+  uint32_t lastNavigationRevision_ = 0;
+  uint8_t lastHeaderBatteryPercent_ = 0xFF;
+  bool lastHeaderSdAvailable_ = false;
+  bool headerStateInitialized_ = false;
+  int64_t lastClockMinute_ = -1;
 };

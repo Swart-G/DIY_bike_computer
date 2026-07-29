@@ -1,0 +1,283 @@
+{
+  "screen_id": "80_diagnostics",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Diagnostics",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 57,
+      "w": 214,
+      "h": 56,
+      "icon": "display",
+      "title": "Display test",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "display",
+      "cx": 51,
+      "cy": 85,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 75,
+      "text": "Display test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 57,
+      "w": 214,
+      "h": 56,
+      "icon": "touch",
+      "title": "Touch test",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "touch",
+      "cx": 281,
+      "cy": 85,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 75,
+      "text": "Touch test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 125,
+      "w": 214,
+      "h": 56,
+      "icon": "sd",
+      "title": "SD test",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "sd",
+      "cx": 51,
+      "cy": 153,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 143,
+      "text": "SD test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 125,
+      "w": 214,
+      "h": 56,
+      "icon": "diag",
+      "title": "Sensor test",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "diag",
+      "cx": 281,
+      "cy": 153,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 143,
+      "text": "Sensor test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 193,
+      "w": 214,
+      "h": 56,
+      "icon": "battery",
+      "title": "Battery test",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "battery",
+      "cx": 51,
+      "cy": 221,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 211,
+      "text": "Battery test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 193,
+      "w": 214,
+      "h": 56,
+      "icon": "system",
+      "title": "System info",
+      "subtitle": "",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "system",
+      "cx": 281,
+      "cy": 221,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 211,
+      "text": "System info",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 18,
+      "y": 266,
+      "w": 444,
+      "h": 41,
+      "label": "USB Storage",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 286,
+      "text": "USB Storage",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

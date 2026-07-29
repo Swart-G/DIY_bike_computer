@@ -1,0 +1,347 @@
+{
+  "screen_id": "42_history_detail",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Today · 21:03",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "card",
+      "x": 18,
+      "y": 57,
+      "w": 128,
+      "h": 67,
+      "title": "DISTANCE",
+      "value": "12.84",
+      "unit": "km",
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 30,
+      "y": 69,
+      "text": "DISTANCE",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 82,
+      "y": 95,
+      "text": "12.84",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 134,
+      "y": 112,
+      "text": "km",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 156,
+      "y": 57,
+      "w": 128,
+      "h": 67,
+      "title": "AVG",
+      "value": "18.2",
+      "unit": "km/h",
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 168,
+      "y": 69,
+      "text": "AVG",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 220,
+      "y": 95,
+      "text": "18.2",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 272,
+      "y": 112,
+      "text": "km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "rs"
+    },
+    {
+      "type": "card",
+      "x": 294,
+      "y": 57,
+      "w": 168,
+      "h": 67,
+      "title": "MOVING",
+      "value": "42:18",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 306,
+      "y": 69,
+      "text": "MOVING",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 378,
+      "y": 95,
+      "text": "42:18",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "graph_panel",
+      "x": 18,
+      "y": 136,
+      "w": 444,
+      "h": 101,
+      "radius": 12,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 151,
+      "text": "SPEED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          34.0,
+          200.42857142857142
+        ],
+        [
+          58.11764705882353,
+          193.57142857142858
+        ],
+        [
+          82.23529411764706,
+          197.0
+        ],
+        [
+          106.35294117647058,
+          183.28571428571428
+        ],
+        [
+          130.47058823529412,
+          188.42857142857144
+        ],
+        [
+          154.58823529411765,
+          178.14285714285714
+        ],
+        [
+          178.70588235294116,
+          176.42857142857144
+        ],
+        [
+          202.8235294117647,
+          190.14285714285714
+        ],
+        [
+          226.94117647058823,
+          186.71428571428572
+        ],
+        [
+          251.05882352941177,
+          173.0
+        ],
+        [
+          275.1764705882353,
+          179.85714285714286
+        ],
+        [
+          299.29411764705884,
+          185.0
+        ],
+        [
+          323.4117647058823,
+          176.42857142857144
+        ],
+        [
+          347.52941176470586,
+          169.57142857142858
+        ],
+        [
+          371.6470588235294,
+          183.28571428571428
+        ],
+        [
+          395.7647058823529,
+          190.14285714285714
+        ],
+        [
+          419.88235294117646,
+          179.85714285714286
+        ],
+        [
+          444.0,
+          186.71428571428572
+        ]
+      ],
+      "color": "accent",
+      "width": 3
+    },
+    {
+      "type": "text",
+      "x": 32,
+      "y": 224,
+      "text": "Max 38.7 km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 18,
+      "y": 252,
+      "w": 202,
+      "h": 50,
+      "label": "Delete",
+      "kind": "danger",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 119,
+      "y": 277,
+      "text": "Delete",
+      "font": "md_b",
+      "color": "danger",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 232,
+      "y": 252,
+      "w": 230,
+      "h": 50,
+      "label": "Sync to phone",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 347,
+      "y": 277,
+      "text": "Sync to phone",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    }
+  ]
+}

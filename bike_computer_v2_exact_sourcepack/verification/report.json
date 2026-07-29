@@ -1,0 +1,248 @@
+{
+  "screen_count": 60,
+  "renderer": "source/python/render_ui.py",
+  "screens": {
+    "00_boot": {
+      "reference_sha256": "bf9fef3e3c4380e6bd7e9aae4ce11c7a43d95b29d2ca40de689f964b4467cd1f",
+      "mismatched_pixels_24bit": 0
+    },
+    "01_sd_missing": {
+      "reference_sha256": "32138445530c7407223748df52e65a42a4f26733035d811787501b7e0c74bac4",
+      "mismatched_pixels_24bit": 0
+    },
+    "02_recovery": {
+      "reference_sha256": "214556e17cdbbbe41256eb74eebee2c3bcf12c1a20af923bad05604bc153a1e5",
+      "mismatched_pixels_24bit": 0
+    },
+    "03_home_disconnected": {
+      "reference_sha256": "5f0849c3acf841d44a6fcfc7324977eca3dcef6fd32f5c44a5c5e4f56d180b24",
+      "mismatched_pixels_24bit": 0
+    },
+    "04_home_connected": {
+      "reference_sha256": "dc9ade5655f6f224d6c156b5b84023f62cea849ccb178164c6354a5d063f9d20",
+      "mismatched_pixels_24bit": 0
+    },
+    "10_ride_idle": {
+      "reference_sha256": "31b2127d48a74402a6fc7419c580fc29c0164911468a0aed709e6cb9a10985ab",
+      "mismatched_pixels_24bit": 0
+    },
+    "11_ride_speed_active": {
+      "reference_sha256": "f218d5d2993feaba8a4e29a14986d86d26130544200e57ed1f87c737206b165d",
+      "mismatched_pixels_24bit": 0
+    },
+    "12_ride_speed_paused": {
+      "reference_sha256": "71f409f467e1a9f96a5fd4bfae0d71cd9a459c256a965b321e78bf0e6d3fe1cb",
+      "mismatched_pixels_24bit": 0
+    },
+    "13_ride_stats": {
+      "reference_sha256": "ab27b92723ac53105e672962f2ca6e3e1f93f83cde74f0e207be57d2c2ff38e7",
+      "mismatched_pixels_24bit": 0
+    },
+    "14_ride_graph": {
+      "reference_sha256": "ee194d308358347e0abcdf2ec16a39f6a191e36eb06c4cdf9fec806dae9de64b",
+      "mismatched_pixels_24bit": 0
+    },
+    "15_ride_navigation": {
+      "reference_sha256": "ecace6f09f6963c975d17a77f9d3c2f12bd333c0ffa997af50881d30b373bf60",
+      "mismatched_pixels_24bit": 0
+    },
+    "16_ride_media": {
+      "reference_sha256": "5e93387529a1e17fd5927de9a9ef8af61e2741825337a571ea6cadd568e759d2",
+      "mismatched_pixels_24bit": 0
+    },
+    "17_ride_finish_confirm": {
+      "reference_sha256": "62d51b2446996f1fc024d05b40fa41d1e99f083c7388f6bec46d0a2ae1d661cb",
+      "mismatched_pixels_24bit": 0
+    },
+    "18_ride_summary": {
+      "reference_sha256": "35770f93816489a2bd34e32327f2b225a358380eb5474de9da1b151f1e41c7b9",
+      "mismatched_pixels_24bit": 0
+    },
+    "19_rain_lock_enabled": {
+      "reference_sha256": "ec7868ba5eef25ece5d279d3dee91383289a3fb5b94b912b706909ac56c2a12d",
+      "mismatched_pixels_24bit": 0
+    },
+    "20_rain_unlock_hold_1": {
+      "reference_sha256": "db26cd3f40673ddaf3c503622b3dbfeac4f2d115d14868b35dc0d465302baa4d",
+      "mismatched_pixels_24bit": 0
+    },
+    "21_rain_unlock_hold_2": {
+      "reference_sha256": "922cf4dabf107e7d6a098e5acf09f5e60da3900ce3ce4c5f71f4ca41bfa2e88a",
+      "mismatched_pixels_24bit": 0
+    },
+    "22_rain_unlock_hold_3": {
+      "reference_sha256": "77158f51abd08f266bfed5fa00158d4800fd64b6da483b2b56dc404a81ed1768",
+      "mismatched_pixels_24bit": 0
+    },
+    "23_rain_unlock_success": {
+      "reference_sha256": "26318e8af724d604754562e1abed7bfce05f4fb00fb88039744aeff9f76dac23",
+      "mismatched_pixels_24bit": 0
+    },
+    "30_phone_unpaired": {
+      "reference_sha256": "3b26cb9ab33c0fcad68897d989288e60b0f5730bdb9521e4d52211d08746b58a",
+      "mismatched_pixels_24bit": 0
+    },
+    "31_phone_pairing": {
+      "reference_sha256": "a9227c6e11eea38905d612ea738cf29b53f4caa618d2389b7d52fdb1e17a8695",
+      "mismatched_pixels_24bit": 0
+    },
+    "32_phone_connected": {
+      "reference_sha256": "bc9e75c2379eb26b7b70b16acabad3425876267a6c460383e7d3b25b1b7af60b",
+      "mismatched_pixels_24bit": 0
+    },
+    "33_phone_syncing": {
+      "reference_sha256": "73c3f30ba1d595c279203dd5c711553321958f1f010a317e6d04393a5edf3838",
+      "mismatched_pixels_24bit": 0
+    },
+    "34_phone_sync_complete": {
+      "reference_sha256": "d30f22945dadde8d9545609cba8dd4954035f5fd5d33343674eeb12c4969e026",
+      "mismatched_pixels_24bit": 0
+    },
+    "35_phone_lost": {
+      "reference_sha256": "902211619d0e3ea26c3c6cff67e4ecef11addc801160460e11d6cad0e8467adf",
+      "mismatched_pixels_24bit": 0
+    },
+    "40_history_empty": {
+      "reference_sha256": "149dde8e39862feb5544d8e5b39d57968176ba94d3ecd179baa2a80297eedaff",
+      "mismatched_pixels_24bit": 0
+    },
+    "41_history_list": {
+      "reference_sha256": "26d7d7bee0ce6949b47737864d27d0b3e9c0e7b3e65bfc86b57bdcd781b51b8b",
+      "mismatched_pixels_24bit": 0
+    },
+    "42_history_detail": {
+      "reference_sha256": "0bc03285798256b5f01587ac5b1f27c6950be4d82af0ebdc4a87bc55108ed1d2",
+      "mismatched_pixels_24bit": 0
+    },
+    "43_history_delete_confirm": {
+      "reference_sha256": "76f052e1066885b20b8a3aa05af5b9081fc9ebd4fdfd94f6d258033d0b1ffbc5",
+      "mismatched_pixels_24bit": 0
+    },
+    "50_nav_waiting": {
+      "reference_sha256": "f4c60a4b9ad7b5f514824d427c1b588f1c31e2499931ce4fd893c62af7316fa1",
+      "mismatched_pixels_24bit": 0
+    },
+    "51_nav_active": {
+      "reference_sha256": "4b0034f042e47e941927bf82565b6da8e12e1ccbce251121a81992d888b25d06",
+      "mismatched_pixels_24bit": 0
+    },
+    "52_nav_rerouting": {
+      "reference_sha256": "05c70ff0c1b2beeb57db10e5b2cc2c878d2ea4908ea55919efc2cf3d2daad1a6",
+      "mismatched_pixels_24bit": 0
+    },
+    "53_nav_arrived": {
+      "reference_sha256": "262ddb60eef10308b23dea74db235490421003ac0f55ed014836cade91296b42",
+      "mismatched_pixels_24bit": 0
+    },
+    "54_nav_phone_lost": {
+      "reference_sha256": "6913301f98ac42bd79333dd6d246ad4bbcdb8dd81d0c3cfb9d8078148ab7c97e",
+      "mismatched_pixels_24bit": 0
+    },
+    "60_media_no_session": {
+      "reference_sha256": "64822e6c60c59e3770438c68e7f50d63a71352fa98ad9505338bc2596635089c",
+      "mismatched_pixels_24bit": 0
+    },
+    "61_media_playing": {
+      "reference_sha256": "6d9b6fc8a87ad382665f759ad5f2be083d3395e2b4ffb92f6b3af7f9d13db920",
+      "mismatched_pixels_24bit": 0
+    },
+    "62_media_paused": {
+      "reference_sha256": "0b925fd62609b7f5b31d845143746d7f6ce6a557568415de27f2efe4477071f0",
+      "mismatched_pixels_24bit": 0
+    },
+    "70_settings_main": {
+      "reference_sha256": "4496d9ba63c9886046281da5bc232d087a0a4b942909d19b5446ada5c7729998",
+      "mismatched_pixels_24bit": 0
+    },
+    "71_settings_ride": {
+      "reference_sha256": "ab62041210782ce7089ba7d87bd9eae8f8e8072b73cc4afcd033351141d25465",
+      "mismatched_pixels_24bit": 0
+    },
+    "72_settings_display": {
+      "reference_sha256": "3652c7073a1f0df8b866b1339579419dc4e2651f5380134171a1bea5d63758a3",
+      "mismatched_pixels_24bit": 0
+    },
+    "73_settings_phone": {
+      "reference_sha256": "8ce74f7cb54cd152379617f9414ac40177b445057e56cf5b5c589c935de9f580",
+      "mismatched_pixels_24bit": 0
+    },
+    "74_settings_system": {
+      "reference_sha256": "a3d827b7da3008073d5c258a04924451bb8e7a11d3b84929f0cb55bd98a40f3b",
+      "mismatched_pixels_24bit": 0
+    },
+    "75_settings_wheel": {
+      "reference_sha256": "95103d9129ce19b39508d83bc755c5870eee277198f1c8e0c513f1639e72d345",
+      "mismatched_pixels_24bit": 0
+    },
+    "76_settings_stop_threshold": {
+      "reference_sha256": "39189aa7aa97055e38e6550cb4f05509ea395e62db02438931a0090c8e35f071",
+      "mismatched_pixels_24bit": 0
+    },
+    "80_diagnostics": {
+      "reference_sha256": "def874e8cc85f005a835061b3df2418ec55aa8be684ca3a8a5628877d7d09bf2",
+      "mismatched_pixels_24bit": 0
+    },
+    "81_display_test": {
+      "reference_sha256": "698728e144d949cb03a6cc604882f48d4fd983397a4db15b2b1e93ae50e3fb3d",
+      "mismatched_pixels_24bit": 0
+    },
+    "82_touch_raw": {
+      "reference_sha256": "0289e5df3fdb72e4fdc85d6e0e181d9e87c7030508b486e40b0985764a82f880",
+      "mismatched_pixels_24bit": 0
+    },
+    "83_paint_test": {
+      "reference_sha256": "5df88c76e05f629b0a44bffd14c29c3341079f269ca3bae246c55282662b8138",
+      "mismatched_pixels_24bit": 0
+    },
+    "84_sd_test": {
+      "reference_sha256": "859c87358e7431c805ae205a60e1784865409c911cf1aebb74c9fc8e9400b4ce",
+      "mismatched_pixels_24bit": 0
+    },
+    "85_sensor_test": {
+      "reference_sha256": "5cc0c863396336a8ce8d6d8cddcaf9d1c5e97e0c190cd727e1f9af520e52c159",
+      "mismatched_pixels_24bit": 0
+    },
+    "86_battery_test": {
+      "reference_sha256": "599db7b7c64036ea2a7214c593db5600613f9c9ca9d259a0091c694231daf0b3",
+      "mismatched_pixels_24bit": 0
+    },
+    "87_system_info": {
+      "reference_sha256": "5d57b574f275f245d5596201411f3bb5ec7b1147c28255feb2f676701b6b3afe",
+      "mismatched_pixels_24bit": 0
+    },
+    "88_usb_storage": {
+      "reference_sha256": "5970e727b972facfcf4ea7fc63c5a626d710a7d73346aaa690437755e524b411",
+      "mismatched_pixels_24bit": 0
+    },
+    "90_about": {
+      "reference_sha256": "aa3f6d2eaffa477540e3e933bf7f691590302bc3dc4b055778172adfcd55b112",
+      "mismatched_pixels_24bit": 0
+    },
+    "91_dialog_forget_phone": {
+      "reference_sha256": "5e6ee57adc17752d059e9b812b9c86059795e659d06a2e71781f1800f244b666",
+      "mismatched_pixels_24bit": 0
+    },
+    "92_dialog_reset_settings": {
+      "reference_sha256": "b5c1b60708429821f7dd0571738b3cb5aca6a512a4030afdd83457677db8d486",
+      "mismatched_pixels_24bit": 0
+    },
+    "93_dialog_sd_error": {
+      "reference_sha256": "e43f7f7c0224384d116d2ce3c548505c5a51b4b3db24a8dc793398ce35c43ec8",
+      "mismatched_pixels_24bit": 0
+    },
+    "94_dialog_protocol_mismatch": {
+      "reference_sha256": "47a2805f472350b427a97a2b85377d54778de752c0e03f675e328c1ba4a639cf",
+      "mismatched_pixels_24bit": 0
+    },
+    "95_overlay_low_battery": {
+      "reference_sha256": "9ea9fd60fb5a705aac818025fb3433cfc0950541518e16f6830ee52825d446f2",
+      "mismatched_pixels_24bit": 0
+    },
+    "96_overlay_sync_complete": {
+      "reference_sha256": "649bf315b11c1c91ddc2ee6ccd805504e24e72b29fd42f12daa0fb79916b045b",
+      "mismatched_pixels_24bit": 0
+    }
+  },
+  "all_exact_24bit": true,
+  "rgb565_asset_bytes": 1307620
+}

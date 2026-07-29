@@ -145,12 +145,21 @@ bool StorageManager::loadSettings(app::AppSettings& settings, String& error) {
   settings.wheelCircumferenceM = prefs.getFloat("wheel_m", settings.wheelCircumferenceM);
   settings.pulsesPerRevolution = prefs.getUChar("ppr", settings.pulsesPerRevolution);
   settings.stopThresholdKmh = prefs.getFloat("stop_kmh", settings.stopThresholdKmh);
+  settings.autoPauseEnabled = prefs.getBool("auto_pause", settings.autoPauseEnabled);
+  settings.autoPauseDelayMs = prefs.getUInt("auto_delay", settings.autoPauseDelayMs);
+  settings.logSampleIntervalMs = prefs.getUInt("log_ms", settings.logSampleIntervalMs);
+  settings.graphWindowSeconds = prefs.getUInt("graph_s", settings.graphWindowSeconds);
   settings.displayBrightnessPercent = prefs.getUChar("bright", settings.displayBrightnessPercent);
+  settings.rgbSpeedTrendEnabled = prefs.getBool("rgb_enabled", settings.rgbSpeedTrendEnabled);
+  settings.rgbSpeedTrendToleranceKmh = prefs.getFloat("rgb_tol", settings.rgbSpeedTrendToleranceKmh);
+  settings.rgbLedBrightnessPercent = prefs.getUChar("rgb_bright", settings.rgbLedBrightnessPercent);
   settings.batteryCalibrationFactor = prefs.getFloat("bat_cal", settings.batteryCalibrationFactor);
   prefs.end();
   if (!sdAvailable_ || usbModeActive_) {
     app::validateSettings(settings);
-    return false;
+    error = usbModeActive_ ? "SD owned by USB host; using NVS settings"
+                           : "SD unavailable; using NVS settings";
+    return true;
   }
 
   SdBusGuard bus;
@@ -166,7 +175,7 @@ bool StorageManager::loadSettings(app::AppSettings& settings, String& error) {
     return false;
   }
 
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;
   DeserializationError jsonError = deserializeJson(doc, file);
   file.close();
   if (jsonError) {
@@ -180,6 +189,8 @@ bool StorageManager::loadSettings(app::AppSettings& settings, String& error) {
   settings.wheelCircumferenceM = doc["wheel_circumference_m"] | settings.wheelCircumferenceM;
   settings.pulsesPerRevolution = doc["pulses_per_revolution"] | settings.pulsesPerRevolution;
   settings.stopThresholdKmh = doc["stop_threshold_kmh"] | settings.stopThresholdKmh;
+  settings.autoPauseEnabled = doc["auto_pause_enabled"] | settings.autoPauseEnabled;
+  settings.autoPauseDelayMs = doc["auto_pause_delay_ms"] | settings.autoPauseDelayMs;
   settings.maxPlausibleSpeedKmh = doc["max_plausible_speed_kmh"] | settings.maxPlausibleSpeedKmh;
   settings.uiUpdateIntervalMs = doc["ui_update_interval_ms"] | settings.uiUpdateIntervalMs;
   settings.logSampleIntervalMs = doc["log_sample_interval_ms"] | settings.logSampleIntervalMs;
@@ -204,27 +215,70 @@ bool StorageManager::loadSettings(app::AppSettings& settings, String& error) {
     settings.batteryCriticalPercent = battery["critical_percent"] | settings.batteryCriticalPercent;
   }
 
+  JsonObject rgbIndicator = doc["rgb_speed_indicator"];
+  if (!rgbIndicator.isNull()) {
+    settings.rgbSpeedTrendEnabled =
+        rgbIndicator["enabled"] | settings.rgbSpeedTrendEnabled;
+    settings.rgbSpeedTrendToleranceKmh =
+        rgbIndicator["stable_tolerance_kmh"] |
+        settings.rgbSpeedTrendToleranceKmh;
+    settings.rgbLedBrightnessPercent =
+        rgbIndicator["brightness_percent"] |
+        settings.rgbLedBrightnessPercent;
+  }
+
   app::validateSettings(settings);
   Preferences writePrefs; writePrefs.begin("bike", false);
   writePrefs.putFloat("wheel_m", settings.wheelCircumferenceM); writePrefs.putUChar("ppr", settings.pulsesPerRevolution);
   writePrefs.putFloat("stop_kmh", settings.stopThresholdKmh); writePrefs.putUChar("bright", settings.displayBrightnessPercent);
+  writePrefs.putBool("auto_pause", settings.autoPauseEnabled);
+  writePrefs.putUInt("auto_delay", settings.autoPauseDelayMs);
+  writePrefs.putUInt("log_ms", settings.logSampleIntervalMs);
+  writePrefs.putUInt("graph_s", settings.graphWindowSeconds);
+  writePrefs.putBool("rgb_enabled", settings.rgbSpeedTrendEnabled);
+  writePrefs.putFloat("rgb_tol", settings.rgbSpeedTrendToleranceKmh);
+  writePrefs.putUChar("rgb_bright", settings.rgbLedBrightnessPercent);
   writePrefs.putFloat("bat_cal", settings.batteryCalibrationFactor); writePrefs.end();
   return true;
 }
 
 bool StorageManager::saveSettings(const app::AppSettings& settings, String& error) {
-  if (!sdAvailable_ || usbModeActive_) {
-    error = "SD unavailable or owned by USB host";
+  if (usbModeActive_) {
+    error = "SD owned by USB host";
     return false;
+  }
+  auto persistNvs = [&settings]() {
+    Preferences p;
+    p.begin("bike", false);
+    p.putFloat("wheel_m", settings.wheelCircumferenceM);
+    p.putUChar("ppr", settings.pulsesPerRevolution);
+    p.putFloat("stop_kmh", settings.stopThresholdKmh);
+    p.putBool("auto_pause", settings.autoPauseEnabled);
+    p.putUInt("auto_delay", settings.autoPauseDelayMs);
+    p.putUInt("log_ms", settings.logSampleIntervalMs);
+    p.putUInt("graph_s", settings.graphWindowSeconds);
+    p.putUChar("bright", settings.displayBrightnessPercent);
+    p.putBool("rgb_enabled", settings.rgbSpeedTrendEnabled);
+    p.putFloat("rgb_tol", settings.rgbSpeedTrendToleranceKmh);
+    p.putUChar("rgb_bright", settings.rgbLedBrightnessPercent);
+    p.putFloat("bat_cal", settings.batteryCalibrationFactor);
+    p.end();
+  };
+  if (!sdAvailable_) {
+    persistNvs();
+    error = "Settings saved to NVS; SD unavailable";
+    return true;
   }
   SdBusGuard bus;
   ensureDir("/config");
 
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;
   doc["format_version"] = app::CONFIG_FORMAT_VERSION;
   doc["wheel_circumference_m"] = settings.wheelCircumferenceM;
   doc["pulses_per_revolution"] = settings.pulsesPerRevolution;
   doc["stop_threshold_kmh"] = settings.stopThresholdKmh;
+  doc["auto_pause_enabled"] = settings.autoPauseEnabled;
+  doc["auto_pause_delay_ms"] = settings.autoPauseDelayMs;
   doc["max_plausible_speed_kmh"] = settings.maxPlausibleSpeedKmh;
   doc["ui_update_interval_ms"] = settings.uiUpdateIntervalMs;
   doc["log_sample_interval_ms"] = settings.logSampleIntervalMs;
@@ -245,8 +299,16 @@ bool StorageManager::saveSettings(const app::AppSettings& settings, String& erro
   battery["calibration_factor"] = settings.batteryCalibrationFactor;
   battery["low_percent"] = settings.batteryLowPercent;
   battery["critical_percent"] = settings.batteryCriticalPercent;
+
+  JsonObject rgbIndicator = doc.createNestedObject("rgb_speed_indicator");
+  rgbIndicator["enabled"] = settings.rgbSpeedTrendEnabled;
+  rgbIndicator["pin"] = hw::PIN_RGB_LED;
+  rgbIndicator["comparison_window_ms"] = 2000;
+  rgbIndicator["stable_tolerance_kmh"] =
+      settings.rgbSpeedTrendToleranceKmh;
+  rgbIndicator["brightness_percent"] = settings.rgbLedBrightnessPercent;
   const bool ok = writeJsonAtomic(app::CONFIG_FILE, doc, error);
-  if (ok) { Preferences p; p.begin("bike",false); p.putFloat("wheel_m",settings.wheelCircumferenceM); p.putUChar("ppr",settings.pulsesPerRevolution); p.putFloat("stop_kmh",settings.stopThresholdKmh); p.putUChar("bright",settings.displayBrightnessPercent); p.putFloat("bat_cal",settings.batteryCalibrationFactor); p.end(); }
+  if (ok) persistNvs();
   return ok;
 }
 

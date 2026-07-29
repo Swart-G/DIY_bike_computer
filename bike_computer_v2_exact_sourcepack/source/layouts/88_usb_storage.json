@@ -1,0 +1,162 @@
+{
+  "screen_id": "88_usb_storage",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "USB Storage",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "icon",
+      "kind": "usb",
+      "cx": 240,
+      "cy": 92,
+      "color": "accent",
+      "scale": 1.5
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 138,
+      "text": "USB storage active",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 166,
+      "text": "SD card is owned by the computer.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 187,
+      "text": "Ride logging and sync are disabled.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "warning_box",
+      "x": 76,
+      "y": 220,
+      "w": 328,
+      "h": 40,
+      "radius": 11,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 240,
+      "text": "Eject safely, then reboot.",
+      "font": "sm_b",
+      "color": "warning",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 142,
+      "y": 273,
+      "w": 196,
+      "h": 34,
+      "label": "Reboot",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 290,
+      "text": "Reboot",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

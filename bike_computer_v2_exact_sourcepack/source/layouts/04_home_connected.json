@@ -1,0 +1,241 @@
+{
+  "screen_id": "04_home_connected",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "22:48",
+      "font": "sm_b",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 67,
+      "text": "Ready to ride",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "ellipse",
+      "x": 25,
+      "y": 94,
+      "w": 6,
+      "h": 6,
+      "fill": "success",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 97,
+      "text": "Phone connected",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "status_chip",
+      "x": 25,
+      "y": 89,
+      "label": "Phone connected",
+      "color": "success"
+    },
+    {
+      "type": "hero_button",
+      "x": 24,
+      "y": 117,
+      "w": 432,
+      "h": 68,
+      "radius": 16,
+      "fill": "accent",
+      "outline": "accent",
+      "width": 1
+    },
+    {
+      "type": "icon",
+      "kind": "bike",
+      "cx": 72,
+      "cy": 151,
+      "color": "bg",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 246,
+      "y": 151,
+      "text": "START RIDE",
+      "font": "xl",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "menu_tile",
+      "x": 24,
+      "y": 202,
+      "w": 206,
+      "h": 66,
+      "icon": "history",
+      "title": "History",
+      "subtitle": "12 rides",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "history",
+      "cx": 57,
+      "cy": 235,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 86,
+      "y": 220,
+      "text": "History",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 86,
+      "y": 241,
+      "text": "12 rides",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 250,
+      "y": 202,
+      "w": 206,
+      "h": 66,
+      "icon": "phone",
+      "title": "Phone",
+      "subtitle": "Connected",
+      "active": true
+    },
+    {
+      "type": "icon",
+      "kind": "phone",
+      "cx": 283,
+      "cy": 235,
+      "color": "accent",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 312,
+      "y": 220,
+      "text": "Phone",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 312,
+      "y": 241,
+      "text": "Connected",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "icon",
+      "kind": "settings",
+      "cx": 225,
+      "cy": 294,
+      "color": "muted",
+      "scale": 0.65
+    },
+    {
+      "type": "text",
+      "x": 244,
+      "y": 294,
+      "text": "Settings",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "lm"
+    }
+  ]
+}

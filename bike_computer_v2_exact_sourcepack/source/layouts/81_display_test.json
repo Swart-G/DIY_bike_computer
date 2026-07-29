@@ -1,0 +1,341 @@
+{
+  "screen_id": "81_display_test",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Display test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "rect",
+      "x": 18,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "fill": "#FF0000",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "test_color_box",
+      "x": 18,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "color": "#FF0000",
+      "label": "R"
+    },
+    {
+      "type": "text",
+      "x": 58,
+      "y": 149,
+      "text": "R",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "rect",
+      "x": 108,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "fill": "#00FF00",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "test_color_box",
+      "x": 108,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "color": "#00FF00",
+      "label": "G"
+    },
+    {
+      "type": "text",
+      "x": 148,
+      "y": 149,
+      "text": "G",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "rect",
+      "x": 198,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "fill": "#0000FF",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "test_color_box",
+      "x": 198,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "color": "#0000FF",
+      "label": "B"
+    },
+    {
+      "type": "text",
+      "x": 238,
+      "y": 149,
+      "text": "B",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "rect",
+      "x": 288,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "fill": "#FFFFFF",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "test_color_box",
+      "x": 288,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "color": "#FFFFFF",
+      "label": "W"
+    },
+    {
+      "type": "text",
+      "x": 328,
+      "y": 149,
+      "text": "W",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "rect",
+      "x": 378,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "fill": "#000000",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "test_color_box",
+      "x": 378,
+      "y": 61,
+      "w": 80,
+      "h": 76,
+      "color": "#000000",
+      "label": "K"
+    },
+    {
+      "type": "text",
+      "x": 418,
+      "y": 149,
+      "text": "K",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 187,
+      "text": "Lines / geometry",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        210,
+        456,
+        210
+      ],
+      "color": "text",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        216,
+        456,
+        216
+      ],
+      "color": "muted",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        222,
+        456,
+        222
+      ],
+      "color": "text",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        228,
+        456,
+        228
+      ],
+      "color": "muted",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        234,
+        456,
+        234
+      ],
+      "color": "text",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        240,
+        456,
+        240
+      ],
+      "color": "muted",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        24,
+        246,
+        456,
+        246
+      ],
+      "color": "text",
+      "width": 1
+    },
+    {
+      "type": "button",
+      "x": 170,
+      "y": 269,
+      "w": 140,
+      "h": 38,
+      "label": "Next",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 288,
+      "text": "Next",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

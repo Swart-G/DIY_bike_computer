@@ -1,0 +1,221 @@
+{
+  "screen_id": "75_settings_wheel",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Wheel circumference",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 104,
+      "text": "2.194",
+      "font": "xxl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 137,
+      "text": "m",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 74,
+      "y": 171,
+      "w": 86,
+      "h": 52,
+      "label": "−",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 117,
+      "y": 197,
+      "text": "−",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 320,
+      "y": 171,
+      "w": 86,
+      "h": 52,
+      "label": "+",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 363,
+      "y": 197,
+      "text": "+",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "line",
+      "points": [
+        94,
+        248,
+        386,
+        248
+      ],
+      "color": "border",
+      "width": 4
+    },
+    {
+      "type": "line",
+      "points": [
+        94,
+        248,
+        256,
+        248
+      ],
+      "color": "accent",
+      "width": 4
+    },
+    {
+      "type": "ellipse",
+      "x": 251,
+      "y": 243,
+      "w": 10,
+      "h": 10,
+      "fill": "accent",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 94,
+      "y": 269,
+      "text": "0.500",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 386,
+      "y": 269,
+      "text": "3.500",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "ra"
+    },
+    {
+      "type": "button",
+      "x": 150,
+      "y": 287,
+      "w": 180,
+      "h": 27,
+      "label": "Save",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 300,
+      "text": "Save",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "screen_id": "91_dialog_forget_phone",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": "73_settings_phone",
+    "dim_alpha": 155
+  },
+  "elements": [
+    {
+      "type": "modal",
+      "x": 54,
+      "y": 72,
+      "w": 372,
+      "h": 176,
+      "radius": 16,
+      "fill": "panel2",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 99,
+      "text": "Forget phone?",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 132,
+      "text": "Pairing data will be deleted. You can pair",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 78,
+      "y": 151,
+      "text": "the same phone again later.",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "button",
+      "x": 78,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Cancel",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 156,
+      "y": 215,
+      "text": "Cancel",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 245,
+      "y": 198,
+      "w": 157,
+      "h": 34,
+      "label": "Forget",
+      "kind": "danger",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 323,
+      "y": 215,
+      "text": "Forget",
+      "font": "md_b",
+      "color": "danger",
+      "anchor": "mm"
+    }
+  ]
+}

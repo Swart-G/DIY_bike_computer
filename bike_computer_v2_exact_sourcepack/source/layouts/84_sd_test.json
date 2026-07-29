@@ -1,0 +1,233 @@
+{
+  "screen_id": "84_sd_test",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "SD test",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "ellipse",
+      "x": 24,
+      "y": 66,
+      "w": 6,
+      "h": 6,
+      "fill": "success",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 35,
+      "y": 69,
+      "text": "SD mounted",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "status_chip",
+      "x": 24,
+      "y": 61,
+      "label": "SD mounted",
+      "color": "success"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 95,
+      "text": "Card",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 95,
+      "text": "SDHC · 31.9 GB",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 126,
+      "text": "Read test",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 126,
+      "text": "PASS",
+      "font": "sm_b",
+      "color": "success",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 157,
+      "text": "Write test",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 157,
+      "text": "PASS",
+      "font": "sm_b",
+      "color": "success",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 188,
+      "text": "Test file",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 188,
+      "text": "OK",
+      "font": "sm_b",
+      "color": "success",
+      "anchor": "ra"
+    },
+    {
+      "type": "file_box",
+      "x": 24,
+      "y": 214,
+      "w": 432,
+      "h": 44,
+      "radius": 10,
+      "fill": "panel",
+      "outline": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 236,
+      "text": "/BIKE_SPEEDOMETER_SD_TEST.txt",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "button",
+      "x": 128,
+      "y": 270,
+      "w": 224,
+      "h": 37,
+      "label": "Run again",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 288,
+      "text": "Run again",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    }
+  ]
+}

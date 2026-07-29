@@ -20,9 +20,14 @@
 | 19 | Native USB D− — never use as GPIO |
 | 20 | Native USB D+ — never use as GPIO |
 | 47 | TFT backlight PWM |
+| 48 | Built-in addressable RGB LED |
 
 TFT is ST7796, 480×320 landscape, shared SPI at 20 MHz. SD uses the same bus with separate CS, default 10 MHz and automatic fallback to 1 MHz; no automatic format is ever performed. FT6336 I²C address is `0x38`; mapping remains configurable through swap/invert constants.
 
 Battery divider is `BAT+ — 1 MΩ — node — 1 MΩ — GND`, with a 100 kΩ series resistor from node to GPIO6. Nominal ratio is 2.0: 4.2 V battery yields about 2.1 V ADC. There is no capacitor, so firmware intentionally discards initial samples and uses a distributed median/trimmed series. Never feed 5 V into ESP32 GPIO, TFT VCC or Hall signal. TFT and Hall are powered from 3.3 V; MH-CD42 OUT-5V goes only to ESP32 VIN through the physical switch.
 
 The external Type-C data connector is native ESP32-S3 USB. A USB connection alone is not a charge signal; charging is inferred only from a slow voltage trend.
+
+The built-in RGB LED is the single-wire addressable LED declared by the `esp32s3`
+Arduino variant on GPIO48. Firmware writes it from the main loop only when colour or
+brightness changes; no LED work is performed by the Hall ISR.

@@ -5,13 +5,16 @@
 
 namespace app {
 
-static constexpr const char* FIRMWARE_VERSION = "1.0.0";
+static constexpr const char* FIRMWARE_VERSION = "2.0.0-dev";
 static constexpr const char* BOARD_NAME = "ESP32-S3-N16R8";
 static constexpr const char* DISPLAY_NAME = "ST7796";
 static constexpr const char* TOUCH_NAME = "FT6336";
 static constexpr uint8_t CONFIG_FORMAT_VERSION = 1;
 static constexpr uint8_t RIDE_LOG_FORMAT_VERSION = 1;
 static constexpr uint8_t RECOVERY_FORMAT_VERSION = 1;
+// Version 2.0 has no user-facing brightness control. The legacy config field is kept
+// in AppSettings so format-1 files continue to parse, but runtime always uses this value.
+static constexpr uint8_t DISPLAY_FIXED_BRIGHTNESS_PERCENT = 80;
 
 static constexpr const char* SD_TEST_FILE = "/BIKE_SPEEDOMETER_SD_TEST.txt";
 static constexpr const char* CONFIG_FILE = "/config/bike_config.json";
@@ -30,12 +33,17 @@ struct AppSettings {
   float wheelCircumferenceM = 2.194f;
   uint8_t pulsesPerRevolution = 1;
   float stopThresholdKmh = 3.0f;
+  bool autoPauseEnabled = true;
+  uint32_t autoPauseDelayMs = 5000;
   float maxPlausibleSpeedKmh = 100.0f;
   uint32_t uiUpdateIntervalMs = 200;
   uint32_t logSampleIntervalMs = 1000;
   uint32_t recoveryIntervalMs = 15000;
   uint32_t graphWindowSeconds = 60;
   uint8_t displayBrightnessPercent = 80;
+  bool rgbSpeedTrendEnabled = true;
+  float rgbSpeedTrendToleranceKmh = 0.5f;
+  uint8_t rgbLedBrightnessPercent = 20;
 
   bool sensorPullupEnabled = true;
   int sensorActiveLevel = LOW;
@@ -68,12 +76,15 @@ inline void validateSettings(AppSettings& s) {
   if (s.wheelCircumferenceM < 0.5f || s.wheelCircumferenceM > 3.5f) s.wheelCircumferenceM = 2.194f;
   if (s.pulsesPerRevolution < 1 || s.pulsesPerRevolution > 16) s.pulsesPerRevolution = 1;
   if (s.stopThresholdKmh < 0.5f || s.stopThresholdKmh > 15.0f) s.stopThresholdKmh = 3.0f;
+  if (s.autoPauseDelayMs < 1000 || s.autoPauseDelayMs > 60000) s.autoPauseDelayMs = 5000;
   if (s.maxPlausibleSpeedKmh < 10.0f || s.maxPlausibleSpeedKmh > 150.0f) s.maxPlausibleSpeedKmh = 100.0f;
   if (s.uiUpdateIntervalMs < 50 || s.uiUpdateIntervalMs > 2000) s.uiUpdateIntervalMs = 200;
   if (s.logSampleIntervalMs < 250 || s.logSampleIntervalMs > 10000) s.logSampleIntervalMs = 1000;
   if (s.recoveryIntervalMs < 5000 || s.recoveryIntervalMs > 60000) s.recoveryIntervalMs = 15000;
   if (s.graphWindowSeconds < 10 || s.graphWindowSeconds > 300) s.graphWindowSeconds = 60;
   if (s.displayBrightnessPercent < 5 || s.displayBrightnessPercent > 100) s.displayBrightnessPercent = 80;
+  if (s.rgbSpeedTrendToleranceKmh < 0.1f || s.rgbSpeedTrendToleranceKmh > 5.0f) s.rgbSpeedTrendToleranceKmh = 0.5f;
+  if (s.rgbLedBrightnessPercent < 5 || s.rgbLedBrightnessPercent > 100) s.rgbLedBrightnessPercent = 20;
   if (s.minPulseIntervalMs < 10 || s.minPulseIntervalMs > 2000) s.minPulseIntervalMs = 50;
   if (s.sensorInterruptMode != FALLING && s.sensorInterruptMode != RISING && s.sensorInterruptMode != CHANGE) s.sensorInterruptMode = FALLING;
   if (s.batteryCalibrationFactor < 0.80f || s.batteryCalibrationFactor > 1.20f) s.batteryCalibrationFactor = 1.0f;

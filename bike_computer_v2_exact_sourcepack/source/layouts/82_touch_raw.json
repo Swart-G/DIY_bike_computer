@@ -1,0 +1,251 @@
+{
+  "screen_id": "82_touch_raw",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Touch raw",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "card",
+      "x": 18,
+      "y": 58,
+      "w": 142,
+      "h": 72,
+      "title": "X",
+      "value": "314",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 30,
+      "y": 70,
+      "text": "X",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 89,
+      "y": 99,
+      "text": "314",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 170,
+      "y": 58,
+      "w": 142,
+      "h": 72,
+      "title": "Y",
+      "value": "182",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 182,
+      "y": 70,
+      "text": "Y",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 241,
+      "y": 99,
+      "text": "182",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 322,
+      "y": 58,
+      "w": 140,
+      "h": 72,
+      "title": "TOUCHES",
+      "value": "128",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 334,
+      "y": 70,
+      "text": "TOUCHES",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 392,
+      "y": 99,
+      "text": "128",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 160,
+      "text": "INT pin",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 160,
+      "text": "LOW",
+      "font": "sm_b",
+      "color": "success",
+      "anchor": "ra"
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 190,
+      "text": "Last touch",
+      "font": "sm",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 456,
+      "y": 190,
+      "text": "24 ms ago",
+      "font": "sm_b",
+      "color": "text",
+      "anchor": "ra"
+    },
+    {
+      "type": "line",
+      "points": [
+        240,
+        216,
+        240,
+        290
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "line",
+      "points": [
+        120,
+        253,
+        360,
+        253
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "ellipse",
+      "x": 312,
+      "y": 244,
+      "w": 10,
+      "h": 10,
+      "fill": null,
+      "outline": "accent",
+      "width": 2
+    }
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "screen_id": "32_phone_connected",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Phone",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "text",
+      "x": 24,
+      "y": 67,
+      "text": "Galaxy S26 Ultra",
+      "font": "lg",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "ellipse",
+      "x": 25,
+      "y": 96,
+      "w": 6,
+      "h": 6,
+      "fill": "success",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 99,
+      "text": "Connected",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "status_chip",
+      "x": 25,
+      "y": 91,
+      "label": "Connected",
+      "color": "success"
+    },
+    {
+      "type": "card",
+      "x": 24,
+      "y": 119,
+      "w": 192,
+      "h": 67,
+      "title": "LAST SYNC",
+      "value": "22:46",
+      "unit": null,
+      "accent": false
+    },
+    {
+      "type": "text",
+      "x": 36,
+      "y": 131,
+      "text": "LAST SYNC",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 120,
+      "y": 157,
+      "text": "22:46",
+      "font": "xl",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "card",
+      "x": 228,
+      "y": 119,
+      "w": 228,
+      "h": 67,
+      "title": "PENDING RIDES",
+      "value": "2",
+      "unit": null,
+      "accent": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 131,
+      "text": "PENDING RIDES",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 342,
+      "y": 157,
+      "text": "2",
+      "font": "xl",
+      "color": "accent",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 208,
+      "w": 432,
+      "h": 43,
+      "label": "SYNC NOW",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 229,
+      "text": "SYNC NOW",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 263,
+      "w": 206,
+      "h": 41,
+      "label": "Phone settings",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 127,
+      "y": 283,
+      "text": "Phone settings",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 242,
+      "y": 263,
+      "w": 214,
+      "h": 41,
+      "label": "Disconnect",
+      "kind": "default",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 349,
+      "y": 283,
+      "text": "Disconnect",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "mm"
+    }
+  ]
+}

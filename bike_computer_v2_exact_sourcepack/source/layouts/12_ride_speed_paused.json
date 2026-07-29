@@ -1,0 +1,257 @@
+{
+  "screen_id": "12_ride_speed_paused",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "22:48",
+      "font": "sm_b",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "rain_button",
+      "x": 333,
+      "y": 11,
+      "w": 20,
+      "h": 18,
+      "label": "RAIN_LOCK"
+    },
+    {
+      "type": "ellipse",
+      "x": 18,
+      "y": 52,
+      "w": 6,
+      "h": 6,
+      "fill": "warning",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 29,
+      "y": 55,
+      "text": "PAUSED",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "lm"
+    },
+    {
+      "type": "status_chip",
+      "x": 18,
+      "y": 47,
+      "label": "PAUSED",
+      "color": "warning"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 125,
+      "text": "23.6",
+      "font": "speed",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 175,
+      "text": "km/h",
+      "font": "sm_b",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 98,
+      "y": 214,
+      "text": "12.84",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 98,
+      "y": 237,
+      "text": "km",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 214,
+      "text": "18.2",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 237,
+      "text": "avg km/h",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 382,
+      "y": 214,
+      "text": "42:18",
+      "font": "lg",
+      "color": "text",
+      "anchor": "mm"
+    },
+    {
+      "type": "text",
+      "x": 382,
+      "y": 237,
+      "text": "moving",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "page_dots",
+      "active": 0,
+      "count": 4,
+      "y": 291
+    },
+    {
+      "type": "button",
+      "x": 24,
+      "y": 266,
+      "w": 291,
+      "h": 41,
+      "label": "RESUME",
+      "kind": "primary",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 169,
+      "y": 286,
+      "text": "RESUME",
+      "font": "md_b",
+      "color": "bg",
+      "anchor": "mm"
+    },
+    {
+      "type": "button",
+      "x": 327,
+      "y": 266,
+      "w": 129,
+      "h": 41,
+      "label": "Finish",
+      "kind": "danger",
+      "enabled": true
+    },
+    {
+      "type": "text",
+      "x": 391,
+      "y": 286,
+      "text": "Finish",
+      "font": "md_b",
+      "color": "danger",
+      "anchor": "mm"
+    },
+    {
+      "type": "pill",
+      "x": 183,
+      "y": 74,
+      "w": 114,
+      "h": 27,
+      "radius": 13,
+      "fill": "accent_dim",
+      "outline": null,
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 240,
+      "y": 87,
+      "text": "PAUSED",
+      "font": "sm_b",
+      "color": "accent",
+      "anchor": "mm"
+    }
+  ]
+}

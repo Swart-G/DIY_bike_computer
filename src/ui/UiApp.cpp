@@ -2,6 +2,13 @@
 
 #include "config/hardware_config.h"
 #include "ui/UiTheme.h"
+#include "ui/components/UiComponents.h"
+#include "ui/screens/HomeScreen.h"
+#include "ui/screens/RideScreen.h"
+#include "ui/screens/RainLockOverlay.h"
+#include "ui/screens/SecondaryScreens.h"
+#include "ui/screens/SettingsScreen.h"
+#include "ui_exact/exact_screen_renderer.h"
 
 namespace {
 
@@ -12,14 +19,12 @@ constexpr int16_t kBackH = 40;
 
 constexpr int16_t kStatusBarH = ui::HEADER_H;
 constexpr int16_t kControlY = ui::FOOTER_Y;
-constexpr int16_t kControlH = ui::FOOTER_H;
-constexpr int16_t kContentTop = ui::HEADER_H + 10;
-constexpr int16_t kBottomY = ui::FOOTER_Y;
-constexpr int16_t kDotsY = kBottomY - 14;
-constexpr int16_t kContentBottom = kBottomY - 26;
-constexpr int16_t kRideSwipeMinDx = 14;
-constexpr int16_t kRideSwipeMaxDy = 140;
-constexpr uint32_t kRideSwipeMaxMs = 1600;
+constexpr int16_t kRideSwipeMinDx = 64;
+constexpr int16_t kRideSwipeMaxDy = 48;
+constexpr uint32_t kRideSwipeMaxMs = 700;
+constexpr int16_t kHistorySwipeMinDy = 46;
+constexpr int16_t kHistorySwipeMaxDx = 64;
+constexpr uint32_t kHistorySwipeMaxMs = 800;
 
 String flashSizeText() {
   return String(static_cast<uint32_t>(ESP.getFlashChipSize() / (1024UL * 1024UL))) + " MB";
@@ -30,145 +35,6 @@ String psramText() {
     return "not found";
   }
   return String(static_cast<uint32_t>(ESP.getPsramSize() / (1024UL * 1024UL))) + " MB";
-}
-
-void drawBikeIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color, uint8_t scale = 1) {
-  const int16_t r = 8 * scale;
-  const int16_t leftX = cx - 24 * scale;
-  const int16_t rightX = cx + 24 * scale;
-  tft.drawCircle(leftX, cy + 10 * scale, r, color);
-  tft.drawCircle(rightX, cy + 10 * scale, r, color);
-  tft.drawLine(leftX, cy + 10 * scale, cx - 7 * scale, cy - 8 * scale, color);
-  tft.drawLine(cx - 7 * scale, cy - 8 * scale, cx + 8 * scale, cy + 10 * scale, color);
-  tft.drawLine(leftX, cy + 10 * scale, cx + 8 * scale, cy + 10 * scale, color);
-  tft.drawLine(cx - 7 * scale, cy - 8 * scale, cx + 16 * scale, cy - 8 * scale, color);
-  tft.drawLine(cx + 16 * scale, cy - 8 * scale, rightX, cy + 10 * scale, color);
-  tft.drawLine(cx - 9 * scale, cy - 10 * scale, cx - 14 * scale, cy - 16 * scale, color);
-  tft.drawLine(cx + 14 * scale, cy - 10 * scale, cx + 22 * scale, cy - 15 * scale, color);
-}
-
-void drawPulseIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 19, color);
-  tft.drawLine(cx - 15, cy, cx - 7, cy, color);
-  tft.drawLine(cx - 7, cy, cx - 2, cy - 12, color);
-  tft.drawLine(cx - 2, cy - 12, cx + 5, cy + 10, color);
-  tft.drawLine(cx + 5, cy + 10, cx + 11, cy, color);
-  tft.drawLine(cx + 11, cy, cx + 16, cy, color);
-}
-
-void drawGearIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 17, color);
-  tft.drawCircle(cx, cy, 6, color);
-  tft.fillRect(cx - 3, cy - 27, 6, 8, color);
-  tft.fillRect(cx - 3, cy + 19, 6, 8, color);
-  tft.fillRect(cx - 27, cy - 3, 8, 6, color);
-  tft.fillRect(cx + 19, cy - 3, 8, 6, color);
-  tft.drawLine(cx - 18, cy - 18, cx - 24, cy - 24, color);
-  tft.drawLine(cx + 18, cy - 18, cx + 24, cy - 24, color);
-  tft.drawLine(cx - 18, cy + 18, cx - 24, cy + 24, color);
-  tft.drawLine(cx + 18, cy + 18, cx + 24, cy + 24, color);
-}
-
-void drawUsbIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawLine(cx, cy - 23, cx, cy + 18, color);
-  tft.drawLine(cx, cy - 6, cx - 18, cy + 5, color);
-  tft.drawLine(cx, cy - 3, cx + 17, cy - 13, color);
-  tft.fillCircle(cx, cy + 22, 4, color);
-  tft.fillCircle(cx - 20, cy + 6, 4, color);
-  tft.fillRect(cx + 14, cy - 17, 8, 8, color);
-  tft.fillTriangle(cx - 5, cy - 23, cx + 5, cy - 23, cx, cy - 32, color);
-}
-
-void drawInfoIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 20, color);
-  tft.fillCircle(cx, cy - 10, 2, color);
-  tft.fillRect(cx - 2, cy - 4, 4, 17, color);
-}
-
-void drawGaugeIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 13, color);
-  tft.fillRect(cx - 14, cy + 1, 28, 14, ui::UI_PANEL);
-  tft.drawLine(cx, cy, cx + 9, cy - 6, color);
-  tft.drawLine(cx - 9, cy + 1, cx - 12, cy + 5, color);
-  tft.drawLine(cx + 9, cy + 1, cx + 12, cy + 5, color);
-}
-
-void drawClockIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 12, color);
-  tft.drawLine(cx, cy, cx, cy - 8, color);
-  tft.drawLine(cx, cy, cx + 7, cy + 4, color);
-}
-
-void drawLine2(TFT_eSPI& tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
-void drawLine3(TFT_eSPI& tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
-
-void drawRoadIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.fillTriangle(cx - 16, cy + 14, cx - 4, cy - 14, cx + 4, cy + 14, color);
-  tft.fillTriangle(cx + 16, cy + 14, cx + 4, cy - 14, cx - 4, cy + 14, color);
-  tft.drawLine(cx, cy - 8, cx, cy - 2, ui::UI_PANEL);
-  tft.drawLine(cx, cy + 4, cx, cy + 10, ui::UI_PANEL);
-}
-
-void drawRideArrowIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color, uint16_t bg) {
-  for (int16_t i = 0; i < 3; ++i) {
-    const int16_t x = cx - 24 + i * 18;
-    tft.drawWideLine(x, cy - 13, x + 12, cy, 3.0f, color, bg);
-    tft.drawWideLine(x, cy + 13, x + 12, cy, 3.0f, color, bg);
-  }
-}
-
-void drawMenuPulseIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  const int16_t x = cx - 18;
-  drawLine2(tft, x, cy, x + 7, cy, color);
-  drawLine2(tft, x + 7, cy, x + 12, cy - 12, color);
-  drawLine2(tft, x + 12, cy - 12, x + 20, cy + 12, color);
-  drawLine2(tft, x + 20, cy + 12, x + 28, cy - 4, color);
-  drawLine2(tft, x + 28, cy - 4, x + 36, cy - 4, color);
-}
-
-void drawSlidersIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  const int16_t x = cx - 16;
-  drawLine2(tft, x, cy - 10, x + 32, cy - 10, color);
-  drawLine2(tft, x, cy, x + 32, cy, color);
-  drawLine2(tft, x, cy + 10, x + 32, cy + 10, color);
-  tft.fillCircle(cx - 6, cy - 10, 4, color);
-  tft.fillCircle(cx + 8, cy, 4, color);
-  tft.fillCircle(cx - 1, cy + 10, 4, color);
-}
-
-void drawStorageIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  const int16_t x = cx - 17;
-  const int16_t y = cy - 13;
-  tft.drawRoundRect(x, y, 34, 26, 4, color);
-  tft.drawRoundRect(x + 1, y + 1, 32, 24, 3, color);
-  drawLine2(tft, x + 7, y + 9, x + 27, y + 9, color);
-  drawLine2(tft, x + 7, y + 17, x + 20, y + 17, color);
-  tft.fillCircle(x + 27, y + 18, 3, color);
-}
-
-void drawMenuInfoIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t color) {
-  tft.drawCircle(cx, cy, 17, color);
-  tft.drawCircle(cx, cy, 16, color);
-  tft.fillCircle(cx, cy - 8, 2, color);
-  tft.fillRoundRect(cx - 2, cy - 2, 4, 14, 2, color);
-}
-
-void drawLine2(TFT_eSPI& tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-  tft.drawLine(x0, y0, x1, y1, color);
-  if (abs(x1 - x0) > abs(y1 - y0)) {
-    tft.drawLine(x0, y0 + 1, x1, y1 + 1, color);
-  } else {
-    tft.drawLine(x0 + 1, y0, x1 + 1, y1, color);
-  }
-}
-
-void drawLine3(TFT_eSPI& tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-  drawLine2(tft, x0, y0, x1, y1, color);
-  if (abs(x1 - x0) > abs(y1 - y0)) {
-    tft.drawLine(x0, y0 - 1, x1, y1 - 1, color);
-  } else {
-    tft.drawLine(x0 - 1, y0, x1 - 1, y1, color);
-  }
 }
 
 void drawPanel(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, uint16_t fill,
@@ -185,7 +51,8 @@ void drawPanel(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, uint16
 void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
                   UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
                   RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
-                  RideRepository& repository, app::AppSettings& settings) {
+                  RideRepository& repository, PhoneLinkManager& phone,
+                  app::AppSettings& settings) {
   display_ = &display;
   touch_ = &touch;
   storage_ = &storage;
@@ -196,7 +63,13 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   battery_ = &battery;
   logger_ = &logger;
   repository_ = &repository;
+  phone_ = &phone;
   settings_ = &settings;
+  rainLock_.reset();
+  if (storage_->loggingEnabled()) {
+    String historyError;
+    historyCount_ = repository_->list(*storage_, history_, 12, historyError);
+  }
 
   String recoveryError;
   hasPendingRecovery_ = storage_->loadRecovery(pendingRecovery_, recoveryError);
@@ -207,54 +80,134 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   } else if (!storage_->sdAvailable()) {
     enter(Screen::SdMissing);
   } else {
-    enter(Screen::MainMenu);
+    enter(Screen::Home);
   }
 }
 
 void UiApp::loop() {
   const uint32_t now = millis();
+  if (settingsNoticeUntilMs_ != 0 &&
+      static_cast<int32_t>(now - settingsNoticeUntilMs_) >= 0) {
+    settingsNoticeUntilMs_ = 0;
+    dirty_ = true;
+  }
+  const PhoneState& phoneState = phone_->state();
+  const uint8_t linkState = static_cast<uint8_t>(phoneState.link);
+  if (linkState != lastPhoneLinkState_ ||
+      phoneState.pairingCode != lastPairingCode_ ||
+      phone_->mediaRevision() != lastMediaRevision_ ||
+      phone_->navigationRevision() != lastNavigationRevision_) {
+    lastPhoneLinkState_ = linkState;
+    lastPairingCode_ = phoneState.pairingCode;
+    lastMediaRevision_ = phone_->mediaRevision();
+    lastNavigationRevision_ = phone_->navigationRevision();
+    const uint8_t pageCount = ridePageCount();
+    if (ridePage_ >= pageCount) ridePage_ = pageCount - 1;
+    dirty_ = true;
+  }
   touch_->update();
   updateModel(now);
+  const bool sdAvailable = storage_->sdAvailable();
+  const uint8_t batteryPercent = battery_->percent();
+  int64_t clockMinute = -1;
+  if (phone_->clock().synced()) {
+    clockMinute =
+        (phone_->clock().epochNowMs(ClockManager::monotonicMs()) / 1000LL +
+         phone_->clock().utcOffsetSeconds()) /
+        60LL;
+  }
+  if (!headerStateInitialized_ ||
+      sdAvailable != lastHeaderSdAvailable_ ||
+      batteryPercent != lastHeaderBatteryPercent_ ||
+      clockMinute != lastClockMinute_) {
+    headerStateInitialized_ = true;
+    lastHeaderSdAvailable_ = sdAvailable;
+    lastHeaderBatteryPercent_ = batteryPercent;
+    lastClockMinute_ = clockMinute;
+    dirty_ = true;
+  }
+  rainLock_.update(touch_->point(), now);
+  if (rainLock_.takeDirty()) dirty_ = true;
+  bool rainLocked = false;
+  if (rainLock_.takeLockChanged(rainLocked)) {
+    Serial.print("[RAIN] ");
+    Serial.println(rainLocked ? "enabled" : "disabled");
+    if (logger_->active()) {
+      logger_->event(*storage_, *ride_, "RAIN_LOCK_CHANGED",
+                     rainLocked ? "enabled" : "disabled");
+    }
+  }
 
   const bool touchedNow = touch_->touched();
-  if (screen_ == Screen::PaintTest && touchedNow) {
-    handlePaint();
-  } else if (screen_ == Screen::PaintTest && !touchedNow) {
+  if (rainLock_.blocksUi()) {
+    rideTouchActive_ = false;
+    rideSwipeCandidate_ = false;
+    rideSwipeHandled_ = false;
+    historyTouchActive_ = false;
     lastPaintValid_ = false;
-  }
-
-  if (screen_ == Screen::Ride) {
-    if (touchedNow && !wasTouched_) {
-      handleRideTouchStart(touch_->x(), touch_->y(), now);
-    } else if (touchedNow && wasTouched_) {
-      handleRideTouchMove(touch_->x(), touch_->y());
-    } else if (!touchedNow && wasTouched_) {
-      handleRideTouchEnd(now);
+    wasTouched_ = false;
+  } else {
+    if (router_.current() == Screen::PaintTest && touchedNow) {
+      handlePaint();
+    } else if (router_.current() == Screen::PaintTest && !touchedNow) {
+      lastPaintValid_ = false;
     }
-  } else if (touchedNow && !wasTouched_) {
-    handleTap(touch_->x(), touch_->y());
-  }
-  wasTouched_ = touchedNow;
 
-  const bool dynamicScreen = screen_ == Screen::Ride || screen_ == Screen::TouchRawTest ||
-                             screen_ == Screen::SensorTest || screen_ == Screen::BatteryTest || screen_ == Screen::SystemInfo;
-  if (dirty_ || (dynamicScreen && now - lastUiDrawMs_ >= settings_->uiUpdateIntervalMs)) {
+    if (router_.current() == Screen::Ride) {
+      if (touchedNow && !wasTouched_) {
+        handleRideTouchStart(touch_->x(), touch_->y(), now);
+      } else if (touchedNow && wasTouched_) {
+        handleRideTouchMove(touch_->x(), touch_->y());
+      } else if (!touchedNow && wasTouched_) {
+        handleRideTouchEnd(now);
+      }
+    } else if (router_.current() == Screen::History) {
+      if (touchedNow && !wasTouched_) {
+        handleHistoryTouchStart(touch_->x(), touch_->y(), now);
+      } else if (touchedNow && wasTouched_) {
+        handleHistoryTouchMove(touch_->x(), touch_->y());
+      } else if (!touchedNow && wasTouched_) {
+        handleHistoryTouchEnd(now);
+      }
+    } else if (touchedNow && !wasTouched_) {
+      handleTap(touch_->x(), touch_->y());
+    }
+    wasTouched_ = touchedNow;
+  }
+
+  const bool dynamicScreen = router_.current() == Screen::Ride ||
+                             router_.current() == Screen::Phone ||
+                             router_.current() == Screen::TouchRawTest ||
+                             router_.current() == Screen::SensorTest || router_.current() == Screen::BatteryTest || router_.current() == Screen::SystemInfo;
+  const uint32_t drawInterval =
+      rainLock_.animationActive() ? 40 : settings_->uiUpdateIntervalMs;
+  if (dirty_ || (dynamicScreen && now - lastUiDrawMs_ >= drawInterval)) {
+    partialRainFrame_ = rainLock_.animationActive() && !dirty_ &&
+                        router_.current() == Screen::Ride;
+    partialRideFrame_ = !partialRainFrame_ && !dirty_ &&
+                        router_.current() == Screen::Ride;
     draw();
+    partialRainFrame_ = false;
+    partialRideFrame_ = false;
     dirty_ = false;
     lastUiDrawMs_ = now;
   }
 }
 
 void UiApp::enter(Screen screen) {
-  screen_ = screen;
+  router_.go(screen);
   dirty_ = true;
   lastPaintValid_ = false;
   rideTouchActive_ = false;
   rideSwipeCandidate_ = false;
   rideSwipeHandled_ = false;
+  historyTouchActive_ = false;
   if (screen == Screen::SdTest) {
     sdTestRun_ = false;
     sdTestResult_ = SdTestResult();
+  } else if (screen == Screen::DisplayTest) {
+    exactPreviewActive_ = false;
+    exactPreviewIndex_ = 0;
   }
 }
 
@@ -304,10 +257,11 @@ void UiApp::handleRideTouchMove(int16_t x, int16_t y) {
     return;
   }
 
+  const uint8_t pageCount = ridePageCount();
   if (dx < 0) {
-    ridePage_ = (ridePage_ + 1) % 3;
+    ridePage_ = (ridePage_ + 1) % pageCount;
   } else {
-    ridePage_ = ridePage_ == 0 ? 2 : ridePage_ - 1;
+    ridePage_ = ridePage_ == 0 ? pageCount - 1 : ridePage_ - 1;
   }
   rideSwipeHandled_ = true;
   dirty_ = true;
@@ -327,10 +281,11 @@ void UiApp::handleRideTouchEnd(uint32_t nowMs) {
   if (rideSwipeHandled_) {
     // Swipe was already applied while the finger was moving.
   } else if (rideSwipeCandidate_ && horizontalSwipe) {
+    const uint8_t pageCount = ridePageCount();
     if (dx < 0) {
-      ridePage_ = (ridePage_ + 1) % 3;
+      ridePage_ = (ridePage_ + 1) % pageCount;
     } else {
-      ridePage_ = ridePage_ == 0 ? 2 : ridePage_ - 1;
+      ridePage_ = ridePage_ == 0 ? pageCount - 1 : ridePage_ - 1;
     }
     dirty_ = true;
   } else {
@@ -342,180 +297,415 @@ void UiApp::handleRideTouchEnd(uint32_t nowMs) {
   rideSwipeHandled_ = false;
 }
 
+void UiApp::handleHistoryTouchStart(int16_t x, int16_t y,
+                                    uint32_t nowMs) {
+  historyTouchActive_ = true;
+  historyTouchStartX_ = x;
+  historyTouchStartY_ = y;
+  historyTouchLastX_ = x;
+  historyTouchLastY_ = y;
+  historyTouchStartMs_ = nowMs;
+}
+
+void UiApp::handleHistoryTouchMove(int16_t x, int16_t y) {
+  if (!historyTouchActive_) return;
+  historyTouchLastX_ = x;
+  historyTouchLastY_ = y;
+}
+
+void UiApp::handleHistoryTouchEnd(uint32_t nowMs) {
+  if (!historyTouchActive_) return;
+
+  const int16_t dx = historyTouchLastX_ - historyTouchStartX_;
+  const int16_t dy = historyTouchLastY_ - historyTouchStartY_;
+  const uint32_t elapsedMs = nowMs - historyTouchStartMs_;
+  const bool verticalSwipe =
+      abs(dy) >= kHistorySwipeMinDy && abs(dx) <= kHistorySwipeMaxDx &&
+      elapsedMs <= kHistorySwipeMaxMs && abs(dy) > abs(dx) * 2;
+
+  if (verticalSwipe && historyCount_ > 3) {
+    const uint8_t maximumOffset = historyCount_ - 3;
+    if (dy < 0 && historyScrollOffset_ < maximumOffset) {
+      ++historyScrollOffset_;
+      historyMessage_ = String();
+      dirty_ = true;
+    } else if (dy > 0 && historyScrollOffset_ > 0) {
+      --historyScrollOffset_;
+      historyMessage_ = String();
+      dirty_ = true;
+    }
+  } else if (!verticalSwipe) {
+    handleTap(historyTouchLastX_, historyTouchLastY_);
+  }
+
+  historyTouchActive_ = false;
+}
+
 void UiApp::handleTap(int16_t x, int16_t y) {
-  switch (screen_) {
+  switch (router_.current()) {
     case Screen::SdMissing:
-      if (hit(x, y, 70, 232, 150, 46)) {
+      if (hit(x, y, 74, 212, 156, 42)) {
         if (storage_->retry()) {
           String error;
           storage_->loadSettings(*settings_, error);
-          display_->setBrightness(settings_->displayBrightnessPercent);
-          enter(Screen::MainMenu);
+          enter(Screen::Home);
         } else {
           lastMessage_ = "SD retry failed";
           dirty_ = true;
         }
-      } else if (hit(x, y, 250, 232, 170, 46)) {
+      } else if (hit(x, y, 246, 212, 160, 42)) {
         storage_->continueWithoutSaving();
-        enter(Screen::MainMenu);
+        enter(Screen::Home);
       }
       break;
 
     case Screen::Recovery:
-      if (hit(x, y, 52, 204, 110, 48)) {
+      if (hit(x, y, 24, 226, 144, 46)) {
         ride_->resume(millis());
         saveRecoveryIfNeeded(millis(), true);
         enter(Screen::Ride);
-      } else if (hit(x, y, 185, 204, 110, 48)) {
+      } else if (hit(x, y, 180, 226, 132, 46)) {
         ride_->finish(millis());
         clearRecovery();
         enter(Screen::Ride);
-      } else if (hit(x, y, 318, 204, 110, 48)) {
+      } else if (hit(x, y, 324, 226, 132, 46)) {
         clearRecovery();
         ride_->newRide(millis(), sensorSnapshot_.pulseCount);
-        enter(Screen::MainMenu);
+        enter(Screen::Home);
       }
       break;
 
-    case Screen::MainMenu:
-      if (hit(x, y, 24, 70, 132, 82)) {
+    case Screen::Home:
+      if (hit(x, y, 24, 117, 432, 68)) {
+        ride_->start(millis(), sensorSnapshot_.pulseCount);
+        batteryLowEventLogged_ = false;
+        batteryCriticalEventLogged_ = false;
+        String error;
+        if (storage_->loggingEnabled() &&
+            logger_->start(*storage_, *settings_, *battery_, error)) {
+          logger_->event(*storage_, *ride_, "START", "user started ride");
+        } else if (error.length()) {
+          lastMessage_ = error;
+        }
+        saveRecoveryIfNeeded(millis(), true);
         enter(Screen::Ride);
-      } else if (hit(x, y, 174, 70, 132, 82)) {
-        String error; historyCount_ = repository_->list(*storage_, history_, 12, error); enter(Screen::History);
-      } else if (hit(x, y, 324, 70, 132, 82)) {
-        enter(Screen::Diagnostics);
-      } else if (hit(x, y, 24, 170, 132, 82)) {
+      } else if (hit(x, y, 24, 202, 206, 66) && storage_->sdAvailable()) {
+        String error;
+        historyCount_ = repository_->list(*storage_, history_, 12, error);
+        historyScrollOffset_ = 0;
+        historyMessage_ = error;
+        enter(Screen::History);
+      } else if (hit(x, y, 250, 202, 206, 66)) {
+        enter(Screen::Phone);
+      } else if (hit(x, y, 180, 270, 150, 50)) {
+        settingsOpenedFromRide_ = false;
         enter(Screen::Settings);
-      } else if (hit(x, y, 174, 170, 132, 82) && storage_->sdAvailable()) {
-        startUsbMode();
-        enter(Screen::UsbStorage);
-      } else if (hit(x, y, 324, 170, 132, 82)) {
-        enter(Screen::About);
+      }
+      break;
+    case Screen::Phone:
+      if (y < 42 && x < 90) {
+        enter(router_.previous() == Screen::Settings ? Screen::Settings : Screen::Home);
+      } else if (phone_->state().pairingCode &&
+                 hit(x, y, 150, 266, 180, 40)) {
+        phone_->cancelPairing();
+        dirty_ = true;
+      } else if (phone_->state().paired && !phone_->state().pairingCode &&
+                 !phone_->ready() &&
+                 hit(x, y, 120, 247, 240, 42)) {
+        phone_->cancelPairing();
+        dirty_ = true;
+      } else if (!phone_->state().paired &&
+                 hit(x, y, 106, 225, 268, 45)) {
+        phone_->startPairing(millis());
+        dirty_ = true;
       }
       break;
     case Screen::History:
-      if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::MainMenu);
-      else if (historyCount_ && y >= 52 && y < 52 + historyCount_ * 32) { historySelected_ = (y-52)/32; enter(Screen::HistoryDetail); }
+      if (y < 42 && x < 90) enter(Screen::Home);
+      else if (historyCount_ && y >= 57) {
+        const uint8_t visible =
+            min<uint8_t>(historyCount_ - historyScrollOffset_, 3);
+        if (y >= 57 + visible * 75) break;
+        const uint8_t row = (y - 57) / 75;
+        if ((y - 57) % 75 < 66) {
+          historySelected_ = historyScrollOffset_ + row;
+          enter(Screen::HistoryDetail);
+        }
+      }
       break;
     case Screen::HistoryDetail:
-      if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::History);
-      else if (hit(x,y,20,270,130,40)) { String error; RideRecoveryData active=ride_->recoveryData(); lastMessage_=repository_->remove(*storage_,history_[historySelected_],active,error)?"Ride deleted":error; String listError;historyCount_=repository_->list(*storage_,history_,12,listError);enter(Screen::History); }
+      if ((y < 42 && x < 90) || hit(x, y, 304, 242, 176, 78)) {
+        enter(Screen::History);
+      } else if (hit(x, y, 8, 242, 150, 78)) {
+        enter(Screen::DeleteRideConfirm);
+      } else if (hit(x, y, 158, 242, 146, 78) &&
+                 storage_->sdAvailable()) {
+        startUsbMode();
+        enter(Screen::UsbStorage);
+      }
+      break;
+    case Screen::DeleteRideConfirm:
+      if (hit(x, y, 68, 188, 177, 54)) {
+        enter(Screen::HistoryDetail);
+      } else if (hit(x, y, 245, 188, 167, 54) &&
+                 historySelected_ < historyCount_) {
+        String error;
+        RideRecoveryData active = ride_->recoveryData();
+        const bool removed =
+            repository_->remove(*storage_, history_[historySelected_], active,
+                                error);
+        historyMessage_ =
+            removed ? "Ride deleted" : "Delete failed: " + error;
+        String listError;
+        historyCount_ =
+            repository_->list(*storage_, history_, 12, listError);
+        if (historyCount_ <= 3) {
+          historyScrollOffset_ = 0;
+        } else if (historyScrollOffset_ > historyCount_ - 3) {
+          historyScrollOffset_ = historyCount_ - 3;
+        }
+        if (listError.length()) {
+          historyMessage_ = "History refresh failed: " + listError;
+        }
+        enter(Screen::History);
+      }
       break;
 
     case Screen::Diagnostics:
-      if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
-        enter(Screen::MainMenu);
-      } else if (hit(x, y, 18, 48, 210, 40)) {
+      if (y < 42 && x < 90) {
+        enter(Screen::Settings);
+      } else if (hit(x, y, 18, 57, 214, 56)) {
         enter(Screen::DisplayTest);
-      } else if (hit(x, y, 252, 48, 210, 40)) {
+      } else if (hit(x, y, 248, 57, 214, 56)) {
         enter(Screen::TouchRawTest);
-      } else if (hit(x, y, 18, 100, 210, 40)) {
-        enter(Screen::PaintTest);
-      } else if (hit(x, y, 252, 100, 210, 40) && storage_->sdAvailable()) {
+      } else if (hit(x, y, 18, 125, 214, 56) && storage_->sdAvailable()) {
         enter(Screen::SdTest);
-      } else if (hit(x, y, 18, 152, 210, 40) && storage_->sdAvailable()) {
+      } else if (hit(x, y, 248, 125, 214, 56)) {
+        enter(Screen::SensorTest);
+      } else if (hit(x, y, 18, 193, 214, 56)) {
+        enter(Screen::BatteryTest);
+      } else if (hit(x, y, 248, 193, 214, 56)) {
+        enter(Screen::SystemInfo);
+      } else if (hit(x, y, 18, 266, 444, 41) && storage_->sdAvailable()) {
         startUsbMode();
         enter(Screen::UsbStorage);
-      } else if (hit(x, y, 252, 152, 210, 40)) {
-        enter(Screen::SensorTest);
-      } else if (hit(x, y, 18, 204, 210, 40)) {
-        enter(Screen::BatteryTest);
-      } else if (hit(x, y, 252, 204, 210, 40)) {
-        enter(Screen::SystemInfo);
       }
       break;
 
     case Screen::DisplayTest:
-    case Screen::TouchRawTest:
+      if (!exactPreviewActive_) {
+        if (y < 42 && x < 90) {
+          enter(Screen::Diagnostics);
+        } else if (hit(x, y, 170, 269, 140, 38)) {
+          exactPreviewActive_ = true;
+          exactPreviewIndex_ = 0;
+          dirty_ = true;
+        }
+      } else if (x < 160) {
+        exactPreviewIndex_ =
+            exactPreviewIndex_ == 0
+                ? static_cast<uint16_t>(ui_exact::ScreenId::COUNT) - 1
+                : exactPreviewIndex_ - 1;
+        dirty_ = true;
+      } else if (x >= 320) {
+        exactPreviewIndex_ =
+            (exactPreviewIndex_ + 1) %
+            static_cast<uint16_t>(ui_exact::ScreenId::COUNT);
+        dirty_ = true;
+      } else {
+        exactPreviewActive_ = false;
+        dirty_ = true;
+      }
+      break;
     case Screen::SystemInfo:
     case Screen::SensorTest:
-      if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
+      if (hit(x, y, kBackX, kBackY, kBackW, kBackH) ||
+          (y < 42 && x < 90)) {
+        enter(Screen::Diagnostics);
+      }
+      break;
+    case Screen::TouchRawTest:
+      if (hit(x, y, 14, 270, 110, 40)) {
+        enter(Screen::PaintTest);
+      } else if ((y < 42 && x < 90) ||
+                 hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
         enter(Screen::Diagnostics);
       }
       break;
 
     case Screen::BatteryTest:
-      if (hit(x,y,20,270,80,40)) { settings_->batteryCalibrationFactor -= 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
-      else if (hit(x,y,120,270,80,40)) { settings_->batteryCalibrationFactor += 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
-      else if (hit(x,y,220,270,110,40)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?"Calibration saved":e; dirty_=true; }
-      else if (hit(x,y,kBackX,kBackY,kBackW,kBackH)) enter(Screen::Diagnostics);
+      if (y < 42 && x < 90) enter(Screen::Diagnostics);
+      else if (hit(x,y,12,262,108,58)) { settings_->batteryCalibrationFactor -= 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
+      else if (hit(x,y,118,262,108,58)) { settings_->batteryCalibrationFactor += 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
+      else if (hit(x,y,224,262,124,58)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?"Calibration saved":e; dirty_=true; }
+      else if (hit(x,y,346,262,128,58)) enter(Screen::Diagnostics);
       break;
 
-    case Screen::About:
-      if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
-        enter(Screen::MainMenu);
+    case Screen::SettingsRgbLed:
+      if (y < 42 && x < 90) {
+        enter(Screen::Settings);
+      } else if (hit(x, y, 18, 57, 444, 48)) {
+        settings_->rgbSpeedTrendEnabled =
+            !settings_->rgbSpeedTrendEnabled;
+        String error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        lastMessage_ = saved ? "Speed LED setting saved" : error;
+        dirty_ = true;
+      } else if (hit(x, y, 18, 113, 444, 48)) {
+        const float value = settings_->rgbSpeedTrendToleranceKmh;
+        settings_->rgbSpeedTrendToleranceKmh =
+            value < 0.35f ? 0.5f
+                          : (value < 0.75f ? 1.0f
+                                         : (value < 1.5f ? 2.0f : 0.2f));
+        String error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        lastMessage_ = saved ? "Stable range saved" : error;
+        dirty_ = true;
+      } else if (hit(x, y, 18, 169, 444, 48)) {
+        const uint8_t value = settings_->rgbLedBrightnessPercent;
+        settings_->rgbLedBrightnessPercent =
+            value < 15 ? 20
+                       : (value < 30 ? 40
+                                     : (value < 55 ? 70
+                                                   : (value < 85 ? 100 : 10)));
+        String error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        lastMessage_ = saved ? "LED brightness saved" : error;
+        dirty_ = true;
       }
       break;
 
     case Screen::PaintTest:
-      if (hit(x, y, 14, 270, 92, 40)) {
+      if (hit(x, y, 18, 270, 208, 37)) {
         dirty_ = true;
-      } else if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
+      } else if ((y < 42 && x < 90) || hit(x, y, 238, 270, 224, 37)) {
         enter(Screen::Diagnostics);
       }
       break;
 
     case Screen::SdTest:
-      if (hit(x, y, 22, 270, 120, 40)) {
+      if (hit(x, y, 128, 270, 224, 37)) {
         sdTestResult_ = storage_->runSdTest();
         sdTestRun_ = true;
         dirty_ = true;
-      } else if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
+      } else if (y < 42 && x < 90) {
         enter(Screen::Diagnostics);
       }
       break;
 
     case Screen::UsbStorage:
-      if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
-        if (usb_->active()) ESP.restart(); else enter(Screen::MainMenu);
+      if (hit(x, y, 142, 273, 196, 34) ||
+          (!usb_->active() && y < 42 && x < 90)) {
+        if (usb_->active()) ESP.restart(); else enter(Screen::Home);
       }
       break;
 
     case Screen::Settings:
-      if (hit(x, y, 252, 48, 42, 32)) {
-        settings_->wheelCircumferenceM -= 0.005f;
-      } else if (hit(x, y, 416, 48, 42, 32)) {
-        settings_->wheelCircumferenceM += 0.005f;
-      } else if (hit(x, y, 252, 84, 42, 32)) {
-        settings_->stopThresholdKmh -= 0.5f;
-      } else if (hit(x, y, 416, 84, 42, 32)) {
-        settings_->stopThresholdKmh += 0.5f;
-      } else if (hit(x, y, 284, 120, 174, 32)) {
-        settings_->sensorInterruptMode =
-            settings_->sensorInterruptMode == FALLING ? RISING
-                                                      : (settings_->sensorInterruptMode == RISING ? CHANGE : FALLING);
-      } else if (hit(x, y, 284, 156, 174, 32)) {
-        settings_->sensorActiveLevel = settings_->sensorActiveLevel == LOW ? HIGH : LOW;
-      } else if (hit(x, y, 284, 192, 174, 32)) {
-        settings_->sensorPullupEnabled = !settings_->sensorPullupEnabled;
-      } else if (hit(x, y, 252, 228, 42, 32)) {
-        settings_->displayBrightnessPercent -= 5;
-      } else if (hit(x, y, 416, 228, 42, 32)) {
-        settings_->displayBrightnessPercent += 5;
-      } else if (hit(x, y, 14, 270, 110, 40)) {
+      if (y < 42 && x < 90) {
+        const bool returnToRide = settingsOpenedFromRide_;
+        settingsOpenedFromRide_ = false;
+        enter(returnToRide ? Screen::Ride : Screen::Home);
+      }
+      else if (hit(x, y, 18, 57, 214, 62)) {
+        if (settingsLockedDuringRide()) showSettingsLockedNotice();
+        else enter(Screen::SettingsRide);
+      }
+      else if (hit(x, y, 248, 57, 214, 62)) enter(Screen::SettingsDisplay);
+      else if (hit(x, y, 18, 131, 214, 62)) enter(Screen::Phone);
+      else if (hit(x, y, 248, 131, 214, 62)) enter(Screen::SettingsSystem);
+      else if (hit(x, y, 18, 205, 214, 62)) {
+        if (settingsLockedDuringRide()) showSettingsLockedNotice();
+        else enter(Screen::Diagnostics);
+      }
+      else if (hit(x, y, 248, 205, 214, 62)) {
+        if (settingsLockedDuringRide()) showSettingsLockedNotice();
+        else enter(Screen::SettingsRgbLed);
+      }
+      break;
+    case Screen::SettingsRide:
+      if (y < 42 && x < 90) enter(Screen::Settings);
+      else if (hit(x, y, 18, 57, 444, 48)) enter(Screen::SettingsWheel);
+      else if (hit(x, y, 18, 113, 444, 48)) enter(Screen::SettingsStopThreshold);
+      else if (hit(x, y, 18, 169, 444, 48)) {
+        settings_->autoPauseEnabled = !settings_->autoPauseEnabled;
+        String error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        lastMessage_ = saved ? "Auto pause saved" : error;
+        dirty_ = true;
+      }
+      break;
+    case Screen::SettingsDisplay:
+      if (y < 42 && x < 90) enter(Screen::Settings);
+      break;
+    case Screen::SettingsSystem:
+      if (y < 42 && x < 90) enter(Screen::Settings);
+      else if (hit(x, y, 18, 113, 444, 48) && storage_->sdAvailable()) {
+        if (settingsLockedDuringRide()) {
+          showSettingsLockedNotice();
+        } else {
+          startUsbMode();
+          enter(Screen::UsbStorage);
+        }
+      }
+      break;
+    case Screen::SettingsWheel:
+      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) settings_->wheelCircumferenceM -= 0.005f;
+      else if (hit(x, y, 320, 171, 86, 52)) settings_->wheelCircumferenceM += 0.005f;
+      else if (hit(x, y, 150, 287, 180, 27)) {
         app::validateSettings(*settings_);
-        display_->setBrightness(settings_->displayBrightnessPercent);
         sensor_->updateSettings(*settings_);
         String error;
         const bool saved = storage_->saveSettings(*settings_, error);
-        if (saved && logger_->active()) logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "settings saved");
+        if (saved && logger_->active()) {
+          logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "wheel circumference saved");
+        }
         lastMessage_ = saved ? "Settings saved" : error;
-      } else if (hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
-        app::validateSettings(*settings_);
-        display_->setBrightness(settings_->displayBrightnessPercent);
-        sensor_->updateSettings(*settings_);
-        enter(Screen::MainMenu);
-        return;
+        enter(Screen::SettingsRide);
       }
       app::validateSettings(*settings_);
-      display_->setBrightness(settings_->displayBrightnessPercent);
+      dirty_ = true;
+      break;
+    case Screen::SettingsStopThreshold:
+      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) settings_->stopThresholdKmh -= 0.5f;
+      else if (hit(x, y, 320, 171, 86, 52)) settings_->stopThresholdKmh += 0.5f;
+      else if (hit(x, y, 150, 287, 180, 27)) {
+        app::validateSettings(*settings_);
+        sensor_->updateSettings(*settings_);
+        String error;
+        const bool saved = storage_->saveSettings(*settings_, error);
+        if (saved && logger_->active()) {
+          logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "stop threshold saved");
+        }
+        lastMessage_ = saved ? "Settings saved" : error;
+        enter(Screen::SettingsRide);
+      }
+      app::validateSettings(*settings_);
       dirty_ = true;
       break;
 
     case Screen::Ride:
-      if (hit(x, y, 398, 4, 76, 28)) {
-        enter(Screen::MainMenu);
-      } else if (hit(x, y, 0, kControlY, 160, kControlH)) {
+      if (hit(x, y, 60, 2, 44, 36)) {
+        settingsOpenedFromRide_ = true;
+        enter(Screen::Settings);
+      } else if (hit(x, y, 321, 2, 44, 36)) {
+        if (rainLock_.enable(millis())) dirty_ = true;
+      } else if (rideMediaPage() && hit(x, y, 82, 201, 92, 47) &&
+                 (phone_->mediaState().supportedActions &
+                  media::ActionMask::Previous)) {
+        phone_->sendMediaAction(media::Action::Previous);
+      } else if (rideMediaPage() && hit(x, y, 190, 194, 100, 61) &&
+                 (phone_->mediaState().supportedActions &
+                  (media::ActionMask::Toggle | media::ActionMask::Play |
+                   media::ActionMask::Pause))) {
+        phone_->sendMediaAction(media::Action::Toggle);
+      } else if (rideMediaPage() && hit(x, y, 306, 201, 92, 47) &&
+                 (phone_->mediaState().supportedActions &
+                  media::ActionMask::Next)) {
+        phone_->sendMediaAction(media::Action::Next);
+      } else if (hit(x, y, 24, 264, 432, 43) &&
+          (ride_->state() == RideState::IDLE || ride_->state() == RideState::FINISHED)) {
         if (ride_->state() == RideState::IDLE || ride_->state() == RideState::FINISHED) {
           ride_->start(millis(), sensorSnapshot_.pulseCount);
           batteryLowEventLogged_ = false; batteryCriticalEventLogged_ = false;
@@ -523,7 +713,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
           saveRecoveryIfNeeded(millis(), true);
         }
         dirty_ = true;
-      } else if (hit(x, y, 160, kControlY, 160, kControlH)) {
+      } else if (hit(x, y, 24, 266, 291, 41)) {
         if (ride_->state() == RideState::RIDING) {
           logger_->event(*storage_, *ride_, "PAUSE", "user paused ride");
           ride_->pause(millis());
@@ -533,7 +723,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
         }
         saveRecoveryIfNeeded(millis(), true);
         dirty_ = true;
-      } else if (hit(x, y, 320, kControlY, 160, kControlH)) {
+      } else if (hit(x, y, 327, 266, 129, 41)) {
         if (ride_->state() == RideState::RIDING || ride_->state() == RideState::PAUSED) {
           enter(Screen::FinishConfirm);
         }
@@ -541,12 +731,18 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::FinishConfirm:
-      if (hit(x,y,92,210,130,50)) enter(Screen::Ride);
-      else if (hit(x,y,258,210,130,50)) { const uint32_t now=millis(); ride_->update(now,speed_->filteredKmh(),sensorSnapshot_.pulseCount,sensorSnapshot_.rejectedPulseCount); ride_->finish(now); String error; if(!logger_->finish(*storage_,*ride_,*battery_,error)) lastMessage_=error; else clearRecovery(); enter(Screen::RideSummary); }
+      if (hit(x,y,78,198,157,34)) enter(Screen::Ride);
+      else if (hit(x,y,245,198,157,34)) { const uint32_t now=millis(); ride_->update(now,speed_->filteredKmh(),sensorSnapshot_.pulseCount,sensorSnapshot_.rejectedPulseCount); ride_->finish(now); String error; if(!logger_->finish(*storage_,*ride_,*battery_,error)) lastMessage_=error; else clearRecovery(); enter(Screen::RideSummary); }
       break;
     case Screen::RideSummary:
-      if(hit(x,y,70,260,150,44)){ ride_->newRide(millis(),sensorSnapshot_.pulseCount); enter(Screen::Ride); }
-      else if(hit(x,y,260,260,150,44)) enter(Screen::MainMenu);
+      if(hit(x,y,24,265,194,42)) enter(Screen::Home);
+      else if(hit(x,y,230,265,226,42)) {
+        String error;
+        historyCount_ = repository_->list(*storage_, history_, 12, error);
+        historyScrollOffset_ = 0;
+        historyMessage_ = error;
+        enter(Screen::History);
+      }
       break;
   }
 }
@@ -570,22 +766,32 @@ void UiApp::handlePaint() {
 }
 
 void UiApp::draw() {
-  display_->beginFrame();
-  switch (screen_) {
+  if (partialRainFrame_ || partialRideFrame_) {
+    display_->beginPartialFrame();
+  } else {
+    display_->beginFrame();
+  }
+  switch (router_.current()) {
     case Screen::SdMissing:
       drawSdMissing();
       break;
     case Screen::Recovery:
       drawRecovery();
       break;
-    case Screen::MainMenu:
+    case Screen::Home:
       drawMainMenu();
+      break;
+    case Screen::Phone:
+      drawPhone();
       break;
     case Screen::History:
       drawHistory();
       break;
     case Screen::HistoryDetail:
       drawHistoryDetail();
+      break;
+    case Screen::DeleteRideConfirm:
+      drawDeleteRideConfirm();
       break;
     case Screen::Diagnostics:
       drawDiagnostics();
@@ -617,8 +823,23 @@ void UiApp::draw() {
     case Screen::Settings:
       drawSettings();
       break;
-    case Screen::About:
-      drawAbout();
+    case Screen::SettingsRide:
+      drawSettingsRide();
+      break;
+    case Screen::SettingsDisplay:
+      drawSettingsDisplay();
+      break;
+    case Screen::SettingsSystem:
+      drawSettingsSystem();
+      break;
+    case Screen::SettingsWheel:
+      drawSettingsWheel();
+      break;
+    case Screen::SettingsStopThreshold:
+      drawSettingsStopThreshold();
+      break;
+    case Screen::SettingsRgbLed:
+      drawSettingsRgbLed();
       break;
     case Screen::Ride:
       drawRide();
@@ -630,7 +851,15 @@ void UiApp::draw() {
       drawRideSummary();
       break;
   }
-  display_->commitFrame();
+  if (partialRainFrame_) {
+    display_->commitFrameArea(60, 60, 360, 186);
+  } else if (partialRideFrame_) {
+    // Static header/footer stay on the panel; only the live content band is
+    // transferred at telemetry cadence.
+    display_->commitFrameArea(18, 44, 444, 214);
+  } else {
+    display_->commitFrame();
+  }
 }
 
 void UiApp::drawStatusBar(const String& title, const String& status) {
@@ -715,176 +944,6 @@ void UiApp::drawSoftButton(int16_t x, int16_t y, int16_t w, int16_t h, const Str
   tft.drawString(label, x + w / 2, y + h / 2, 2);
 }
 
-void UiApp::drawMenuTile(int16_t x, int16_t y, int16_t w, int16_t h, const String& title,
-                         bool selected, bool enabled) {
-  TFT_eSPI& tft = display_->tft();
-  const uint16_t border = !enabled ? ui::UI_DISABLED : (selected ? ui::BORDER_ACTIVE : ui::BORDER_SOFT);
-  const uint16_t fg = !enabled ? ui::UI_DISABLED : (selected ? ui::UI_CYAN : ui::UI_TEXT);
-  drawPanel(tft, x, y, w, h, selected && enabled ? ui::UI_PANEL_ACTIVE : ui::UI_PANEL, border,
-            selected && enabled);
-
-  const int16_t cx = x + w / 2;
-  const int16_t iconY = y + 30;
-  const uint16_t icon = enabled ? ui::LABEL : ui::UI_DISABLED;
-  const uint16_t tileFill = selected && enabled ? ui::UI_PANEL_ACTIVE : ui::UI_PANEL;
-  if (title == "Ride") {
-    drawRideArrowIcon(tft, cx, iconY, icon, tileFill);
-  } else if (title == "Diagnostics") {
-    drawMenuPulseIcon(tft, cx, iconY, icon);
-  } else if (title == "Settings") {
-    drawSlidersIcon(tft, cx, iconY, icon);
-  } else if (title == "Storage" || title == "USB Storage") {
-    drawStorageIcon(tft, cx, iconY, icon);
-  } else if (title == "About") {
-    drawMenuInfoIcon(tft, cx, iconY, icon);
-  }
-
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(fg, tileFill);
-  String label = title;
-  label.toUpperCase();
-  tft.drawString(label, cx, y + h - 20, 2);
-}
-
-void UiApp::drawMetricCard(int16_t x, int16_t y, int16_t w, int16_t h, const String& label,
-                           const String& value, const String& unit) {
-  TFT_eSPI& tft = display_->tft();
-  drawPanel(tft, x, y, w, h, ui::UI_PANEL, ui::UI_LINE_SOFT);
-  const int16_t ix = x + 24;
-  const int16_t iy = y + 24;
-  if (label == "MAX SPEED" || label == "AVG SPEED") {
-    drawGaugeIcon(tft, ix, iy, ui::TEXT_MUTED);
-  } else if (label == "DISTANCE") {
-    drawRoadIcon(tft, ix, iy, ui::TEXT_MUTED);
-  } else if (label == "MOVING" || label == "ELAPSED") {
-    drawClockIcon(tft, ix, iy, ui::TEXT_MUTED);
-  } else {
-    tft.fillCircle(ix, iy, 10, ui::TEXT_MUTED);
-  }
-
-  tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(ui::UI_CYAN, ui::UI_PANEL);
-  tft.drawString(label, x + 46, y + 17, 2);
-
-  const bool hasUnit = unit.length() > 0;
-  const bool longValue = value.length() > 5;
-  const uint8_t valueFont = longValue ? 2 : 4;
-  const int16_t valueY = hasUnit ? y + 57 : (longValue ? y + 60 : y + 58);
-
-  tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-  if (unit.length() > 0) {
-    const int16_t valueW = tft.textWidth(value, valueFont);
-    const int16_t unitW = tft.textWidth(unit, 2);
-    const int16_t gap = 6;
-    const int16_t groupW = valueW + gap + unitW;
-    const int16_t groupX = x + (w - groupW) / 2;
-
-    tft.setTextDatum(ML_DATUM);
-    tft.drawString(value, groupX, valueY, valueFont);
-    tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-    tft.drawString(unit, groupX + valueW + gap, valueY + 3, 2);
-  } else {
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString(value, x + w / 2, valueY, valueFont);
-  }
-}
-
-void UiApp::drawPageDots(uint8_t activePage, uint8_t pageCount) {
-  TFT_eSPI& tft = display_->tft();
-  const int16_t spacing = 18;
-  const int16_t startX = 240 - ((pageCount - 1) * spacing) / 2;
-  for (uint8_t i = 0; i < pageCount; ++i) {
-    tft.fillCircle(startX + i * spacing, kDotsY, i == activePage ? 5 : 4,
-                   i == activePage ? ui::UI_CYAN : ui::UI_LINE);
-  }
-}
-
-void UiApp::drawGraphCard(int16_t x, int16_t y, int16_t w, int16_t h) {
-  TFT_eSPI& tft = display_->tft();
-  drawPanel(tft, x, y, w, h, ui::UI_PANEL, ui::UI_LINE_SOFT);
-
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(ui::UI_CYAN, ui::UI_PANEL);
-  tft.drawString("SPEED", x + 16, y + 16, 2);
-  tft.setTextDatum(TR_DATUM);
-  tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-  tft.drawString(String(speed_->currentKmh(), 1) + " km/h", x + w - 16, y + 16, 4);
-
-  const int16_t gx = x + 52;
-  const int16_t gy = y + 52;
-  const int16_t gw = w - 78;
-  const int16_t gh = h - 84;
-  float maxSpeed = 10.0f;
-  for (uint8_t i = 0; i < 120; ++i) if (graphSamples_[i] > maxSpeed) maxSpeed = graphSamples_[i];
-  maxSpeed = ceilf(maxSpeed / 5.0f) * 5.0f;
-
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-  for (uint8_t i = 0; i < 5; ++i) {
-    const int16_t lineY = gy + gh - (i * gh) / 4;
-    tft.drawFastHLine(gx, lineY, gw, ui::UI_GRID);
-    tft.drawString(String((maxSpeed * i) / 4, 0), gx - 10, lineY, 2);
-  }
-  tft.setTextDatum(TL_DATUM);
-  tft.drawString("-" + String(settings_->graphWindowSeconds) + "s", gx, gy + gh + 12, 2);
-  tft.setTextDatum(TR_DATUM);
-  tft.drawString("now", gx + gw, gy + gh + 12, 2);
-  tft.drawFastVLine(gx + gw, gy, gh, ui::UI_MUTED);
-
-  int16_t prevX = gx;
-  int16_t prevY = gy + gh;
-  for (uint8_t i = 0; i < 120; ++i) {
-    const uint8_t idx = (graphWriteIndex_ + i) % 120;
-    const float sample = constrain(graphSamples_[idx], 0.0f, maxSpeed);
-    const int16_t px = gx + (i * gw) / 119;
-    const int16_t py = gy + gh - static_cast<int16_t>((sample / maxSpeed) * gh);
-    if (i > 0) {
-      drawLine3(tft, prevX, prevY, px, py, ui::UI_CYAN);
-    }
-    prevX = px;
-    prevY = py;
-  }
-  tft.fillCircle(prevX, prevY, 5, ui::UI_CYAN);
-}
-
-void UiApp::drawBottomRideControls() {
-  const RideState state = ride_->state();
-  TFT_eSPI& tft = display_->tft();
-  tft.fillRect(0, kControlY, display_->width(), kControlH, ui::UI_BG);
-  tft.drawFastHLine(ui::SAFE, kControlY, display_->width() - ui::SAFE * 2, ui::BORDER_SOFT);
-  tft.drawFastVLine(160, kControlY + 10, kControlH - 20, ui::BORDER_SOFT);
-  tft.drawFastVLine(320, kControlY + 10, kControlH - 20, ui::BORDER_SOFT);
-
-  auto drawSegment = [&](int16_t x, int16_t w, const String& label, uint8_t iconKind,
-                         uint16_t color, bool enabled) {
-    const uint16_t fg = enabled ? color : ui::UI_DISABLED;
-    constexpr int16_t iconW = 28;
-    constexpr int16_t gap = 12;
-    const int16_t textW = tft.textWidth(label, 4);
-    const int16_t groupW = iconW + gap + textW;
-    const int16_t iconX = x + (w - groupW) / 2;
-    const int16_t cy = kControlY + 32;
-    if (iconKind == 0) {
-      tft.fillTriangle(iconX, cy - 14, iconX, cy + 14, iconX + 26, cy, fg);
-    } else if (iconKind == 1) {
-      tft.fillRoundRect(iconX + 3, cy - 15, 8, 30, 2, fg);
-      tft.fillRoundRect(iconX + 17, cy - 15, 8, 30, 2, fg);
-    } else {
-      tft.fillRoundRect(iconX + 2, cy - 13, 26, 26, 2, fg);
-    }
-    tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(fg, ui::UI_BG);
-    tft.drawString(label, iconX + iconW + gap, cy, 4);
-  };
-
-  drawSegment(0, 160, state == RideState::FINISHED ? "NEW" : "START", 0,
-              ui::UI_GREEN, state == RideState::IDLE || state == RideState::FINISHED);
-  drawSegment(160, 160, state == RideState::PAUSED ? "RESUME" : "PAUSE", 1,
-              ui::TEXT_MUTED, state == RideState::RIDING || state == RideState::PAUSED);
-  drawSegment(320, 160, "STOP", 2, ui::UI_RED,
-              state == RideState::RIDING || state == RideState::PAUSED);
-}
-
 String UiApp::storageStatusShort() const {
   if (storage_->usbModeActive()) {
     return "USB";
@@ -892,389 +951,529 @@ String UiApp::storageStatusShort() const {
   return storage_->sdAvailable() ? "SD OK" : "NO SD";
 }
 
-String UiApp::batteryStatusShort() const {
-  return battery_->enabled() ? battery_->statusText() : "BAT N/A";
-}
-
-String UiApp::rideStatusLine() const {
-  return ride_->stateText();
-}
-
 void UiApp::drawSdMissing() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("SD card not found", "NO SD");
   TFT_eSPI& tft = display_->tft();
-  drawPanel(tft, 46, 76, 388, 136, ui::UI_PANEL, ui::BORDER_SOFT);
-  tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(ui::UI_ORANGE, ui::UI_PANEL);
-  tft.drawString("SD card not found", 240, 96, 4);
-  tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-  tft.drawString("Ride logging disabled.", 240, 136, 2);
-  tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-  tft.drawString("Retry SD init or continue without saving.", 240, 162, 2);
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_01_SD_MISSING);
+  ui::HeaderStatus header;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = false;
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Storage", header);
   if (lastMessage_.length()) {
-    tft.setTextColor(ui::UI_RED, ui::UI_PANEL);
-    tft.drawString(lastMessage_, 240, 188, 2);
+    tft.fillRect(80, 174, 320, 22, ui::BG);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(ui::DANGER, ui::BG);
+    tft.drawString(lastMessage_, 240, 185, 1);
   }
-  drawSoftButton(70, 232, 150, 46, "RETRY", ui::UI_CYAN);
-  drawSoftButton(250, 232, 170, 46, "CONTINUE", ui::UI_GREEN);
 }
 
 void UiApp::drawRecovery() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Recovery");
-  drawStorageStatusIcon(452, 17);
   TFT_eSPI& tft = display_->tft();
-  drawPanel(tft, 44, 58, 392, 132, ui::UI_PANEL, ui::BORDER_SOFT);
-  tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(ui::UI_ORANGE, ui::UI_PANEL);
-  tft.drawString("Unfinished ride found", 240, 78, 4);
-  tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-  tft.drawString("Recovered as paused", 240, 116, 2);
-  tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-  tft.drawString("Distance " + String(ride_->stats().distanceM / 1000.0f, 2) + " km", 240, 144, 2);
-  tft.drawString("Moving " + durationText(ride_->stats().movingMs), 240, 168, 2);
-  drawSoftButton(52, 204, 110, 48, "RESUME", ui::UI_GREEN);
-  drawSoftButton(185, 204, 110, 48, "FINISH", ui::UI_ORANGE);
-  drawSoftButton(318, 204, 110, 48, "DISCARD", ui::UI_RED);
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_02_RECOVERY);
+  ui::HeaderStatus header;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Recovery", header);
+  const RideStats& stats = ride_->stats();
+  ui::Components::card(tft, 24, 119, 122, 75, "DISTANCE",
+                       String(stats.distanceM / 1000.0f, 1), "km");
+  ui::Components::card(tft, 158, 119, 122, 75, "MOVING",
+                       durationText(stats.movingMs).substring(3));
+  ui::Components::card(tft, 292, 119, 164, 75, "AVG SPEED",
+                       String(stats.averageMovingSpeedKmh, 1), "km/h");
 }
 
 void UiApp::drawMainMenu() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Menu");
-  drawStorageStatusIcon(416, 17);
-  drawBatteryStatusIcon(452, 17);
-  drawMenuTile(24, 70, 132, 82, "Ride", true, true);
-  drawMenuTile(174, 70, 132, 82, "History", false, storage_->sdAvailable());
-  drawMenuTile(324, 70, 132, 82, "Diagnostics", false, true);
-  drawMenuTile(24, 170, 132, 82, "Settings", false, true);
-  drawMenuTile(174, 170, 132, 82, "Storage", false, storage_->sdAvailable());
-  drawMenuTile(324, 170, 132, 82, "About", false, true);
+  ui::HomeViewModel model;
+  model.header.phoneConnected = phone_->ready();
+  model.header.sdAvailable = storage_->sdAvailable();
+  model.header.batteryAvailable = battery_->enabled();
+  model.header.batteryPercent = battery_->percent();
+  model.phoneConnected = phone_->ready();
+  model.historyAvailable = storage_->sdAvailable();
+  model.rideCount = historyCount_;
+  model.timeText = currentClockText();
+  ui::HomeScreen::draw(display_->tft(), model);
+}
+
+void UiApp::drawPhone() {
+  TFT_eSPI& tft = display_->tft();
+  const PhoneState& phone = phone_->state();
+  const ui_exact::ScreenId source =
+      phone.pairingCode
+          ? ui_exact::ScreenId::SCREEN_31_PHONE_PAIRING
+          : (!phone.paired
+                 ? ui_exact::ScreenId::SCREEN_30_PHONE_UNPAIRED
+                 : (phone_->ready()
+                        ? ui_exact::ScreenId::SCREEN_32_PHONE_CONNECTED
+                        : ui_exact::ScreenId::SCREEN_35_PHONE_LOST));
+  ui_exact::ExactScreenRenderer(tft).draw(source);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, phone.pairingCode ? "Pair phone" : "Phone",
+                         header);
+  tft.setTextDatum(MC_DATUM);
+  if (phone.pairingCode) {
+    tft.fillRect(96, 195, 288, 112, ui::BG);
+    tft.fillRoundRect(115, 198, 250, 42, 12, ui::SURFACE);
+    tft.drawRoundRect(115, 198, 250, 42, 12, ui::BORDER);
+    char code[20];
+    snprintf(code, sizeof(code), "Code  %03lu %03lu",
+             static_cast<unsigned long>(phone.pairingCode / 1000),
+             static_cast<unsigned long>(phone.pairingCode % 1000));
+    tft.setTextColor(ui::ACCENT, ui::SURFACE);
+    tft.drawString(code, 240, 219, 4);
+    const uint32_t remainingMs =
+        static_cast<int32_t>(phone.pairingExpiresMs - millis()) > 0
+            ? phone.pairingExpiresMs - millis()
+            : 0;
+    char expires[24];
+    snprintf(expires, sizeof(expires), "Expires in %02lu:%02lu",
+             static_cast<unsigned long>(remainingMs / 60000UL),
+             static_cast<unsigned long>((remainingMs / 1000UL) % 60UL));
+    tft.setTextColor(ui::TEXT_MUTED, ui::BG);
+    tft.drawString(expires, 240, 252, 1);
+    ui::Components::button(tft, 150, 266, 180, 40, "Cancel", false, true,
+                           true);
+  } else if (phone.paired && phone_->ready()) {
+    tft.fillRect(18, 58, 444, 52, ui::BG);
+    const String peerName =
+        phone.displayName[0] ? String(phone.displayName) : String("Android phone");
+    const uint8_t nameFont = tft.textWidth(peerName, 4) <= 432 ? 4 : 2;
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(ui::TEXT, ui::BG);
+    tft.drawString(peerName, 24, nameFont == 4 ? 63 : 68, nameFont);
+    tft.fillCircle(28, 100, 3, ui::SUCCESS);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextColor(ui::TEXT_MUTED, ui::BG);
+    tft.drawString("Connected", 36, 100, 1);
+    ui::Components::card(tft, 24, 119, 192, 67, "PROTOCOL",
+                         phone.protocolVersion
+                             ? String(phone.protocolVersion)
+                             : String("--"));
+    ui::Components::card(tft, 228, 119, 228, 67, "ATT MTU",
+                         String(phone.negotiatedMtu), String(), true);
+    ui::Components::button(tft, 24, 208, 432, 43, "CONNECTED", false,
+                           false, false);
+    ui::Components::button(tft, 24, 263, 432, 41,
+                           phone.authorized ? "Paired and authorized"
+                                            : "Waiting for secure HELLO",
+                           false, false, false);
+  } else if (phone.paired) {
+    ui::Components::button(tft, 120, 247, 240, 42, "Cancel pairing", false,
+                           true, true);
+  }
 }
 
 void UiApp::drawHistory() {
-  display_->clear(ui::UI_BG); drawStatusBar("Ride History", storage_->sdAvailable()?"SD":"NO SD");
-  TFT_eSPI& tft=display_->tft();
-  if(!historyCount_) { tft.setTextDatum(MC_DATUM);tft.setTextColor(ui::UI_MUTED,ui::UI_BG);tft.drawString("No completed rides",240,130,2); }
-  for(uint8_t i=0;i<historyCount_ && i<6;++i){ const RideSummaryItem& r=history_[i]; const int16_t y=52+i*32; drawPanel(tft,16,y,448,28,ui::UI_PANEL,ui::UI_LINE_SOFT); tft.setTextDatum(ML_DATUM);tft.setTextColor(r.complete?ui::UI_TEXT:ui::UI_ORANGE,ui::UI_PANEL); char line[110];snprintf(line,sizeof(line),"ride_%06lu  %s  %.2f km  avg %.1f",static_cast<unsigned long>(r.id),r.complete?"":"Incomplete",r.distanceM/1000.f,r.avgKmh);tft.drawString(line,26,y+14,2); }
-  drawBackButton();
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::SecondaryScreens::history(display_->tft(), header, history_,
+                                historyCount_, historyScrollOffset_,
+                                historyMessage_);
 }
 void UiApp::drawHistoryDetail() {
-  display_->clear(ui::UI_BG); drawStatusBar("Ride details"); if(historySelected_>=historyCount_){drawBackButton();return;} const RideSummaryItem&r=history_[historySelected_]; char text[256];snprintf(text,sizeof(text),"ride_%06lu\n%s\nDistance: %.2f km\nElapsed: %s\nMoving: %s\nAverage: %.1f km/h\nMaximum: %.1f km/h\nBattery: %.2f -> %.2f V",static_cast<unsigned long>(r.id),r.complete?"Finished":"Incomplete",r.distanceM/1000.f,durationText(r.elapsedMs).c_str(),durationText(r.movingMs).c_str(),r.avgKmh,r.maxKmh,r.batteryStart,r.batteryEnd);drawTextBlock(text,28,52,23,ui::UI_TEXT,ui::UI_BG);drawSoftButton(20,270,130,40,"DELETE",ui::UI_RED);drawBackButton();
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::SecondaryScreens::historyDetail(
+      display_->tft(), header,
+      historySelected_ < historyCount_ ? &history_[historySelected_] : nullptr,
+      storage_->sdAvailable() && !storage_->usbModeActive());
+}
+
+void UiApp::drawDeleteRideConfirm() {
+  drawHistoryDetail();
+  ui::SecondaryScreens::deleteRideConfirm(display_->tft());
 }
 
 void UiApp::drawDiagnostics() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Diagnostics");
-  drawStorageStatusIcon(452, 17);
-  drawSoftButton(18, 48, 210, 40, "Display test", ui::UI_CYAN);
-  drawSoftButton(252, 48, 210, 40, "Touch raw test", ui::UI_CYAN);
-  drawSoftButton(18, 100, 210, 40, "Paint test", ui::UI_GREEN);
-  drawSoftButton(252, 100, 210, 40, "SD test", ui::UI_GREEN, storage_->sdAvailable());
-  drawSoftButton(18, 152, 210, 40, "USB MSC test", ui::UI_ORANGE, storage_->sdAvailable());
-  drawSoftButton(252, 152, 210, 40, "Sensor test", ui::UI_CYAN);
-  drawSoftButton(18, 204, 210, 40, "Battery test", ui::UI_MUTED);
-  drawSoftButton(252, 204, 210, 40, "System info", ui::UI_MUTED);
-  drawBackButton();
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::SecondaryScreens::diagnostics(display_->tft(), header, storage_->sdAvailable());
 }
 
 void UiApp::drawDisplayTest() {
   TFT_eSPI& tft = display_->tft();
-  tft.fillScreen(ui::UI_BG);
-  drawStatusBar("Display test", "ST7796");
-  const uint16_t colors[] = {ui::UI_BG, ui::UI_TEXT, ui::UI_RED, ui::UI_GREEN, TFT_BLUE, ui::UI_CYAN};
-  for (uint8_t i = 0; i < 6; ++i) {
-    tft.fillRect(20 + i * 74, 54, 64, 48, colors[i]);
-    tft.drawRect(20 + i * 74, 54, 64, 48, ui::UI_LINE);
+  ui_exact::ExactScreenRenderer exact(tft);
+  if (exactPreviewActive_) {
+    const ui_exact::ScreenId id =
+        static_cast<ui_exact::ScreenId>(exactPreviewIndex_);
+    exact.draw(id);
+    Serial.print("[UI] exact preview ");
+    Serial.println(ui_exact::getScreenAsset(id).name);
+    return;
   }
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(ui::UI_TEXT, ui::UI_BG);
-  tft.drawString("Text readability 1234567890", 22, 122, 2);
-  tft.drawString("Orientation: landscape 480x320", 22, 148, 2);
-  for (int i = 0; i < 8; ++i) {
-    tft.drawLine(24, 190 + i * 6, 260 + i * 18, 246, ui::UI_CYAN);
-  }
-  tft.drawRect(300, 130, 120, 74, ui::UI_GREEN);
-  tft.drawRoundRect(316, 150, 120, 74, 10, ui::UI_RED);
-  drawBackButton();
+  exact.draw(ui_exact::ScreenId::SCREEN_81_DISPLAY_TEST);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Display test", header);
 }
 
 void UiApp::drawTouchRawTest() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Touch raw test", touch_->isReady() ? "FT6336 OK" : "NO TOUCH");
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_82_TOUCH_RAW);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Touch raw", header);
   const TouchPoint& p = touch_->point();
-  String text;
-  text += "Touched: ";
-  text += p.touched ? "yes" : "no";
-  text += "\nPoints: " + String(p.points);
-  text += "\nRaw X/Y: " + String(p.rawX) + " / " + String(p.rawY);
-  text += "\nMapped X/Y: " + String(p.x) + " / " + String(p.y);
-  text += "\nINT level: " + String(p.intLevel ? "HIGH" : "LOW");
-  text += "\nLast touch ms: " + String(p.lastTouchMs);
-  drawTextBlock(text, 28, 58, 26, ui::UI_TEXT, ui::UI_BG);
-  display_->tft().drawLine(p.x - 12, p.y, p.x + 12, p.y, ui::UI_CYAN);
-  display_->tft().drawLine(p.x, p.y - 12, p.x, p.y + 12, ui::UI_CYAN);
+  ui::Components::card(tft, 18, 58, 142, 72, "X", String(p.x));
+  ui::Components::card(tft, 170, 58, 142, 72, "Y", String(p.y));
+  ui::Components::card(tft, 322, 58, 140, 72, "POINTS",
+                       String(p.points));
+  tft.fillRect(330, 145, 130, 58, ui::BG);
+  tft.setTextDatum(MR_DATUM);
+  tft.setTextColor(p.intLevel ? ui::TEXT : ui::SUCCESS, ui::BG);
+  tft.drawString(p.intLevel ? "HIGH" : "LOW", 456, 160, 2);
+  const uint32_t age = p.lastTouchMs ? millis() - p.lastTouchMs : 0;
+  tft.setTextColor(ui::TEXT, ui::BG);
+  tft.drawString(p.lastTouchMs ? String(age) + " ms ago" : "Never", 456,
+                 190, 2);
+  tft.fillRect(112, 212, 256, 82, ui::BG);
+  tft.drawFastVLine(240, 216, 74, ui::BORDER);
+  tft.drawFastHLine(120, 253, 240, ui::BORDER);
+  for (uint8_t i = 0; i < 2; ++i) {
+    const TouchContact& contact = p.contacts[i];
+    if (!contact.valid) continue;
+    const uint16_t color = i == 0 ? ui::UI_CYAN : ui::UI_ORANGE;
+    const int16_t px = 120 + (contact.x * 240) / 480;
+    const int16_t py = 216 + (contact.y * 74) / 320;
+    tft.drawCircle(px, py, 5, color);
+    tft.fillCircle(px, py, 2, color);
+  }
+  drawSoftButton(14, 270, 110, 40, "PAINT", ui::UI_CYAN);
   drawBackButton();
 }
 
 void UiApp::drawPaintTest() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Paint test", touch_->isReady() ? "DRAW" : "NO TOUCH");
-  display_->tft().drawRect(0, 42, display_->width(), 216, ui::UI_LINE);
-  drawSoftButton(14, 270, 92, 40, "CLEAR", ui::UI_CYAN);
-  drawBackButton();
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_83_PAINT_TEST);
+  tft.fillRect(0, 40, display_->width(), 220, ui::BG);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Paint test", header);
 }
 
 void UiApp::drawSdTest() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("SD test");
-  drawStorageStatusIcon(452, 17);
-  drawTextBlock(storage_->sdInfoText(), 22, 48, 20, storage_->sdAvailable() ? ui::UI_TEXT : ui::UI_RED,
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_84_SD_TEST);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "SD test", header);
+  tft.fillRect(18, 52, 444, 207, ui::BG);
+  drawTextBlock(storage_->sdInfoText(), 24, 62, 20,
+                storage_->sdAvailable() ? ui::UI_TEXT : ui::UI_RED,
                 ui::UI_BG);
   if (sdTestRun_) {
-    drawTextBlock(sdTestResult_.message, 22, 142, 20, sdTestResult_.ok ? ui::UI_GREEN : ui::UI_RED,
+    drawTextBlock(sdTestResult_.message, 24, 142, 20,
+                  sdTestResult_.ok ? ui::UI_GREEN : ui::UI_RED,
                   ui::UI_BG);
-    drawTextBlock(sdTestResult_.readBack.substring(0, 180), 22, 168, 18, ui::UI_MUTED, ui::UI_BG);
-  } else {
-    drawTextBlock("Press Run to create and read:\n/BIKE_SPEEDOMETER_SD_TEST.txt", 22, 146, 20,
+    drawTextBlock(sdTestResult_.readBack.substring(0, 180), 24, 168, 18,
                   ui::UI_MUTED, ui::UI_BG);
+  } else {
+    drawTextBlock(
+        "Press Run to create and read:\n/BIKE_SPEEDOMETER_SD_TEST.txt", 24,
+        176, 20, ui::UI_MUTED, ui::UI_BG);
   }
-  drawSoftButton(22, 270, 120, 40, "RUN TEST", ui::UI_GREEN,
-                 storage_->sdAvailable() && !storage_->usbModeActive());
-  drawBackButton();
+  ui::Components::button(
+      tft, 128, 270, 224, 37, sdTestRun_ ? "Run again" : "Run test", true,
+      false, storage_->sdAvailable() && !storage_->usbModeActive());
 }
 
 void UiApp::drawUsbStorage() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("USB Storage", usb_->active() ? "ACTIVE" : "ERROR");
   TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_88_USB_STORAGE);
+  ui::HeaderStatus header;
+  header.showBack = !usb_->active();
+  header.phoneConnected = false;
+  header.sdAvailable = false;
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "USB Storage", header);
+  if (usb_->active()) return;
+  tft.fillRect(20, 60, 440, 205, ui::BG);
   tft.setTextDatum(TC_DATUM);
-  drawPanel(tft, 44, 72, 392, 146, ui::UI_PANEL, ui::BORDER_SOFT);
-  if (usb_->active()) {
-    tft.setTextColor(ui::UI_CYAN, ui::UI_PANEL);
-    tft.drawString("USB Storage Active", 240, 96, 4);
-    tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-    tft.drawString("SD card is exposed to computer.", 240, 142, 2);
-    tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-    tft.drawString("Safe eject on computer first.", 240, 170, 2);
-    tft.drawString("Then press EXIT to return.", 240, 194, 2);
-  } else {
-    tft.setTextColor(ui::UI_RED, ui::UI_PANEL);
-    tft.drawString("USB Storage Error", 240, 96, 4);
-    tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-    tft.drawString(usb_->status(), 240, 142, 2);
-    tft.drawString("SD: " + storageStatusShort(), 240, 170, 2);
-  }
-  drawSoftButton(kBackX, kBackY, kBackW, kBackH, usb_->active() ? "EXIT" : "BACK", ui::UI_CYAN);
+  tft.setTextColor(ui::UI_RED, ui::UI_BG);
+  tft.drawString("USB Storage Error", 240, 96, 4);
+  tft.setTextColor(ui::UI_MUTED, ui::UI_BG);
+  tft.drawString(usb_->status(), 240, 142, 2);
+  tft.drawString("SD: " + storageStatusShort(), 240, 170, 2);
 }
 
 void UiApp::drawSensorTest() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Sensor test", String("GPIO") + String(hw::PIN_HALL_SENSOR));
-  String text;
-  text += "Pin: GPIO";
-  text += String(hw::PIN_HALL_SENSOR);
-  text += "\nLevel: ";
-  text += sensorSnapshot_.pinLevel == HIGH ? "HIGH" : "LOW";
-  text += "\nActive level: ";
-  text += app::levelToString(settings_->sensorActiveLevel);
-  text += "\nInterrupt edge: ";
-  text += app::interruptModeToString(settings_->sensorInterruptMode);
-  text += "\nPulse count: " + String(sensorSnapshot_.pulseCount);
-  text += "\nRejected pulses: " + String(sensorSnapshot_.rejectedPulseCount);
-  text += "\nLast interval ms: " + String(static_cast<unsigned long>(sensorSnapshot_.lastIntervalUs / 1000ULL));
-  text += "\nSince pulse ms: " + String(static_cast<unsigned long>(speed_->timeSincePulseUs() / 1000ULL));
-  text += "\nRaw / filtered: " + String(speed_->rawKmh(), 1) + " / " + String(speed_->filteredKmh(),1);
-  drawTextBlock(text, 26, 48, 22, ui::UI_TEXT, ui::UI_BG);
-  drawBackButton();
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_85_SENSOR_TEST);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Sensor test", header);
+  ui::Components::card(tft, 18, 58, 128, 70, "GPIO",
+                       String(hw::PIN_HALL_SENSOR));
+  ui::Components::card(tft, 156, 58, 148, 70, "PULSES",
+                       String(sensorSnapshot_.pulseCount), String(), true);
+  ui::Components::card(tft, 314, 58, 148, 70, "LEVEL",
+                       sensorSnapshot_.pinLevel == HIGH ? "HIGH" : "LOW");
+  tft.fillRect(300, 140, 160, 132, ui::BG);
+  tft.setTextDatum(MR_DATUM);
+  tft.setTextColor(ui::TEXT, ui::BG);
+  tft.drawString(String(sensorSnapshot_.lastIntervalUs / 1000ULL) + " ms",
+                 456, 159, 2);
+  tft.setTextColor(ui::ACCENT, ui::BG);
+  tft.drawString(String(speed_->filteredKmh(), 1) + " km/h", 456, 191, 2);
+  tft.setTextColor(ui::TEXT, ui::BG);
+  tft.drawString(String(sensorSnapshot_.rejectedPulseCount), 456, 223, 2);
+  tft.drawString(app::interruptModeToString(settings_->sensorInterruptMode),
+                 456, 255, 2);
 }
 
 void UiApp::drawBatteryTest() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Battery test", battery_->enabled() ? battery_->stateText() : "BAT N/A");
-  drawBatteryStatusIcon(452, 17);
-  drawTextBlock(battery_->diagnosticText(), 28, 48, 18, ui::UI_MUTED, ui::UI_BG);
-  drawSoftButton(20,270,80,40,"CAL -",ui::UI_CYAN);
-  drawSoftButton(120,270,80,40,"CAL +",ui::UI_CYAN);
-  drawSoftButton(220,270,110,40,"SAVE",ui::UI_GREEN);
-  drawBackButton();
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_86_BATTERY_TEST);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Battery test", header);
+  ui::Components::card(tft, 18, 58, 170, 78, "BATTERY",
+                       String(battery_->voltage(), 2), "V", true);
+  ui::Components::card(tft, 198, 58, 132, 78, "CHARGE",
+                       String(battery_->percent()), "%");
+  ui::Components::card(tft, 340, 58, 122, 78, "ADC",
+                       String(battery_->rawAdc()));
+  tft.fillRect(300, 150, 160, 103, ui::BG);
+  tft.setTextDatum(MR_DATUM);
+  tft.setTextColor(ui::TEXT, ui::BG);
+  tft.drawString(String(battery_->adcMillivolts() / 1000.0f, 3) + " V",
+                 456, 171, 2);
+  tft.drawString(String(hw::BATTERY_VOLTAGE_DIVIDER_RATIO, 3), 456, 204, 2);
+  tft.drawString(String(settings_->batteryCalibrationFactor, 3), 456, 237,
+                 2);
+  // Clear the sourcepack's single Calibrate control before laying out the
+  // four real calibration actions. The old controls visually overlapped it.
+  tft.fillRect(0, 262, display_->width(), 58, ui::BG);
+  ui::Components::button(tft, 18, 270, 96, 37, "Cal -");
+  ui::Components::button(tft, 124, 270, 96, 37, "Cal +");
+  ui::Components::button(tft, 230, 270, 112, 37, "Save", true);
+  ui::Components::button(tft, 352, 270, 110, 37, "Back");
 }
 
 void UiApp::drawSystemInfo() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("System info");
-  drawStorageStatusIcon(452, 17);
-  String text;
-  text += "Firmware: ";
-  text += app::FIRMWARE_VERSION;
-  text += "\nBuild: ";
-  text += __DATE__;
-  text += " ";
-  text += __TIME__;
-  text += "\nBoard: ";
-  text += app::BOARD_NAME;
-  text += "\nFlash: ";
-  text += flashSizeText();
-  text += "\nPSRAM: ";
-  text += psramText();
-  text += "\nFree heap: ";
-  text += String(ESP.getFreeHeap());
-  text += "\nMin heap: ";
-  text += String(ESP.getMinFreeHeap());
-  text += "\nUptime: ";
-  text += durationText(millis());
-  text += "\nDisplay: ";
-  text += app::DISPLAY_NAME;
-  text += "\nTouch: ";
-  text += touch_->isReady() ? "OK" : "not found";
-  text += "\nSD: "; text += storage_->statusText();
-  text += "\nBattery: " + battery_->statusText();
-  text += "\nUSB: ";
-  text += usb_->active() ? "active" : "inactive";
-  text += "\nRide: "; text += ride_->stateText();
-  drawTextBlock(text, 26, 42, 17, ui::UI_TEXT, ui::UI_BG);
-  drawBackButton();
+  TFT_eSPI& tft = display_->tft();
+  ui_exact::ExactScreenRenderer(tft).draw(
+      ui_exact::ScreenId::SCREEN_87_SYSTEM_INFO);
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "System info", header);
+  const String values[] = {
+      app::FIRMWARE_VERSION,
+      app::BOARD_NAME,
+      flashSizeText() + " / " + psramText(),
+      String(app::DISPLAY_NAME) + " - 480x320",
+      touch_->isReady() ? app::TOUCH_NAME : "Not found",
+      phone_->ready() ? "Connected" : "Disconnected",
+      String(ESP.getFreeHeap() / 1024UL) + " KB",
+  };
+  const int16_t ys[] = {58, 92, 126, 160, 194, 228, 262};
+  tft.setTextDatum(TR_DATUM);
+  tft.setTextColor(ui::TEXT, ui::BG);
+  for (uint8_t i = 0; i < 7; ++i) {
+    tft.fillRect(270, ys[i] - 10, 190, 22, ui::BG);
+    tft.drawString(values[i], 456, ys[i], 2);
+  }
 }
 
 void UiApp::drawSettings() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Settings", lastMessage_);
-  if (!lastMessage_.length()) {
-    drawStorageStatusIcon(452, 17);
-  }
-  TFT_eSPI& tft = display_->tft();
-  auto drawRowBase = [&](int16_t y, const String& label) {
-    tft.fillRoundRect(ui::SAFE, y, ui::SCREEN_W - ui::SAFE * 2, 34, 6, ui::SURFACE);
-    tft.drawFastHLine(ui::SAFE + 8, y + 33, ui::SCREEN_W - ui::SAFE * 2 - 16, ui::BORDER_SOFT);
-    tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(ui::TEXT, ui::SURFACE);
-    tft.drawString(label, ui::SAFE + 12, y + 17, 2);
-  };
-  auto drawStepper = [&](int16_t x, int16_t y, const String& label) {
-    tft.fillRoundRect(x, y, 42, 28, 6, ui::SURFACE_2);
-    tft.drawRoundRect(x, y, 42, 28, 6, ui::BORDER);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(ui::LABEL, ui::SURFACE_2);
-    tft.drawString(label, x + 21, y + 14, 2);
-  };
-  auto drawValue = [&](int16_t y, const String& value) {
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(ui::TEXT, ui::SURFACE);
-    tft.drawString(value, 356, y + 17, 2);
-  };
-  auto drawPill = [&](int16_t y, const String& value) {
-    tft.fillRoundRect(284, y + 3, 174, 28, 6, ui::SURFACE_2);
-    tft.drawRoundRect(284, y + 3, 174, 28, 6, ui::BORDER);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(ui::LABEL, ui::SURFACE_2);
-    tft.drawString(value, 371, y + 17, 2);
-  };
-
-  drawRowBase(48, "Wheel circumference");
-  drawStepper(252, 51, "-");
-  drawValue(48, String(settings_->wheelCircumferenceM, 3) + " m");
-  drawStepper(416, 51, "+");
-
-  drawRowBase(84, "Stop threshold");
-  drawStepper(252, 87, "-");
-  drawValue(84, String(settings_->stopThresholdKmh, 1) + " km/h");
-  drawStepper(416, 87, "+");
-
-  drawRowBase(120, "Sensor edge");
-  drawPill(120, app::interruptModeToString(settings_->sensorInterruptMode));
-  drawRowBase(156, "Active level");
-  drawPill(156, app::levelToString(settings_->sensorActiveLevel));
-  drawRowBase(192, "Pullup");
-  drawPill(192, settings_->sensorPullupEnabled ? "ON" : "OFF");
-  drawRowBase(228, "Brightness");
-  drawStepper(252, 231, "-");
-  drawValue(228, String(settings_->displayBrightnessPercent) + "%");
-  drawStepper(416, 231, "+");
-
-  drawSoftButton(14, 270, 110, 40, "SAVE", ui::UI_GREEN);
-  drawBackButton();
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  status.sdText = storage_->statusText();
+  status.usbActive = usb_->active();
+  status.rideActive = settingsLockedDuringRide();
+  status.showRideLockNotice = settingsNoticeUntilMs_ != 0;
+  ui::SettingsScreen::drawMain(display_->tft(), status);
 }
 
-void UiApp::drawAbout() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("About");
-  drawStorageStatusIcon(452, 17);
-  String text;
-  text += "Bike Speedometer\n";
-  text += "Firmware ";
-  text += app::FIRMWARE_VERSION;
-  text += "\nBoard: ";
-  text += app::BOARD_NAME;
-  text += "\nDisplay: ";
-  text += app::DISPLAY_NAME;
-  text += "\nTouch: ";
-  text += app::TOUCH_NAME;
-  text += "\nFlash: ";
-  text += flashSizeText();
-  text += "\nPSRAM: ";
-  text += psramText();
-  text += "\nSD: ";
-  text += storage_->statusText();
-  text += "\nBattery: "; text += battery_->statusText();
-  text += "\nGitHub: Swart-G/DIY_bike_computer";
-  drawTextBlock(text, 34, 54, 23, ui::UI_TEXT, ui::UI_BG);
-  drawBackButton();
+void UiApp::drawSettingsRide() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRide(display_->tft(), status, *settings_);
+}
+
+void UiApp::drawSettingsDisplay() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawDisplay(display_->tft(), status);
+}
+
+void UiApp::drawSettingsSystem() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  status.sdText = storage_->statusText();
+  status.usbActive = usb_->active();
+  status.timeSource = phone_->clock().synced() ? "Phone" : "Unavailable";
+  status.rideActive = settingsLockedDuringRide();
+  status.showRideLockNotice = settingsNoticeUntilMs_ != 0;
+  ui::SettingsScreen::drawSystem(display_->tft(), status);
+}
+
+void UiApp::drawSettingsWheel() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawWheel(display_->tft(), status, *settings_);
+}
+
+void UiApp::drawSettingsStopThreshold() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawStopThreshold(display_->tft(), status, *settings_);
+}
+
+void UiApp::drawSettingsRgbLed() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRgbLed(display_->tft(), status, *settings_);
 }
 
 void UiApp::drawRide() {
-  display_->clear(ui::UI_BG);
-  drawStatusBar("Ride");
-  TFT_eSPI& tft = display_->tft();
-  tft.setTextDatum(MR_DATUM);
-  tft.setTextColor(ui::UI_MUTED, ui::UI_BG);
-  tft.drawString(rideStatusLine(), 292, 17, 2);
-  drawStorageStatusIcon(326, 17);
-  drawBatteryStatusIcon(366, 17);
-  drawSoftButton(398, 4, 76, 26, "MENU", ui::UI_CYAN, true, ui::UI_BG);
-  if (ridePage_ == 0) {
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(ui::UI_CYAN, ui::UI_BG);
-    tft.drawString("SPEED", 240, 58, 2);
-    tft.setTextColor(ui::UI_TEXT, ui::UI_BG);
-    tft.drawString(String(speed_->currentKmh(), 1), 240, 118, 8);
-    tft.setTextColor(ui::UI_CYAN, ui::UI_BG);
-    tft.drawString("km/h", 240, 166, 2);
+  ui::RideViewModel model;
+  model.header.showRain = true;
+  model.header.showSettings = true;
+  model.header.rainLocked = rainLock_.locked();
+  model.header.phoneConnected = phone_->ready();
+  model.header.sdAvailable = storage_->sdAvailable();
+  model.header.batteryAvailable = battery_->enabled();
+  model.header.batteryPercent = battery_->percent();
+  model.state = ride_->state();
+  model.stats = &ride_->stats();
+  model.speedKmh = speed_->currentKmh();
+  model.graphSamples = graphSamples_;
+  model.graphCount = 120;
+  model.graphStart = graphWriteIndex_;
+  model.graphWindowSeconds = settings_->graphWindowSeconds;
+  model.page = ridePage_;
+  model.pageCount = ridePageCount();
+  model.navigation = &phone_->navigationState();
+  model.media = &phone_->mediaState();
+  model.epochNowMs =
+      phone_->clock().epochNowMs(ClockManager::monotonicMs());
+  model.utcOffsetSeconds = phone_->clock().utcOffsetSeconds();
+  model.timeText = currentClockText();
+  model.renderMode =
+      partialRainFrame_
+          ? ui::RideRenderMode::RainRegion
+          : (partialRideFrame_ ? ui::RideRenderMode::ContentRegion
+                               : ui::RideRenderMode::Full);
+  ui::RideScreen::draw(display_->tft(), model);
+  ui::RainLockOverlay::draw(display_->tft(), rainLock_);
+}
 
-    drawPanel(tft, 24, 178, 208, 44, ui::UI_PANEL, ui::UI_LINE_SOFT);
-    tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(ui::UI_CYAN, ui::UI_PANEL);
-    tft.drawString("DISTANCE", 40, 190, 2);
-    tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-    tft.drawString(String(ride_->stats().distanceM / 1000.0f, 2), 134, 204, 4);
-    tft.setTextColor(ui::UI_MUTED, ui::UI_PANEL);
-    tft.drawString("km", 198, 206, 2);
+uint8_t UiApp::ridePageCount() const {
+  return 3 + (phone_ && phone_->navigationState().available ? 1 : 0) +
+         (phone_ && phone_->mediaState().available ? 1 : 0);
+}
 
-    drawPanel(tft, 248, 178, 208, 44, ui::UI_PANEL, ui::UI_LINE_SOFT);
-    tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(ui::UI_CYAN, ui::UI_PANEL);
-    tft.drawString("TIME", 264, 190, 2);
-    tft.setTextColor(ui::UI_TEXT, ui::UI_PANEL);
-    tft.drawString(durationText(ride_->stats().movingMs), 328, 206, 2);
-  } else if (ridePage_ == 1) {
-    drawGraphCard(20, 58, 440, 160);
-  } else {
-    drawMetricCard(20, 46, 140, 86, "MAX SPEED", String(ride_->stats().maxSpeedKmh, 1), "km/h");
-    drawMetricCard(170, 46, 140, 86, "AVG SPEED", String(ride_->stats().averageMovingSpeedKmh, 1), "km/h");
-    drawMetricCard(320, 46, 140, 86, "DISTANCE",
-                   String(ride_->stats().distanceM / 1000.0f, 2), "km");
-    drawMetricCard(20, 138, 140, 86, "MOVING", durationText(ride_->stats().movingMs));
-    drawMetricCard(170, 138, 140, 86, "ELAPSED", durationText(ride_->stats().elapsedMs));
-    drawMetricCard(320, 138, 140, 86, "PULSES", String(ride_->stats().pulseCount));
-  }
-  drawPageDots(ridePage_, 3);
-  drawBottomRideControls();
+bool UiApp::rideMediaPage() const {
+  if (!phone_ || !phone_->mediaState().available) return false;
+  const uint8_t index =
+      3 + (phone_->navigationState().available ? 1 : 0);
+  return ridePage_ == index;
+}
+
+String UiApp::currentClockText() const {
+  if (!phone_ || !phone_->clock().synced()) return "--:--";
+  int64_t seconds =
+      phone_->clock().epochNowMs(ClockManager::monotonicMs()) / 1000LL +
+      phone_->clock().utcOffsetSeconds();
+  seconds %= 86400LL;
+  if (seconds < 0) seconds += 86400LL;
+  char text[8];
+  snprintf(text, sizeof(text), "%02lld:%02lld",
+           static_cast<long long>(seconds / 3600LL),
+           static_cast<long long>((seconds / 60LL) % 60LL));
+  return String(text);
 }
 
 void UiApp::drawFinishConfirm() {
-  display_->clear(ui::UI_BG); drawStatusBar("Finish ride"); TFT_eSPI&t=display_->tft();drawPanel(t,58,72,364,112,ui::UI_PANEL,ui::BORDER_SOFT);t.setTextDatum(MC_DATUM);t.setTextColor(ui::UI_ORANGE,ui::UI_PANEL);t.drawString("Finish this ride?",240,105,4);t.setTextColor(ui::UI_MUTED,ui::UI_PANEL);t.drawString("The ride will be saved and closed.",240,145,2);drawSoftButton(92,210,130,50,"CANCEL",ui::UI_CYAN);drawSoftButton(258,210,130,50,"FINISH",ui::UI_RED);
+  // The exact source defines this as a dimmed ride screen. Draw the current
+  // runtime page first so sourcepack sample speed/distance never leak into UI.
+  drawRide();
+  ui::SecondaryScreens::finishConfirm(display_->tft());
 }
 void UiApp::drawRideSummary() {
-  display_->clear(ui::UI_BG);drawStatusBar("Ride summary");const RideStats&s=ride_->stats();char text[230];snprintf(text,sizeof(text),"Distance: %.2f km\nAverage: %.1f km/h\nMaximum: %.1f km/h\nElapsed: %s\nMoving: %s\nStopped: %s\nPaused: %s",s.distanceM/1000.f,s.averageMovingSpeedKmh,s.maxSpeedKmh,durationText(s.elapsedMs).c_str(),durationText(s.movingMs).c_str(),durationText(s.stoppedMs).c_str(),durationText(s.pauseMs).c_str());drawTextBlock(text,72,52,25,ui::UI_TEXT,ui::UI_BG);drawSoftButton(70,260,150,44,"NEW RIDE",ui::UI_GREEN);drawSoftButton(260,260,150,44,"MENU",ui::UI_CYAN);
+  ui::HeaderStatus header;
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  header.phoneConnected = phone_->ready();
+  ui::SecondaryScreens::rideSummary(display_->tft(), header, ride_->stats());
 }
 
 void UiApp::drawBackButton() {
@@ -1320,9 +1519,20 @@ void UiApp::startUsbMode() {
     return;
   }
   if (ride_->state() == RideState::PAUSED) saveRecoveryIfNeeded(millis(), true);
+  phone_->prepareForUsb();
   if (logger_->active()) logger_->event(*storage_, *ride_, "USB_STORAGE_REQUESTED", "USB Mass Storage requested");
   logger_->close();
   usb_->begin(*storage_);
+  dirty_ = true;
+}
+
+bool UiApp::settingsLockedDuringRide() const {
+  return ride_->state() == RideState::RIDING ||
+         ride_->state() == RideState::PAUSED;
+}
+
+void UiApp::showSettingsLockedNotice() {
+  settingsNoticeUntilMs_ = millis() + 2600;
   dirty_ = true;
 }
 

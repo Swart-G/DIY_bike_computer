@@ -5,6 +5,7 @@
 #include "config/app_config.h"
 
 enum class RideState { IDLE, RIDING, PAUSED, FINISHED };
+enum class MotionState : uint8_t { MOVING = 0, AUTO_PAUSED = 1 };
 
 struct RideStats {
   float distanceM = 0;
@@ -45,6 +46,7 @@ class RideStateMachine {
   void newRide(uint32_t nowMs, uint32_t absolutePulseCount);
   void restorePaused(const RideRecoveryData& recovery, uint32_t nowMs, uint32_t absolutePulseCount);
   RideState state() const { return state_; }
+  MotionState motionState() const { return motionState_; }
   const RideStats& stats() const { return stats_; }
   String stateText() const;
   bool needsRecoverySave(uint32_t nowMs, uint32_t intervalMs) const;
@@ -62,6 +64,8 @@ class RideStateMachine {
   uint32_t lastRecoverySaveMs_ = 0;
   uint32_t lastAbsolutePulseCount_ = 0;
   bool moving_ = false;
+  MotionState motionState_ = MotionState::MOVING;
+  uint32_t belowThresholdSinceMs_ = 0;
   uint32_t rideId_ = 0;
   char rideFolder_[32] = {0};
   uint32_t lastSavedSampleIndex_ = 0;

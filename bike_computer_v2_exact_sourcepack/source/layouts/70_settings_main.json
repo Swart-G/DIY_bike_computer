@@ -1,0 +1,318 @@
+{
+  "screen_id": "70_settings_main",
+  "canvas": {
+    "width": 480,
+    "height": 320,
+    "orientation": "landscape"
+  },
+  "background": {
+    "color": "bg",
+    "base_screen": null,
+    "dim_alpha": 0
+  },
+  "elements": [
+    {
+      "type": "line",
+      "points": [
+        12,
+        39,
+        468,
+        39
+      ],
+      "color": "border",
+      "width": 1
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 20,
+      "text": "‹",
+      "font": "xl",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 20,
+      "text": "Settings",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "lm"
+    },
+    {
+      "type": "battery_icon",
+      "x": 426,
+      "y": 13,
+      "w": 32,
+      "h": 14,
+      "level": 78
+    },
+    {
+      "type": "polygon",
+      "points": [
+        [
+          398,
+          13
+        ],
+        [
+          411,
+          13
+        ],
+        [
+          417,
+          19
+        ],
+        [
+          417,
+          27
+        ],
+        [
+          398,
+          27
+        ]
+      ],
+      "fill": null,
+      "outline": "muted"
+    },
+    {
+      "type": "text",
+      "x": 407,
+      "y": 21,
+      "text": "SD",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "mm"
+    },
+    {
+      "type": "phone_icon",
+      "x": 372,
+      "y": 11,
+      "w": 13,
+      "h": 17,
+      "connected": true
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 57,
+      "w": 214,
+      "h": 62,
+      "icon": "bike",
+      "title": "Ride",
+      "subtitle": "Wheel & speed",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "bike",
+      "cx": 51,
+      "cy": 88,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 75,
+      "text": "Ride",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 96,
+      "text": "Wheel & speed",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 57,
+      "w": 214,
+      "h": 62,
+      "icon": "display",
+      "title": "Display",
+      "subtitle": "Theme & layout",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "display",
+      "cx": 281,
+      "cy": 88,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 75,
+      "text": "Display",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 96,
+      "text": "Theme & layout",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 131,
+      "w": 214,
+      "h": 62,
+      "icon": "phone",
+      "title": "Phone",
+      "subtitle": "Pairing & sync",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "phone",
+      "cx": 51,
+      "cy": 162,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 149,
+      "text": "Phone",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 170,
+      "text": "Pairing & sync",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 131,
+      "w": 214,
+      "h": 62,
+      "icon": "system",
+      "title": "System",
+      "subtitle": "Storage & device",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "system",
+      "cx": 281,
+      "cy": 162,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 149,
+      "text": "System",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 170,
+      "text": "Storage & device",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 18,
+      "y": 205,
+      "w": 214,
+      "h": 62,
+      "icon": "diag",
+      "title": "Diagnostics",
+      "subtitle": "Hardware tests",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "diag",
+      "cx": 51,
+      "cy": 236,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 223,
+      "text": "Diagnostics",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 244,
+      "text": "Hardware tests",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    },
+    {
+      "type": "menu_tile",
+      "x": 248,
+      "y": 205,
+      "w": 214,
+      "h": 62,
+      "icon": "info",
+      "title": "About",
+      "subtitle": "Version 2.0",
+      "active": false
+    },
+    {
+      "type": "icon",
+      "kind": "info",
+      "cx": 281,
+      "cy": 236,
+      "color": "text",
+      "scale": 0.8
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 223,
+      "text": "About",
+      "font": "md_b",
+      "color": "text",
+      "anchor": "la"
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 244,
+      "text": "Version 2.0",
+      "font": "xs",
+      "color": "muted",
+      "anchor": "la"
+    }
+  ]
+}
