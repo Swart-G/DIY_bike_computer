@@ -361,7 +361,7 @@ private fun DiagnosticsPage(
             Text("Motion · ${if (motionState == 1) "AUTO_PAUSED" else "MOVING"}")
             Text("Storage · $sdState")
             Text("Sync · $syncState · $syncedBytes / $totalBytes bytes")
-            Text("Protocol · 1 · Firmware target 2.0.0-dev")
+            Text("Protocol · 1 · Firmware target 2.1.0-dev")
         }
     }
 }

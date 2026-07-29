@@ -63,7 +63,11 @@ class UiApp {
   void drawSettingsSystem();
   void drawSettingsWheel();
   void drawSettingsStopThreshold();
+  void drawSettingsAutoPauseDelay();
+  void drawSettingsLogInterval();
   void drawSettingsRgbLed();
+  void drawSettingsRgbStableRange();
+  void drawSettingsRgbBrightness();
   void drawRide();
   void drawFinishConfirm();
   void drawRideSummary();
@@ -82,6 +86,9 @@ class UiApp {
   void startUsbMode();
   bool settingsLockedDuringRide() const;
   void showSettingsLockedNotice();
+  bool commitSettings(const app::AppSettings& candidate,
+                      const char* successMessage, const char* eventDetails,
+                      bool updateSensor);
   void saveRecoveryIfNeeded(uint32_t nowMs, bool force);
   void clearRecovery();
   void recordGraphSample(uint32_t nowMs);
@@ -101,6 +108,7 @@ class UiApp {
   RideRepository* repository_ = nullptr;
   PhoneLinkManager* phone_ = nullptr;
   app::AppSettings* settings_ = nullptr;
+  app::AppSettings settingsEdit_;
   RainLockManager rainLock_;
 
   UiRouter router_;

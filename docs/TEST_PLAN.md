@@ -48,7 +48,17 @@ Steps: from IDLE start USB; from PAUSED checkpoint then start USB; from RIDING r
 
 ## 12. Settings persistence
 
-Steps: change circumference, stop threshold and battery factor; Save; reboot with SD, then without SD. Also boot with a v1 config containing `display_brightness_percent`. Expected: ranges clamp invalid values, settings apply immediately, valid SD config supersedes NVS, NVS preserves essential values without SD, and the legacy brightness field is safely ignored. Failure: GPIO editing exposed, invalid values crash boot, or calibration does not persist.
+Steps: verify Auto Pause uses an inline toggle and its delay opens a dedicated editor
+when tapping outside the switch. Open the dedicated editors for wheel circumference,
+stop threshold and log interval. Change each value and press Back;
+reopen and verify the old value remains. Change again and press Save. Change battery
+factor; reboot with SD, then without SD. Also boot with a v1 config containing
+`display_brightness_percent`. Expected: numeric summary rows never mutate values
+directly; Back discards drafts; Save validates and applies; ranges clamp invalid values;
+valid SD config supersedes NVS; NVS preserves essential values without SD; and the
+legacy brightness field is safely ignored. Read-only Display/System rows have no
+chevron. Failure: GPIO editing exposed, direct numeric changes from a summary row,
+Back applying a draft, invalid values crashing boot, or calibration not persisting.
 
 ## 13. Long-duration test
 
@@ -56,8 +66,9 @@ Steps: run at least three hours with real or pulse-generator input; vary speed, 
 
 ## 14. Speed trend RGB LED
 
-Steps: open Settings → Speed LED; verify enable/disable, cycle stable range and
-brightness, then reboot with and without SD. With a pulse generator, hold speed steady
+Steps: open Settings → Speed LED; verify Indicator uses an inline toggle. Open the
+dedicated Stable range and Brightness editors, test Back cancellation and Save, then
+reboot with and without SD. With a pulse generator, hold speed steady
 for more than two seconds, increase it beyond the configured tolerance, hold again, and
 decrease it beyond the tolerance. Expected: GPIO48 LED is green within the inclusive
 range, purple when the two-second speed delta is positive, red when negative, and off

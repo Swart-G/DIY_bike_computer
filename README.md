@@ -1,10 +1,10 @@
-# DIY Bike Computer 2.0
+# DIY Bike Computer 2.1
 
 Firmware and Android companion project for an ESP32-S3-N16R8 bike computer with
 ST7796 480×320 TFT, FT6336 touch, SPI microSD, native USB Mass Storage, wired Hall
 sensor and 1S Li-Po monitor.
 
-Version `2.0` is the software release baseline; firmware remains marked `2.0.0-dev`
+Version `2.1` is the software release baseline; firmware remains marked `2.1.0-dev`
 until the real-device acceptance gates pass. The autonomous Hall speed/distance, ride
 state, logging/recovery, history, battery, diagnostics and strict USB/firmware SD
 ownership remain the reliability core. Version 2.0 adds the

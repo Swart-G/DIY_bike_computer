@@ -11,6 +11,10 @@ two seconds earlier. A change above the configured stable tolerance is purple, a
 below the negative tolerance is red, and a change within the inclusive tolerance is
 green. Before a full two-second history exists it is green. The Settings `Speed LED`
 section replaces About and controls enable state, stable tolerance and brightness.
+Boolean settings use an inline styled toggle. Numeric settings never change by tapping
+their summary row: the row opens a dedicated `− / + / Save` editor. Back discards the
+draft value, while Save validates, persists and then applies it. Read-only Display and
+System values have no chevron.
 
 Ride state is exactly `IDLE`, `RIDING`, `PAUSED`, `FINISHED`. A separate motion state
 is `MOVING` or `AUTO_PAUSED`; Auto Pause never changes `RideState` and resumes

@@ -195,6 +195,14 @@ void UiApp::loop() {
 }
 
 void UiApp::enter(Screen screen) {
+  if (screen == Screen::SettingsWheel ||
+      screen == Screen::SettingsStopThreshold ||
+      screen == Screen::SettingsAutoPauseDelay ||
+      screen == Screen::SettingsLogInterval ||
+      screen == Screen::SettingsRgbStableRange ||
+      screen == Screen::SettingsRgbBrightness) {
+    settingsEdit_ = *settings_;
+  }
   router_.go(screen);
   dirty_ = true;
   lastPaintValid_ = false;
@@ -545,33 +553,16 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       if (y < 42 && x < 90) {
         enter(Screen::Settings);
       } else if (hit(x, y, 18, 57, 444, 48)) {
-        settings_->rgbSpeedTrendEnabled =
-            !settings_->rgbSpeedTrendEnabled;
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        lastMessage_ = saved ? "Speed LED setting saved" : error;
+        app::AppSettings candidate = *settings_;
+        candidate.rgbSpeedTrendEnabled =
+            !candidate.rgbSpeedTrendEnabled;
+        commitSettings(candidate, "Speed LED setting saved",
+                       "speed LED indicator changed", false);
         dirty_ = true;
       } else if (hit(x, y, 18, 113, 444, 48)) {
-        const float value = settings_->rgbSpeedTrendToleranceKmh;
-        settings_->rgbSpeedTrendToleranceKmh =
-            value < 0.35f ? 0.5f
-                          : (value < 0.75f ? 1.0f
-                                         : (value < 1.5f ? 2.0f : 0.2f));
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        lastMessage_ = saved ? "Stable range saved" : error;
-        dirty_ = true;
+        enter(Screen::SettingsRgbStableRange);
       } else if (hit(x, y, 18, 169, 444, 48)) {
-        const uint8_t value = settings_->rgbLedBrightnessPercent;
-        settings_->rgbLedBrightnessPercent =
-            value < 15 ? 20
-                       : (value < 30 ? 40
-                                     : (value < 55 ? 70
-                                                   : (value < 85 ? 100 : 10)));
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        lastMessage_ = saved ? "LED brightness saved" : error;
-        dirty_ = true;
+        enter(Screen::SettingsRgbBrightness);
       }
       break;
 
@@ -626,12 +617,16 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       if (y < 42 && x < 90) enter(Screen::Settings);
       else if (hit(x, y, 18, 57, 444, 48)) enter(Screen::SettingsWheel);
       else if (hit(x, y, 18, 113, 444, 48)) enter(Screen::SettingsStopThreshold);
-      else if (hit(x, y, 18, 169, 444, 48)) {
-        settings_->autoPauseEnabled = !settings_->autoPauseEnabled;
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        lastMessage_ = saved ? "Auto pause saved" : error;
+      else if (hit(x, y, 398, 169, 64, 48)) {
+        app::AppSettings candidate = *settings_;
+        candidate.autoPauseEnabled = !candidate.autoPauseEnabled;
+        commitSettings(candidate, "Auto pause saved",
+                       "auto pause changed", false);
         dirty_ = true;
+      } else if (hit(x, y, 18, 169, 380, 48)) {
+        enter(Screen::SettingsAutoPauseDelay);
+      } else if (hit(x, y, 18, 225, 444, 48)) {
+        enter(Screen::SettingsLogInterval);
       }
       break;
     case Screen::SettingsDisplay:
@@ -650,38 +645,125 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       break;
     case Screen::SettingsWheel:
       if (y < 42 && x < 90) enter(Screen::SettingsRide);
-      else if (hit(x, y, 74, 171, 86, 52)) settings_->wheelCircumferenceM -= 0.005f;
-      else if (hit(x, y, 320, 171, 86, 52)) settings_->wheelCircumferenceM += 0.005f;
-      else if (hit(x, y, 150, 287, 180, 27)) {
-        app::validateSettings(*settings_);
-        sensor_->updateSettings(*settings_);
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        if (saved && logger_->active()) {
-          logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "wheel circumference saved");
-        }
-        lastMessage_ = saved ? "Settings saved" : error;
-        enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.wheelCircumferenceM =
+            max(0.5f, settingsEdit_.wheelCircumferenceM - 0.005f);
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.wheelCircumferenceM =
+            min(3.5f, settingsEdit_.wheelCircumferenceM + 0.005f);
       }
-      app::validateSettings(*settings_);
+      else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.wheelCircumferenceM =
+            settingsEdit_.wheelCircumferenceM;
+        if (commitSettings(candidate, "Settings saved",
+                           "wheel circumference saved", true)) {
+          enter(Screen::SettingsRide);
+        }
+      }
       dirty_ = true;
       break;
     case Screen::SettingsStopThreshold:
       if (y < 42 && x < 90) enter(Screen::SettingsRide);
-      else if (hit(x, y, 74, 171, 86, 52)) settings_->stopThresholdKmh -= 0.5f;
-      else if (hit(x, y, 320, 171, 86, 52)) settings_->stopThresholdKmh += 0.5f;
-      else if (hit(x, y, 150, 287, 180, 27)) {
-        app::validateSettings(*settings_);
-        sensor_->updateSettings(*settings_);
-        String error;
-        const bool saved = storage_->saveSettings(*settings_, error);
-        if (saved && logger_->active()) {
-          logger_->event(*storage_, *ride_, "CONFIG_CHANGED", "stop threshold saved");
-        }
-        lastMessage_ = saved ? "Settings saved" : error;
-        enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.stopThresholdKmh =
+            max(0.5f, settingsEdit_.stopThresholdKmh - 0.5f);
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.stopThresholdKmh =
+            min(15.0f, settingsEdit_.stopThresholdKmh + 0.5f);
       }
-      app::validateSettings(*settings_);
+      else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.stopThresholdKmh = settingsEdit_.stopThresholdKmh;
+        if (commitSettings(candidate, "Settings saved",
+                           "stop threshold saved", true)) {
+          enter(Screen::SettingsRide);
+        }
+      }
+      dirty_ = true;
+      break;
+    case Screen::SettingsLogInterval:
+      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.logSampleIntervalMs =
+            settingsEdit_.logSampleIntervalMs <= 250
+                ? 250
+                : settingsEdit_.logSampleIntervalMs - 250;
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.logSampleIntervalMs =
+            min<uint32_t>(10000,
+                          settingsEdit_.logSampleIntervalMs + 250);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.logSampleIntervalMs =
+            settingsEdit_.logSampleIntervalMs;
+        if (commitSettings(candidate, "Log interval saved",
+                           "log interval saved", false)) {
+          enter(Screen::SettingsRide);
+        }
+      }
+      dirty_ = true;
+      break;
+    case Screen::SettingsAutoPauseDelay:
+      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.autoPauseDelayMs =
+            settingsEdit_.autoPauseDelayMs <= 1000
+                ? 1000
+                : settingsEdit_.autoPauseDelayMs - 500;
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.autoPauseDelayMs =
+            min<uint32_t>(60000,
+                          settingsEdit_.autoPauseDelayMs + 500);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.autoPauseDelayMs = settingsEdit_.autoPauseDelayMs;
+        if (commitSettings(candidate, "Auto pause delay saved",
+                           "auto pause delay saved", false)) {
+          enter(Screen::SettingsRide);
+        }
+      }
+      dirty_ = true;
+      break;
+    case Screen::SettingsRgbStableRange:
+      if (y < 42 && x < 90) enter(Screen::SettingsRgbLed);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendToleranceKmh =
+            max(0.1f, settingsEdit_.rgbSpeedTrendToleranceKmh - 0.1f);
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendToleranceKmh =
+            min(5.0f, settingsEdit_.rgbSpeedTrendToleranceKmh + 0.1f);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.rgbSpeedTrendToleranceKmh =
+            settingsEdit_.rgbSpeedTrendToleranceKmh;
+        if (commitSettings(candidate, "Stable range saved",
+                           "speed LED stable range saved", false)) {
+          enter(Screen::SettingsRgbLed);
+        }
+      }
+      dirty_ = true;
+      break;
+    case Screen::SettingsRgbBrightness:
+      if (y < 42 && x < 90) enter(Screen::SettingsRgbLed);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.rgbLedBrightnessPercent =
+            settingsEdit_.rgbLedBrightnessPercent <= 5
+                ? 5
+                : settingsEdit_.rgbLedBrightnessPercent - 5;
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.rgbLedBrightnessPercent =
+            min<uint8_t>(100,
+                         settingsEdit_.rgbLedBrightnessPercent + 5);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.rgbLedBrightnessPercent =
+            settingsEdit_.rgbLedBrightnessPercent;
+        if (commitSettings(candidate, "LED brightness saved",
+                           "speed LED brightness saved", false)) {
+          enter(Screen::SettingsRgbLed);
+        }
+      }
       dirty_ = true;
       break;
 
@@ -838,8 +920,20 @@ void UiApp::draw() {
     case Screen::SettingsStopThreshold:
       drawSettingsStopThreshold();
       break;
+    case Screen::SettingsAutoPauseDelay:
+      drawSettingsAutoPauseDelay();
+      break;
+    case Screen::SettingsLogInterval:
+      drawSettingsLogInterval();
+      break;
     case Screen::SettingsRgbLed:
       drawSettingsRgbLed();
+      break;
+    case Screen::SettingsRgbStableRange:
+      drawSettingsRgbStableRange();
+      break;
+    case Screen::SettingsRgbBrightness:
+      drawSettingsRgbBrightness();
       break;
     case Screen::Ride:
       drawRide();
@@ -1381,7 +1475,7 @@ void UiApp::drawSettingsWheel() {
   status.header.sdAvailable = storage_->sdAvailable();
   status.header.batteryAvailable = battery_->enabled();
   status.header.batteryPercent = battery_->percent();
-  ui::SettingsScreen::drawWheel(display_->tft(), status, *settings_);
+  ui::SettingsScreen::drawWheel(display_->tft(), status, settingsEdit_);
 }
 
 void UiApp::drawSettingsStopThreshold() {
@@ -1390,7 +1484,28 @@ void UiApp::drawSettingsStopThreshold() {
   status.header.sdAvailable = storage_->sdAvailable();
   status.header.batteryAvailable = battery_->enabled();
   status.header.batteryPercent = battery_->percent();
-  ui::SettingsScreen::drawStopThreshold(display_->tft(), status, *settings_);
+  ui::SettingsScreen::drawStopThreshold(display_->tft(), status,
+                                        settingsEdit_);
+}
+
+void UiApp::drawSettingsAutoPauseDelay() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawAutoPauseDelay(display_->tft(), status,
+                                         settingsEdit_);
+}
+
+void UiApp::drawSettingsLogInterval() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawLogInterval(display_->tft(), status,
+                                      settingsEdit_);
 }
 
 void UiApp::drawSettingsRgbLed() {
@@ -1400,6 +1515,26 @@ void UiApp::drawSettingsRgbLed() {
   status.header.batteryAvailable = battery_->enabled();
   status.header.batteryPercent = battery_->percent();
   ui::SettingsScreen::drawRgbLed(display_->tft(), status, *settings_);
+}
+
+void UiApp::drawSettingsRgbStableRange() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRgbStableRange(display_->tft(), status,
+                                         settingsEdit_);
+}
+
+void UiApp::drawSettingsRgbBrightness() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRgbBrightness(display_->tft(), status,
+                                        settingsEdit_);
 }
 
 void UiApp::drawRide() {
@@ -1534,6 +1669,25 @@ bool UiApp::settingsLockedDuringRide() const {
 void UiApp::showSettingsLockedNotice() {
   settingsNoticeUntilMs_ = millis() + 2600;
   dirty_ = true;
+}
+
+bool UiApp::commitSettings(const app::AppSettings& candidate,
+                           const char* successMessage,
+                           const char* eventDetails, bool updateSensor) {
+  app::AppSettings validated = candidate;
+  app::validateSettings(validated);
+  String error;
+  if (!storage_->saveSettings(validated, error)) {
+    lastMessage_ = error;
+    return false;
+  }
+  *settings_ = validated;
+  if (updateSensor) sensor_->updateSettings(*settings_);
+  if (logger_->active() && eventDetails) {
+    logger_->event(*storage_, *ride_, "CONFIG_CHANGED", eventDetails);
+  }
+  lastMessage_ = successMessage;
+  return true;
 }
 
 void UiApp::saveRecoveryIfNeeded(uint32_t nowMs, bool force) {

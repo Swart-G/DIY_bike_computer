@@ -25,4 +25,4 @@ Version 2.0 development:
   USB ownership, GPS background behavior, media-player matrix and heap/performance.
 - Navigation intentionally ships provider-unavailable until a concrete routing provider
   is selected; all other features remain operational.
-- Firmware stays `2.0.0-dev` until every hardware gate in `docs/TEST_PLAN_V2.md` passes.
+- Firmware stays `2.1.0-dev` until every hardware gate in `docs/TEST_PLAN_V2.md` passes.

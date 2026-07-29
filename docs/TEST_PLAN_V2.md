@@ -39,6 +39,9 @@ battery voltage.
   remain intact after the phone-status runtime patch.
 - Settings menu/display labels use the native runtime font and remain sharp;
   no value/chevron overlap is visible.
+- Boolean settings use inline toggles. Every editable numeric summary row opens a
+  dedicated `− / + / Save` screen; Back discards its draft and Save persists it.
+  Read-only Display/System rows have no chevron.
 - History detail exposes distinct Delete, USB Storage and Back controls.
   Delete opens a confirmation modal, Cancel preserves the ride, and only the
   confirmed Delete removes it. Each control must respond across its full

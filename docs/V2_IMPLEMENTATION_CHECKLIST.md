@@ -99,7 +99,7 @@ documentation and stated hardware check are complete.
 - [ ] Complete `TEST_PLAN.md` and `TEST_PLAN_V2.md` on hardware.
 - [ ] Long ride, reconnect, SD removal, USB conflict and heap/performance tests.
 - [ ] Check backward-compatible config and v1 rides.
-- [x] Review software diff/docs and keep version `2.0.0-dev` until every acceptance
+- [x] Review software diff/docs and keep version `2.1.0-dev` until every acceptance
   gate passes.
 
 ## Last software gate — 2026-07-28
