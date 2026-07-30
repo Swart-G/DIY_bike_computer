@@ -286,7 +286,11 @@ bool StorageManager::saveSettings(const app::AppSettings& settings, String& erro
     return true;
   }
   SdBusGuard bus;
-  ensureDir("/config");
+  if (!ensureDir("/config")) {
+    persistNvs();
+    error = "Settings saved to NVS; cannot create /config";
+    return true;
+  }
 
   StaticJsonDocument<1536> doc;
   doc["format_version"] = app::CONFIG_FORMAT_VERSION;
@@ -355,7 +359,10 @@ bool StorageManager::saveRecovery(const RideRecoveryData& recovery, String& erro
     return true;
   }
   SdBusGuard bus;
-  ensureDir("/state");
+  if (!ensureDir("/state")) {
+    error = "Recovery checkpoint saved to NVS; cannot create /state";
+    return true;
+  }
 
   StaticJsonDocument<768> doc;
   doc["format_version"] = app::RECOVERY_FORMAT_VERSION;
@@ -446,10 +453,26 @@ bool StorageManager::clearRecovery(String& error) {
 
 bool StorageManager::ensureDir(const char* path) {
   SdBusGuard bus;
-  if (!sdAvailable_ || SD.exists(path)) {
-    return true;
+  if (!sdAvailable_) {
+    return false;
   }
-  return SD.mkdir(path);
+  if (SD.exists(path)) {
+    File existing = SD.open(path, FILE_READ);
+    const bool isDirectory = existing && existing.isDirectory();
+    if (existing) {
+      existing.close();
+    }
+    return isDirectory;
+  }
+  if (!SD.mkdir(path)) {
+    return false;
+  }
+  File created = SD.open(path, FILE_READ);
+  const bool isDirectory = created && created.isDirectory();
+  if (created) {
+    created.close();
+  }
+  return isDirectory;
 }
 
 bool StorageManager::tryBeginSd(SPIClass& spi, uint32_t frequency,

@@ -1,15 +1,18 @@
 package com.diybikecomputer.companion.rides
 
 import android.content.Context
+import android.os.storage.StorageManager
 import com.diybikecomputer.companion.ble.BikeConnectionService
 import com.diybikecomputer.companion.ble.BikeConnectionState
 import com.diybikecomputer.companion.ble.BikeFrame
 import com.diybikecomputer.companion.ble.BikeProtocol
 import java.io.File
+import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.zip.CRC32
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,8 +57,10 @@ class RideSyncManager(
         CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
     private val importer = RideImporter(database)
     private val root = File(context.filesDir, "rides")
+    private val storageManager = context.getSystemService(StorageManager::class.java)
     private val manifests = LinkedHashMap<String, Manifest>()
     private val pending = ArrayDeque<Pair<Manifest, ManifestFile>>()
+    private val verificationFailures = HashMap<String, Int>()
     private val mutableProgress = MutableStateFlow(RideSyncProgress())
     val progress: StateFlow<RideSyncProgress> = mutableProgress.asStateFlow()
     private var listRequested = false
@@ -66,7 +71,6 @@ class RideSyncManager(
     private var lastRideState = -1
 
     init {
-        root.mkdirs()
         scope.launch {
             connection.state.collect { state ->
                 if (state != BikeConnectionState.Ready) {
@@ -74,6 +78,8 @@ class RideSyncManager(
                     listRequested = false
                     current = null
                     pending.clear()
+                    verificationFailures.clear()
+                    mutableProgress.value = RideSyncProgress()
                 } else {
                     requestListIfAllowed()
                 }
@@ -90,7 +96,15 @@ class RideSyncManager(
             }
         }
         scope.launch {
-            connection.protocolFrames.collect(::handleFrame)
+            connection.protocolFrames.collect { frame ->
+                try {
+                    handleFrame(frame)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    fail(error.message ?: "Ride sync failed")
+                }
+            }
         }
     }
 
@@ -110,6 +124,7 @@ class RideSyncManager(
             listRequested = true
             manifests.clear()
             pending.clear()
+            verificationFailures.clear()
             mutableProgress.value = RideSyncProgress(state = RideSyncState.Listing)
         }
     }
@@ -117,7 +132,7 @@ class RideSyncManager(
     private suspend fun handleFrame(frame: BikeFrame) {
         when (frame.messageType) {
             BikeProtocol.Message.RIDE_MANIFEST -> handleManifest(frame.payload)
-            BikeProtocol.Message.RIDE_LIST_END -> finishListing()
+            BikeProtocol.Message.RIDE_LIST_END -> finishListing(frame.payload)
             BikeProtocol.Message.FILE_BEGIN -> handleFileBegin(frame.payload)
             BikeProtocol.Message.FILE_CHUNK -> handleFileChunk(frame.payload)
             BikeProtocol.Message.FILE_END -> handleFileEnd(frame.payload)
@@ -135,9 +150,13 @@ class RideSyncManager(
         val distanceM = buffer.float.toDouble()
         val durationMs = buffer.long
         val revision = buffer.int.toLong() and 0xFFFF_FFFFL
-        buffer.int // total size
+        val declaredTotalSize = buffer.int.toLong() and 0xFFFF_FFFFL
         val fileCount = buffer.get().toInt() and 0xFF
-        if (fileCount > 4 || buffer.remaining() != fileCount * 9) {
+        if (numericRideId == 0L || formatVersion != SUPPORTED_RIDE_FORMAT ||
+            !finished || !distanceM.isFinite() || distanceM < 0.0 ||
+            durationMs < 0 || fileCount != REQUIRED_FILE_IDS.size ||
+            buffer.remaining() != fileCount * 9
+        ) {
             return fail("Invalid ride manifest file list")
         }
         val known = connection.knownDevice() ?: return fail("Device association missing")
@@ -152,6 +171,16 @@ class RideSyncManager(
                     ),
                 )
             }
+        }
+        if (files.map(ManifestFile::id).toSet() != REQUIRED_FILE_IDS ||
+            files.any { it.size > maximumFileBytes(it.id) } ||
+            files.sumOf(ManifestFile::size) != declaredTotalSize ||
+            declaredTotalSize > MAX_RIDE_TOTAL_BYTES
+        ) {
+            return fail("Unsafe ride manifest")
+        }
+        if (manifests.containsKey(rideKey)) {
+            return fail("Duplicate ride manifest")
         }
         database.deviceDao().upsert(
             DeviceEntity(
@@ -186,7 +215,9 @@ class RideSyncManager(
     }
 
     private suspend fun prepareFileRows(manifest: Manifest) {
-        val rideDirectory = File(root, safeDirectoryName(manifest.rideKey)).apply { mkdirs() }
+        ensureDirectory(root)
+        val rideDirectory = File(root, safeDirectoryName(manifest.rideKey))
+        ensureDirectory(rideDirectory)
         for (file in manifest.files) {
             val existing = database.rideDao().getFile(manifest.rideKey, file.id)
             val part = File(rideDirectory, "${fileName(file.id)}.part")
@@ -198,8 +229,8 @@ class RideSyncManager(
                 final.delete()
             }
             val verified = reusable && existing.verified && final.isFile
-            val downloaded = if (verified) file.size else part.length().coerceAtMost(file.size)
             if (part.length() > file.size) part.delete()
+            val downloaded = if (verified) file.size else part.length()
             database.rideDao().upsertFile(
                 RideFileEntity(
                     rideId = manifest.rideKey,
@@ -216,7 +247,29 @@ class RideSyncManager(
         }
     }
 
-    private suspend fun finishListing() {
+    private suspend fun finishListing(payload: ByteArray) {
+        if (payload.size != 6) return fail("Invalid ride list trailer")
+        val listedCount =
+            ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xFFFF
+        if (listedCount != manifests.size) return fail("Incomplete ride list")
+        ensureDirectory(root)
+        var requiredBytes = 0L
+        for ((manifest, file) in pending) {
+            val row = database.rideDao().getFile(manifest.rideKey, file.id)
+                ?: return fail("Missing local file row")
+            val downloaded = File(row.partialPath).length().coerceIn(0, file.size)
+            requiredBytes += file.size - downloaded
+        }
+        if (requiredBytes > 0) {
+            val storageUuid = storageManager.getUuidForPath(root)
+            val requestedBytes = requiredBytes + MINIMUM_FREE_SPACE_BYTES
+            if (requestedBytes < requiredBytes ||
+                requestedBytes > storageManager.getAllocatableBytes(storageUuid)
+            ) {
+                return fail("Not enough phone storage for ride sync")
+            }
+            storageManager.allocateBytes(storageUuid, requestedBytes)
+        }
         requestNextFile()
     }
 
@@ -315,7 +368,9 @@ class RideSyncManager(
         val row = database.rideDao().getFile(expected.first.rideKey, fileId)
             ?: return fail("Missing progress row")
         database.rideDao().upsertFile(row.copy(downloadedBytes = currentOffset))
-        sendAck(expected, currentOffset, sequence, 0)
+        if (!sendAck(expected, currentOffset, sequence, 0)) {
+            return fail("Cannot acknowledge file chunk")
+        }
         mutableProgress.value = mutableProgress.value.copy(downloadedBytes = currentOffset)
     }
 
@@ -324,7 +379,7 @@ class RideSyncManager(
         nextOffset: Long,
         sequence: Int,
         status: Int,
-    ) {
+    ): Boolean {
         val payload = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
             .putInt(expected.first.numericRideId.toInt())
             .put(expected.second.id.toByte())
@@ -332,7 +387,7 @@ class RideSyncManager(
             .putShort(sequence.toShort())
             .put(status.toByte())
             .array()
-        connection.send(
+        return connection.send(
             BikeProtocol.Message.FILE_ACK,
             BikeProtocol.Flag.PRIVILEGED,
             payload,
@@ -360,6 +415,12 @@ class RideSyncManager(
             database.rideDao().upsertFile(
                 row.copy(downloadedBytes = 0, verifiedPath = null, verified = false),
             )
+            val retryKey = "${expected.first.rideKey}:${expected.second.id}"
+            val failures = (verificationFailures[retryKey] ?: 0) + 1
+            verificationFailures[retryKey] = failures
+            if (failures >= MAX_VERIFICATION_ATTEMPTS) {
+                return fail("File verification failed repeatedly")
+            }
             pending.addFirst(expected)
             return requestNextFile()
         }
@@ -398,6 +459,13 @@ class RideSyncManager(
     private fun safeDirectoryName(rideId: String): String =
         rideId.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
+    private fun ensureDirectory(directory: File) {
+        if (directory.isDirectory) return
+        if (directory.exists() || !directory.mkdirs() || !directory.isDirectory) {
+            throw IOException("Cannot create ride storage")
+        }
+    }
+
     private fun fileName(fileId: Int): String = when (fileId) {
         1 -> "meta.json"
         2 -> "samples.csv"
@@ -406,11 +474,28 @@ class RideSyncManager(
         else -> "unknown_$fileId"
     }
 
+    private fun maximumFileBytes(fileId: Int): Long = when (fileId) {
+        1, 4 -> 1L * 1024L * 1024L
+        2 -> 256L * 1024L * 1024L
+        3 -> 32L * 1024L * 1024L
+        else -> 0
+    }
+
     private fun fail(message: String) {
         closeOutput()
+        current = null
+        pending.clear()
         mutableProgress.value = mutableProgress.value.copy(
             state = RideSyncState.Error,
             error = message,
         )
+    }
+
+    private companion object {
+        const val SUPPORTED_RIDE_FORMAT = 1
+        const val MAX_RIDE_TOTAL_BYTES = 290L * 1024L * 1024L
+        const val MINIMUM_FREE_SPACE_BYTES = 16L * 1024L * 1024L
+        const val MAX_VERIFICATION_ATTEMPTS = 3
+        val REQUIRED_FILE_IDS = setOf(1, 2, 3, 4)
     }
 }

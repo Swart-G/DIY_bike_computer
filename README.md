@@ -14,7 +14,9 @@ experimental navigation. The built-in GPIO48 RGB LED mirrors the two-second segm
 an optional F1-style 2/5/10-second speed-trend page; every segment has a persistent
 tolerance. The ST7796 and SD use the proven 1.0 shared-SPI ownership model without
 background panel probes or automatic bus/card reinitialization, while the animated boot
-screen shows bounded stage logs. Up to four
+screen shows bounded stage logs. Frequently changing Ride and diagnostics data is
+committed as bounded framebuffer regions, reducing shared-SPI traffic and avoiding
+whole-screen flicker. Up to four
 companion phones are remembered and listed on-device. All 60 supplied RGB565/RLE
 screens are linked as a pixel-exact regression baseline; production screens replace only their declared
 dynamic regions with runtime data. The optional Android companion remembers multiple
@@ -40,6 +42,10 @@ Android debug build:
 cd android
 ./gradlew testDebugUnitTest assembleDebug
 ```
+
+Android release builds require the persistent signing identity described in
+[`android/signing/README.md`](android/signing/README.md). The distributable signed APK
+and its checksum are in [`apk/`](apk/).
 
 The complete pin contract is in [docs/HARDWARE.md](docs/HARDWARE.md), version-2
 architecture in [docs/V2_ARCHITECTURE.md](docs/V2_ARCHITECTURE.md), file contract in

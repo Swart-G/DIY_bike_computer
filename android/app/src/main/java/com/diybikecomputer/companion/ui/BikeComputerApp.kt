@@ -1,6 +1,7 @@
 package com.diybikecomputer.companion.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -164,63 +165,68 @@ fun BikeComputerApp(
                 fontSize = 27.sp,
                 fontWeight = FontWeight.Bold,
             )
-            when {
-                selectedRide != null -> RideDetailScreen(
-                    dao = database.rideDao(),
-                    rideId = selectedRide!!,
-                    onBack = { selectedRide = null },
-                    onExportCsv = onExportCsv,
-                    onExportXlsx = onExportXlsx,
-                    onExportGpx = onExportGpx,
-                )
-                page == AppPage.Home && ready -> ConnectedHome(
-                    deviceName = connection.knownDevice()?.displayName ?: "Bike computer",
-                    telemetry = telemetry,
-                )
-                page == AppPage.Home -> DisconnectedHome(
-                    connectionState = connectionState,
-                    devices = knownDevices,
-                    target = connection.knownDevice(),
-                    pairingInProgress = pairingInProgress,
-                    pairingMessage = pairingMessage,
-                    onPair = onPair,
-                    onConnectDevice = onConnectDevice,
-                    onForgetDevice = { forgetCandidate = it },
-                )
-                page == AppPage.History -> HistoryScreen(database.rideDao()) {
-                    selectedRide = it
+            val activeRideId = selectedRide
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                when {
+                    activeRideId != null -> RideDetailScreen(
+                        dao = database.rideDao(),
+                        rideId = activeRideId,
+                        onBack = { selectedRide = null },
+                        onExportCsv = onExportCsv,
+                        onExportXlsx = onExportXlsx,
+                        onExportGpx = onExportGpx,
+                    )
+                    page == AppPage.Home && ready -> ConnectedHome(
+                        deviceName = connection.knownDevice()?.displayName ?: "Bike computer",
+                        telemetry = telemetry,
+                    )
+                    page == AppPage.Home -> DisconnectedHome(
+                        connectionState = connectionState,
+                        devices = knownDevices,
+                        target = connection.knownDevice(),
+                        pairingInProgress = pairingInProgress,
+                        pairingMessage = pairingMessage,
+                        onPair = onPair,
+                        onConnectDevice = onConnectDevice,
+                        onForgetDevice = { forgetCandidate = it },
+                    )
+                    page == AppPage.History -> HistoryScreen(database.rideDao()) {
+                        selectedRide = it
+                    }
+                    else -> SettingsPage(
+                        ready = ready,
+                        connectionState = connectionState,
+                        devices = knownDevices,
+                        activeBluetoothAddress = connection.knownDevice()?.bluetoothAddress,
+                        settings = settings,
+                        telemetry = telemetry,
+                        gpsEnabled = gpsEnabled,
+                        mediaAccessEnabled = mediaAccessEnabled,
+                        mediaPlayers = mediaPlayers,
+                        preferredMediaPlayer = preferredMediaPlayer,
+                        currentMedia = when {
+                            media.available ->
+                                "${media.player} · ${media.title.ifBlank { "active session" }}"
+                            preferredMediaPlayer != null -> "Waiting for selected player"
+                            else -> "No active media session"
+                        },
+                        navigationStatus = if (navigation.available) {
+                            "${navigation.lifecycle.name} · ${navigation.streetName}"
+                        } else {
+                            "Experimental · provider unavailable"
+                        },
+                        syncStatus =
+                            "${sync.state.name} · ${sync.downloadedBytes}/${sync.totalBytes}",
+                        pairingInProgress = pairingInProgress,
+                        onPair = onPair,
+                        onConnectDevice = onConnectDevice,
+                        onForgetDevice = { forgetCandidate = it },
+                        onGpsChanged = onGpsChanged,
+                        onEnableMedia = onEnableMedia,
+                        onMediaPlayerSelected = onMediaPlayerSelected,
+                        repository = deviceSettingsRepository,
+                    )
                 }
-                else -> SettingsPage(
-                    ready = ready,
-                    connectionState = connectionState,
-                    devices = knownDevices,
-                    activeBluetoothAddress = connection.knownDevice()?.bluetoothAddress,
-                    settings = settings,
-                    telemetry = telemetry,
-                    gpsEnabled = gpsEnabled,
-                    mediaAccessEnabled = mediaAccessEnabled,
-                    mediaPlayers = mediaPlayers,
-                    preferredMediaPlayer = preferredMediaPlayer,
-                    currentMedia = when {
-                        media.available -> "${media.player} · ${media.title.ifBlank { "active session" }}"
-                        preferredMediaPlayer != null -> "Waiting for selected player"
-                        else -> "No active media session"
-                    },
-                    navigationStatus = if (navigation.available) {
-                        "${navigation.lifecycle.name} · ${navigation.streetName}"
-                    } else {
-                        "Experimental · provider unavailable"
-                    },
-                    syncStatus = "${sync.state.name} · ${sync.downloadedBytes}/${sync.totalBytes}",
-                    pairingInProgress = pairingInProgress,
-                    onPair = onPair,
-                    onConnectDevice = onConnectDevice,
-                    onForgetDevice = { forgetCandidate = it },
-                    onGpsChanged = onGpsChanged,
-                    onEnableMedia = onEnableMedia,
-                    onMediaPlayerSelected = onMediaPlayerSelected,
-                    repository = deviceSettingsRepository,
-                )
             }
         }
     }
@@ -229,7 +235,7 @@ fun BikeComputerApp(
 @Composable
 private fun ConnectedHome(deviceName: String, telemetry: LiveTelemetry) {
     Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
@@ -326,7 +332,7 @@ private fun DisconnectedHome(
     onForgetDevice: (KnownDevice) -> Unit,
 ) {
     Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Card(
@@ -398,7 +404,7 @@ private fun SettingsPage(
     val rideActive = telemetry.rideState == 1 || telemetry.rideState == 2
     val editable = ready && !rideActive
     Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         SectionTitle("Connection", connectionStatus(connectionState))
@@ -721,8 +727,9 @@ private fun rideStateLabel(state: Int): String = when (state) {
 
 private fun storageStateLabel(state: Int): String = when (state) {
     1 -> "ready"
-    2 -> "USB host"
-    else -> "unavailable"
+    2 -> "error"
+    3 -> "USB host"
+    else -> "missing"
 }
 
 private fun connectionStatus(state: BikeConnectionState): String = when (state) {

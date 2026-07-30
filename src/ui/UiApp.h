@@ -120,6 +120,7 @@ class UiApp {
   bool dirty_ = true;
   bool partialRainFrame_ = false;
   bool partialRideFrame_ = false;
+  bool partialDynamicFrame_ = false;
   bool wasTouched_ = false;
   bool lastPaintValid_ = false;
   int16_t lastPaintX_ = 0;
@@ -166,6 +167,8 @@ class UiApp {
   uint32_t lastMediaRevision_ = 0;
   uint32_t lastNavigationRevision_ = 0;
   uint32_t lastPhoneListRevision_ = 0;
+  bool lastMediaAvailable_ = false;
+  bool lastNavigationAvailable_ = false;
   uint8_t lastHeaderBatteryPercent_ = 0xFF;
   int16_t lastHeaderBatteryRemainingMinutes_ = -2;
   bool lastHeaderBatteryCharging_ = false;

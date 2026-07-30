@@ -56,6 +56,21 @@ void test_settings_validation() {
   TEST_ASSERT_FLOAT_WITHIN(.001f, .5f, s.rgbSpeedTrendTolerance5sKmh);
   TEST_ASSERT_FLOAT_WITHIN(.001f, .5f, s.rgbSpeedTrendTolerance10sKmh);
   TEST_ASSERT_EQUAL_UINT8(20, s.rgbLedBrightnessPercent);
+
+  app::AppSettings nonFinite;
+  nonFinite.wheelCircumferenceM = NAN;
+  nonFinite.stopThresholdKmh = INFINITY;
+  nonFinite.maxPlausibleSpeedKmh = -INFINITY;
+  nonFinite.rgbSpeedTrendToleranceKmh = NAN;
+  nonFinite.batteryCalibrationFactor = NAN;
+  app::validateSettings(nonFinite);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 2.194f, nonFinite.wheelCircumferenceM);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 3.0f, nonFinite.stopThresholdKmh);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 100.0f, nonFinite.maxPlausibleSpeedKmh);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, .5f,
+                           nonFinite.rgbSpeedTrendToleranceKmh);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 1.0f,
+                           nonFinite.batteryCalibrationFactor);
 }
 void test_speed_trend_tolerance() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(SpeedTrendState::Accelerating),

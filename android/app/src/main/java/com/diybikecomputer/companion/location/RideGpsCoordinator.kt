@@ -91,19 +91,25 @@ class RideGpsCoordinator(
             )
         }
         activeRideKey = rideKey
-        ContextCompat.startForegroundService(
-            context,
-            Intent(context, RideLocationService::class.java)
-                .setAction(RideLocationService.ACTION_START)
-                .putExtra(RideLocationService.EXTRA_RIDE_ID, rideKey),
-        )
+        val started = runCatching {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, RideLocationService::class.java)
+                    .setAction(RideLocationService.ACTION_START)
+                    .putExtra(RideLocationService.EXTRA_RIDE_ID, rideKey),
+            )
+        }.getOrNull() != null
+        if (!started) activeRideKey = null
     }
 
     private fun stop() {
         activeRideKey = null
-        context.startService(
-            Intent(context, RideLocationService::class.java)
-                .setAction(RideLocationService.ACTION_STOP),
-        )
+        val requested = runCatching {
+            context.startService(
+                Intent(context, RideLocationService::class.java)
+                    .setAction(RideLocationService.ACTION_STOP),
+            )
+        }.getOrNull() != null
+        if (!requested) RideLocationService.forceStop(context)
     }
 }

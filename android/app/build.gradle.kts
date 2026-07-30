@@ -1,9 +1,37 @@
+import java.io.File
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("com.android.legacy-kapt")
     id("org.jetbrains.kotlin.plugin.compose")
     id("androidx.room")
 }
+
+val releaseSigningProperties = Properties()
+val releaseSigningPropertiesFile = rootProject.file("keystore.properties")
+if (releaseSigningPropertiesFile.isFile) {
+    releaseSigningPropertiesFile.inputStream().use(releaseSigningProperties::load)
+}
+
+fun releaseSigningValue(propertyName: String, environmentName: String): String? =
+    providers.environmentVariable(environmentName).orNull
+        ?: releaseSigningProperties.getProperty(propertyName)
+
+val releaseStoreFile =
+    releaseSigningValue("storeFile", "BIKE_RELEASE_STORE_FILE")
+val releaseStorePassword =
+    releaseSigningValue("storePassword", "BIKE_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias =
+    releaseSigningValue("keyAlias", "BIKE_RELEASE_KEY_ALIAS")
+val releaseKeyPassword =
+    releaseSigningValue("keyPassword", "BIKE_RELEASE_KEY_PASSWORD")
+val releaseSigningConfigured = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.diybikecomputer.companion"
@@ -20,9 +48,25 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    val releaseSigningConfig = if (releaseSigningConfigured) {
+        signingConfigs.create("release") {
+            storeFile = rootProject.file(requireNotNull(releaseStoreFile))
+            storePassword = requireNotNull(releaseStorePassword)
+            keyAlias = requireNotNull(releaseKeyAlias)
+            keyPassword = requireNotNull(releaseKeyPassword)
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    } else {
+        null
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = releaseSigningConfig
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -46,6 +90,27 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+}
+
+val verifyReleaseSigning by tasks.registering {
+    inputs.property("releaseSigningConfigured", releaseSigningConfigured)
+    inputs.property("releaseStoreFile", releaseStoreFile.orEmpty())
+    doLast {
+        check(inputs.properties["releaseSigningConfigured"] == true) {
+            "Release signing is not configured. Copy keystore.properties.example to " +
+                "keystore.properties or provide the BIKE_RELEASE_* environment variables."
+        }
+        val storePath = inputs.properties["releaseStoreFile"] as String
+        check(File(storePath).isFile) {
+            "Release keystore does not exist: $storePath"
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name == "preReleaseBuild") {
+        dependsOn(verifyReleaseSigning)
     }
 }
 

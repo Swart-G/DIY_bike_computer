@@ -1,6 +1,7 @@
 package com.diybikecomputer.companion
 
 import android.Manifest
+import android.app.Activity
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanResult
 import android.companion.CompanionDeviceManager
@@ -11,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
@@ -29,6 +31,7 @@ import com.diybikecomputer.companion.ui.BikeComputerApp
 import com.diybikecomputer.companion.ui.theme.BikeComputerTheme
 import com.diybikecomputer.companion.media.MediaBridgeService
 import com.diybikecomputer.companion.rides.RideExporter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -48,7 +51,7 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         val rideId = pendingExportRideId
         if (uri != null && rideId != null) {
-            lifecycleScope.launch { exporter.exportCsv(rideId, uri) }
+            launchExport { exporter.exportCsv(rideId, uri) }
         }
         pendingExportRideId = null
     }
@@ -57,7 +60,7 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         val rideId = pendingExportRideId
         if (uri != null && rideId != null) {
-            lifecycleScope.launch { exporter.exportGpx(rideId, uri) }
+            launchExport { exporter.exportGpx(rideId, uri) }
         }
         pendingExportRideId = null
     }
@@ -68,7 +71,7 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         val rideId = pendingExportRideId
         if (uri != null && rideId != null) {
-            lifecycleScope.launch { exporter.exportSummaryXlsx(rideId, uri) }
+            launchExport { exporter.exportSummaryXlsx(rideId, uri) }
         }
         pendingExportRideId = null
     }
@@ -76,6 +79,10 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
         if (Build.VERSION.SDK_INT >= 33) {
+            if (result.resultCode != Activity.RESULT_OK) {
+                pairingInProgress = false
+                pairingMessage = "No device was selected"
+            }
             return@registerForActivityResult
         }
         @Suppress("DEPRECATION")
@@ -263,6 +270,23 @@ class MainActivity : ComponentActivity() {
             "enabled_notification_listeners",
         ).orEmpty().split(':').any {
             ComponentName.unflattenFromString(it) == expected
+        }
+    }
+
+    private fun launchExport(export: suspend () -> Boolean) {
+        lifecycleScope.launch {
+            val success = try {
+                export()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            Toast.makeText(
+                this@MainActivity,
+                if (success) "Export complete" else "Export failed",
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 }

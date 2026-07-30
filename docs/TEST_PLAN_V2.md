@@ -181,3 +181,18 @@ the ride page sequence incorrectly.
 - GPIO/hardware mapping is not exposed;
 - unauthorized config/download and arbitrary paths are rejected;
 - USB ownership blocks all FAT-backed config and sync operations.
+
+## Signed Android release
+
+- build `assembleRelease` only with the persistent private key kept outside the
+  repository;
+- run `apksigner verify --verbose --print-certs` with the supplied
+  `--v4-signature-file`; confirm v2/v3/v4 verification plus the SHA-256 certificate
+  fingerprint documented in `apk/README.md`;
+- compare `sha256sum -c apk/SHA256SUMS`, install the release APK on Android 8 and a
+  current Android version, then perform an in-place update with a second build signed
+  by the same key;
+- a previously installed debug APK requires one uninstall because Android correctly
+  rejects a package update signed by another identity;
+- normal user confirmation for an APK installed outside a trusted store is expected
+  and must not be bypassed.

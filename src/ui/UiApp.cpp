@@ -101,19 +101,37 @@ void UiApp::loop() {
   }
   const PhoneState& phoneState = phone_->state();
   const uint8_t linkState = static_cast<uint8_t>(phoneState.link);
-  if (linkState != lastPhoneLinkState_ ||
-      phoneState.pairingCode != lastPairingCode_ ||
-      phone_->phoneListRevision() != lastPhoneListRevision_ ||
-      phone_->mediaRevision() != lastMediaRevision_ ||
-      phone_->navigationRevision() != lastNavigationRevision_) {
+  if (linkState != lastPhoneLinkState_) {
     lastPhoneLinkState_ = linkState;
+    dirty_ = true;
+  }
+  if (phoneState.pairingCode != lastPairingCode_) {
     lastPairingCode_ = phoneState.pairingCode;
+    if (router_.current() == Screen::Phone) dirty_ = true;
+  }
+  if (phone_->phoneListRevision() != lastPhoneListRevision_) {
     lastPhoneListRevision_ = phone_->phoneListRevision();
+    if (router_.current() == Screen::Phone) dirty_ = true;
+  }
+  if (phone_->mediaRevision() != lastMediaRevision_) {
     lastMediaRevision_ = phone_->mediaRevision();
+    const bool available = phone_->mediaState().available;
+    if (available != lastMediaAvailable_) {
+      lastMediaAvailable_ = available;
+      dirty_ = true;
+    }
+  }
+  if (phone_->navigationRevision() != lastNavigationRevision_) {
     lastNavigationRevision_ = phone_->navigationRevision();
+    const bool available = phone_->navigationState().available;
+    if (available != lastNavigationAvailable_) {
+      lastNavigationAvailable_ = available;
+      dirty_ = true;
+    }
+  }
+  if (dirty_) {
     const uint8_t pageCount = ridePageCount();
     if (ridePage_ >= pageCount) ridePage_ = pageCount - 1;
-    dirty_ = true;
   }
   touch_->update();
   updateModel(now);
@@ -146,13 +164,13 @@ void UiApp::loop() {
   }
   rainLock_.update(touch_->point(), now);
   if (rainLock_.takeDirty()) dirty_ = true;
-  bool rainLocked = false;
-  if (rainLock_.takeLockChanged(rainLocked)) {
+  bool lockEnabled = false;
+  if (rainLock_.takeLockChanged(lockEnabled)) {
     Serial.print("[RAIN] ");
-    Serial.println(rainLocked ? "enabled" : "disabled");
+    Serial.println(lockEnabled ? "enabled" : "disabled");
     if (logger_->active()) {
       logger_->event(*storage_, *ride_, "RAIN_LOCK_CHANGED",
-                     rainLocked ? "enabled" : "disabled");
+                     lockEnabled ? "enabled" : "disabled");
     }
   }
 
@@ -199,20 +217,36 @@ void UiApp::loop() {
     wasTouched_ = touchedNow;
   }
 
-  const bool dynamicScreen = router_.current() == Screen::Ride ||
-                             router_.current() == Screen::Phone ||
-                             router_.current() == Screen::TouchRawTest ||
-                             router_.current() == Screen::SensorTest || router_.current() == Screen::BatteryTest || router_.current() == Screen::SystemInfo;
-  const uint32_t drawInterval =
-      rainLock_.animationActive() ? 40 : settings_->uiUpdateIntervalMs;
+  const Screen currentScreen = router_.current();
+  const bool phoneCountdown =
+      currentScreen == Screen::Phone && phoneState.pairingCode != 0;
+  const bool dynamicScreen =
+      currentScreen == Screen::Ride || phoneCountdown ||
+      currentScreen == Screen::TouchRawTest ||
+      currentScreen == Screen::SensorTest ||
+      currentScreen == Screen::BatteryTest ||
+      currentScreen == Screen::SystemInfo;
+  uint32_t drawInterval = settings_->uiUpdateIntervalMs;
+  if (rainLock_.animationActive()) {
+    drawInterval = 40;
+  } else if (phoneCountdown || currentScreen == Screen::SystemInfo) {
+    drawInterval = 1000;
+  } else if (currentScreen == Screen::TouchRawTest) {
+    drawInterval = 100;
+  } else if (currentScreen == Screen::BatteryTest) {
+    drawInterval = max<uint32_t>(drawInterval, 400);
+  }
   if (dirty_ || (dynamicScreen && now - lastUiDrawMs_ >= drawInterval)) {
     partialRainFrame_ = rainLock_.animationActive() && !dirty_ &&
                         router_.current() == Screen::Ride;
     partialRideFrame_ = !partialRainFrame_ && !dirty_ &&
                         router_.current() == Screen::Ride;
+    partialDynamicFrame_ = !partialRainFrame_ && !partialRideFrame_ &&
+                           !dirty_ && dynamicScreen;
     draw();
     partialRainFrame_ = false;
     partialRideFrame_ = false;
+    partialDynamicFrame_ = false;
     dirty_ = false;
     lastUiDrawMs_ = now;
   }
@@ -578,7 +612,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       if (headerBackHit(x, y)) enter(Screen::Diagnostics);
       else if (hit(x,y,12,262,108,58)) { settings_->batteryCalibrationFactor -= 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
       else if (hit(x,y,118,262,108,58)) { settings_->batteryCalibrationFactor += 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
-      else if (hit(x,y,224,262,124,58)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?"Calibration saved":e; dirty_=true; }
+      else if (hit(x,y,224,262,124,58)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?(e.length()?e:"Calibration saved"):e; dirty_=true; }
       else if (hit(x,y,346,262,128,58)) enter(Screen::Diagnostics);
       break;
 
@@ -863,12 +897,10 @@ void UiApp::handleTap(int16_t x, int16_t y) {
         phone_->sendMediaAction(media::Action::Next);
       } else if (hit(x, y, 24, 264, 432, 43) &&
           (ride_->state() == RideState::IDLE || ride_->state() == RideState::FINISHED)) {
-        if (ride_->state() == RideState::IDLE || ride_->state() == RideState::FINISHED) {
-          ride_->start(millis(), sensorSnapshot_.pulseCount);
-          batteryLowEventLogged_ = false; batteryCriticalEventLogged_ = false;
-          String error; if (storage_->loggingEnabled() && logger_->start(*storage_, *settings_, *battery_, error)) logger_->event(*storage_, *ride_, "START", "user started ride"); else if (error.length()) lastMessage_=error;
-          saveRecoveryIfNeeded(millis(), true);
-        }
+        ride_->start(millis(), sensorSnapshot_.pulseCount);
+        batteryLowEventLogged_ = false; batteryCriticalEventLogged_ = false;
+        String error; if (storage_->loggingEnabled() && logger_->start(*storage_, *settings_, *battery_, error)) logger_->event(*storage_, *ride_, "START", "user started ride"); else if (error.length()) lastMessage_=error;
+        saveRecoveryIfNeeded(millis(), true);
         dirty_ = true;
       } else if (hit(x, y, 24, 266, 291, 41)) {
         if (ride_->state() == RideState::RIDING) {
@@ -923,7 +955,7 @@ void UiApp::handlePaint() {
 }
 
 void UiApp::draw() {
-  if (partialRainFrame_ || partialRideFrame_) {
+  if (partialRainFrame_ || partialRideFrame_ || partialDynamicFrame_) {
     display_->beginPartialFrame();
   } else {
     display_->beginFrame();
@@ -1032,6 +1064,27 @@ void UiApp::draw() {
     // Static header/footer stay on the panel; only the live content band is
     // transferred at telemetry cadence.
     display_->commitFrameArea(18, 44, 444, 214);
+  } else if (partialDynamicFrame_) {
+    switch (router_.current()) {
+      case Screen::Phone:
+        display_->commitFrameArea(96, 238, 288, 26);
+        break;
+      case Screen::TouchRawTest:
+        display_->commitFrameArea(18, 58, 444, 196);
+        break;
+      case Screen::SensorTest:
+        display_->commitFrameArea(156, 58, 306, 206);
+        break;
+      case Screen::BatteryTest:
+        display_->commitFrameArea(18, 58, 444, 196);
+        break;
+      case Screen::SystemInfo:
+        display_->commitFrameArea(270, 48, 190, 226);
+        break;
+      default:
+        display_->commitFrame();
+        break;
+    }
   } else {
     display_->commitFrame();
   }
@@ -1083,7 +1136,6 @@ void UiApp::drawBatteryStatusIcon(int16_t x, int16_t y) {
   TFT_eSPI& tft = display_->tft();
   const bool measured = battery_->enabled();
   const uint16_t color = measured ? ui::UI_TEXT : ui::UI_RED;
-  const uint16_t bg = ui::UI_BG;
   const int16_t bodyW = 26;
   const int16_t bodyH = 13;
   const int16_t bodyX = x - bodyW - 4;
@@ -1807,13 +1859,13 @@ bool UiApp::commitSettings(const app::AppSettings& candidate,
     return false;
   }
   *settings_ = validated;
+  lastMessage_ = error.length() ? error : successMessage;
   const uint8_t pageCount = ridePageCount();
   if (pageCount && ridePage_ >= pageCount) ridePage_ = pageCount - 1;
   if (updateSensor) sensor_->updateSettings(*settings_);
   if (logger_->active() && eventDetails) {
     logger_->event(*storage_, *ride_, "CONFIG_CHANGED", eventDetails);
   }
-  lastMessage_ = successMessage;
   return true;
 }
 

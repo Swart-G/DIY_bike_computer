@@ -40,9 +40,19 @@ data class MediaSnapshot(
     val artist: String = "",
 ) {
     fun currentPositionMs(nowRealtimeMs: Long = SystemClock.elapsedRealtime()): Long {
-        if (!playing || playbackSpeed <= 0f) return positionMs.coerceIn(0, durationMs.coerceAtLeast(0))
-        val estimate = positionMs + ((nowRealtimeMs - updateRealtimeMs) * playbackSpeed).toLong()
-        return estimate.coerceIn(0, durationMs.coerceAtLeast(0))
+        val safeDuration = durationMs.coerceAtLeast(0)
+        if (!playing || !playbackSpeed.isFinite() || playbackSpeed <= 0f) {
+            return positionMs.coerceIn(0, safeDuration)
+        }
+        val elapsedMs = (nowRealtimeMs - updateRealtimeMs).coerceAtLeast(0)
+        val advance = (elapsedMs.toDouble() * playbackSpeed)
+            .coerceIn(0.0, Long.MAX_VALUE.toDouble())
+            .toLong()
+        val safePosition = positionMs.coerceAtLeast(0)
+        val estimate =
+            if (safePosition > Long.MAX_VALUE - advance) Long.MAX_VALUE
+            else safePosition + advance
+        return estimate.coerceIn(0, safeDuration)
     }
 }
 

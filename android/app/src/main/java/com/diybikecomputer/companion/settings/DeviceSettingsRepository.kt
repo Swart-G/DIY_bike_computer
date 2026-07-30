@@ -149,11 +149,15 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
             .put(type.toByte())
             .putInt(rawValue)
             .array()
-        connection.send(
+        if (!connection.send(
             BikeProtocol.Message.CONFIG_SET,
             BikeProtocol.Flag.ACK_REQUIRED or BikeProtocol.Flag.PRIVILEGED,
             payload,
-        )
+        )) {
+            mutableState.value = mutableState.value.copy(
+                lastResult = "Setting $key could not be queued",
+            )
+        }
     }
 
     private fun handleValue(payload: ByteArray) {
@@ -181,13 +185,30 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
         ) {
             return
         }
+        val floatValue = Float.fromBits(raw)
+        val unsignedValue = raw.toLong() and 0xFFFF_FFFFL
+        val valid = when (key) {
+            Key.WHEEL -> floatValue.isFinite() && floatValue in 0.5f..3.5f
+            Key.STOP_THRESHOLD -> floatValue.isFinite() && floatValue in 0.5f..15f
+            Key.AUTO_PAUSE, Key.SPEED_LED_ENABLED -> raw == 0 || raw == 1
+            Key.AUTO_PAUSE_DELAY -> unsignedValue in 1_000L..60_000L
+            Key.LOG_INTERVAL -> unsignedValue in 250L..10_000L
+            Key.GRAPH_WINDOW -> unsignedValue in 10L..300L
+            Key.SPEED_LED_TOLERANCE_2S,
+            Key.SPEED_LED_TOLERANCE_5S,
+            Key.SPEED_LED_TOLERANCE_10S ->
+                floatValue.isFinite() && floatValue in 0.1f..5f
+            Key.SPEED_LED_BRIGHTNESS -> unsignedValue in 5L..100L
+            else -> false
+        }
+        if (!valid) return
         mutableState.value = when (key) {
             Key.WHEEL -> previous.copy(
-                wheelCircumferenceM = Float.fromBits(raw),
+                wheelCircumferenceM = floatValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.STOP_THRESHOLD -> previous.copy(
-                stopThresholdKmh = Float.fromBits(raw),
+                stopThresholdKmh = floatValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.AUTO_PAUSE -> previous.copy(
@@ -195,15 +216,15 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.AUTO_PAUSE_DELAY -> previous.copy(
-                autoPauseDelayMs = raw.toLong() and 0xFFFF_FFFFL,
+                autoPauseDelayMs = unsignedValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.LOG_INTERVAL -> previous.copy(
-                logIntervalMs = raw.toLong() and 0xFFFF_FFFFL,
+                logIntervalMs = unsignedValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.GRAPH_WINDOW -> previous.copy(
-                graphWindowSeconds = raw.toLong() and 0xFFFF_FFFFL,
+                graphWindowSeconds = unsignedValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.SPEED_LED_ENABLED -> previous.copy(
@@ -211,19 +232,19 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.SPEED_LED_TOLERANCE_2S -> previous.copy(
-                speedLedTolerance2sKmh = Float.fromBits(raw),
+                speedLedTolerance2sKmh = floatValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.SPEED_LED_TOLERANCE_5S -> previous.copy(
-                speedLedTolerance5sKmh = Float.fromBits(raw),
+                speedLedTolerance5sKmh = floatValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.SPEED_LED_TOLERANCE_10S -> previous.copy(
-                speedLedTolerance10sKmh = Float.fromBits(raw),
+                speedLedTolerance10sKmh = floatValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             Key.SPEED_LED_BRIGHTNESS -> previous.copy(
-                speedLedBrightnessPercent = raw.toLong() and 0xFFFF_FFFFL,
+                speedLedBrightnessPercent = unsignedValue,
                 loadedKeys = previous.loadedKeys + key,
             )
             else -> previous

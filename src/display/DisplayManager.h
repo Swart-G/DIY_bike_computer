@@ -14,7 +14,12 @@ class DisplayManager {
 
   int16_t width();
   int16_t height();
-  TFT_eSPI& tft() { return frameActive_ && frameBufferReady_ ? frame_ : tft_; }
+  TFT_eSPI& tft() {
+    if (frameActive_ && frameBufferReady_) {
+      return static_cast<TFT_eSPI&>(frame_);
+    }
+    return tft_;
+  }
 
   void clear(uint16_t color = 0x0861);
   void beginFrame(uint16_t color = 0x0861);

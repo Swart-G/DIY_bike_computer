@@ -71,20 +71,21 @@ bool TouchManager::update() {
   consecutiveReadFailures_ = 0;
 
   const uint8_t reportedPoints = min<uint8_t>(data[0] & 0x0F, 2);
-  TouchContact contacts[2];
+  TouchContact contacts[2] = {};
   bool anyValid = false;
   for (uint8_t i = 0; i < reportedPoints; ++i) {
     const uint8_t base = i == 0 ? 1 : 7;
-    TouchContact& contact = contacts[i];
-    contact.event = (data[base] >> 6) & 0x03;
-    contact.id = (data[base + 2] >> 4) & 0x0F;
-    contact.rawX =
+    TouchContact& currentContact = contacts[i];
+    currentContact.event = (data[base] >> 6) & 0x03;
+    currentContact.id = (data[base + 2] >> 4) & 0x0F;
+    currentContact.rawX =
         static_cast<int16_t>(((data[base] & 0x0F) << 8) | data[base + 1]);
-    contact.rawY =
+    currentContact.rawY =
         static_cast<int16_t>(((data[base + 2] & 0x0F) << 8) | data[base + 3]);
-    contact.valid = contact.event == 0 || contact.event == 2;
-    if (contact.valid) {
-      transformRaw(contact);
+    currentContact.valid =
+        currentContact.event == 0 || currentContact.event == 2;
+    if (currentContact.valid) {
+      transformRaw(currentContact);
       anyValid = true;
     }
   }

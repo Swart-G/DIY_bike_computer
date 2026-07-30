@@ -21,9 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 
 class RideLocationService : Service(), LocationListener {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+    private val startGeneration = AtomicInteger()
     private lateinit var locationManager: LocationManager
     private var rideId: String? = null
     private var nextPointIndex = 0L
@@ -59,10 +62,15 @@ class RideLocationService : Service(), LocationListener {
                 .setOnlyAlertOnce(true)
                 .build(),
         )
+        val generation = startGeneration.incrementAndGet()
         scope.launch {
-            nextPointIndex =
+            val storedPointIndex =
                 (application as BikeComputerApplication).database.rideDao()
                     .lastGpsPointIndex(requestedRide) + 1
+            if (generation != startGeneration.get() || rideId != requestedRide) {
+                return@launch
+            }
+            nextPointIndex = storedPointIndex
             startLocationUpdates()
         }
         return START_STICKY
@@ -124,6 +132,7 @@ class RideLocationService : Service(), LocationListener {
     }
 
     private fun stopRecording() {
+        startGeneration.incrementAndGet()
         locationManager.removeUpdates(this)
         rideId = null
         getSharedPreferences(PREFERENCES, MODE_PRIVATE)
@@ -152,5 +161,11 @@ class RideLocationService : Service(), LocationListener {
         private const val ACTIVE_RIDE = "active_ride"
         private const val CHANNEL_ID = "ride_gps"
         private const val NOTIFICATION_ID = 42
+
+        fun forceStop(context: android.content.Context) {
+            context.getSharedPreferences(PREFERENCES, android.content.Context.MODE_PRIVATE)
+                .edit().remove(ACTIVE_RIDE).apply()
+            context.stopService(Intent(context, RideLocationService::class.java))
+        }
     }
 }

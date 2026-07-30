@@ -470,8 +470,8 @@ private fun RideMetricGrid(ride: RideEntity) {
 private fun MetricTile(
     label: String,
     value: String,
-    unit: String = "",
     modifier: Modifier = Modifier,
+    unit: String = "",
 ) {
     Card(
         modifier = modifier,

@@ -32,3 +32,6 @@ Version 2.0 development:
   is selected; all other features remain operational.
 - Firmware release `2.1.1` incorporates the completed hardware-driven SD/display
   stability rollback; remaining acceptance checks stay documented in `docs/TEST_PLAN_V2.md`.
+- The 2.1.1 maintenance audit bounds live framebuffer transfers, validates persisted
+  numeric configuration, hardens BLE framing/write timeouts and ride imports, and
+  publishes the Android companion under a persistent release-signing certificate.

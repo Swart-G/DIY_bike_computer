@@ -9,6 +9,7 @@ import com.diybikecomputer.companion.device.KnownDevice
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.TimeZone
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -77,10 +78,13 @@ class BikeConnectionService(context: Context) {
     val protocolFrames: SharedFlow<BikeFrame> = mutableProtocolFrames
     private val mutableProtocolErrors = MutableSharedFlow<ProtocolError>(extraBufferCapacity = 8)
     val protocolErrors: SharedFlow<ProtocolError> = mutableProtocolErrors
-    private var nextSequence = 1
+    private val nextSequence = AtomicInteger(1)
     private var reconnectJob: Job? = null
+    private var initializationJob: Job? = null
     private var reconnectAttempt = 0
+    @Volatile
     private var intentionalDisconnect = false
+    @Volatile
     private var activeBluetoothAddress: String? = devices.knownDevice()?.bluetoothAddress
 
     init {
@@ -94,13 +98,25 @@ class BikeConnectionService(context: Context) {
                         reconnectJob?.cancel()
                         reconnectAttempt = 0
                         mutableState.value = BikeConnectionState.Initializing
-                        sendHello()
+                        if (!sendHello()) {
+                            gatt.close()
+                        } else {
+                            initializationJob?.cancel()
+                            initializationJob = scope.launch {
+                                delay(INITIALIZATION_TIMEOUT_MS)
+                                if (mutableState.value == BikeConnectionState.Initializing) {
+                                    gatt.close()
+                                }
+                            }
+                        }
                     }
                     GattState.Error -> {
+                        initializationJob?.cancel()
                         mutableState.value = BikeConnectionState.Reconnecting
                         scheduleReconnect()
                     }
                     GattState.Disconnected -> {
+                        initializationJob?.cancel()
                         mutableState.value =
                             if (devices.knownDevices().isEmpty()) BikeConnectionState.Unpaired
                             else if (intentionalDisconnect) BikeConnectionState.Disconnected
@@ -112,14 +128,8 @@ class BikeConnectionService(context: Context) {
         }
         scope.launch {
             gatt.incoming.collect { value ->
-                decoder.feed(value)
-                repeat(8) {
-                    when (val event = decoder.next()) {
-                        is DecodeEvent.Frame -> handleFrame(event.value)
-                        DecodeEvent.NeedMoreData -> return@collect
-                        else -> mutableState.value = BikeConnectionState.Error
-                    }
-                }
+                val frames = decodeIncoming(value)
+                if (frames == null) gatt.close() else frames.forEach { handleFrame(it) }
             }
         }
     }
@@ -128,8 +138,9 @@ class BikeConnectionService(context: Context) {
     fun connect(device: BluetoothDevice, systemAssociationId: Int? = null) {
         intentionalDisconnect = false
         reconnectJob?.cancel()
-        decoder.reset()
-        nextSequence = 1
+        initializationJob?.cancel()
+        synchronized(decoder) { decoder.reset() }
+        nextSequence.set(1)
         activeBluetoothAddress = device.address
         devices.rememberEndpoint(
             bluetoothAddress = device.address,
@@ -137,6 +148,14 @@ class BikeConnectionService(context: Context) {
             systemAssociationId = systemAssociationId,
         )
         gatt.connect(device)
+        initializationJob = scope.launch {
+            delay(CONNECTION_TIMEOUT_MS)
+            if (mutableState.value == BikeConnectionState.Connecting ||
+                mutableState.value == BikeConnectionState.Initializing
+            ) {
+                gatt.close()
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -153,6 +172,7 @@ class BikeConnectionService(context: Context) {
             if (device.bondState != BluetoothDevice.BOND_BONDED) {
                 intentionalDisconnect = true
                 reconnectJob?.cancel()
+                initializationJob?.cancel()
                 gatt.close()
                 devices.forget(address)
                 mutableState.value =
@@ -168,6 +188,7 @@ class BikeConnectionService(context: Context) {
     fun disconnect() {
         intentionalDisconnect = true
         reconnectJob?.cancel()
+        initializationJob?.cancel()
         gatt.close()
     }
 
@@ -176,6 +197,7 @@ class BikeConnectionService(context: Context) {
         if (isActive) {
             intentionalDisconnect = true
             reconnectJob?.cancel()
+            initializationJob?.cancel()
             gatt.close()
             activeBluetoothAddress = null
             mutableTelemetry.value = LiveTelemetry()
@@ -192,12 +214,33 @@ class BikeConnectionService(context: Context) {
     fun knownDevice(): KnownDevice? = devices.knownDevice()
 
     fun send(messageType: Int, flags: Int, payload: ByteArray): Boolean {
+        val sequence = nextSequence.getAndUpdate { current ->
+            if (current >= 0xFFFF) 1 else current + 1
+        }
         return gatt.enqueueFrame(
-            BikeProtocolCodec.encode(messageType, flags, nextSequence++, payload),
+            BikeProtocolCodec.encode(messageType, flags, sequence, payload),
         )
     }
 
-    private fun sendHello() {
+    private fun decodeIncoming(value: ByteArray): List<BikeFrame>? =
+        synchronized(decoder) {
+            decoder.feed(value)
+            val frames = ArrayList<BikeFrame>()
+            repeat(MAX_DECODE_EVENTS_PER_NOTIFICATION) {
+                when (val event = decoder.next()) {
+                    is DecodeEvent.Frame -> frames += event.value
+                    DecodeEvent.NeedMoreData -> return@synchronized frames
+                    else -> {
+                        decoder.reset()
+                        return@synchronized null
+                    }
+                }
+            }
+            decoder.reset()
+            null
+        }
+
+    private fun sendHello(): Boolean {
         val associationId = activeBluetoothAddress?.let(devices::find)?.associationId ?: 0L
         val name = "Bike Computer Android".encodeToByteArray()
         val payload = ByteBuffer.allocate(3 + 1 + 1 + 8 + 4 + 1 + name.size)
@@ -212,10 +255,10 @@ class BikeConnectionService(context: Context) {
             .put(name.size.toByte())
             .put(name)
             .array()
-        send(BikeProtocol.Message.HELLO, BikeProtocol.Flag.ACK_REQUIRED, payload)
+        return send(BikeProtocol.Message.HELLO, BikeProtocol.Flag.ACK_REQUIRED, payload)
     }
 
-    private fun handleFrame(frame: BikeFrame) {
+    private suspend fun handleFrame(frame: BikeFrame) {
         when (frame.messageType) {
             BikeProtocol.Message.HELLO_ACK -> handleHelloAck(frame.payload)
             BikeProtocol.Message.LIVE_TELEMETRY -> handleTelemetry(frame.payload)
@@ -229,7 +272,7 @@ class BikeConnectionService(context: Context) {
             BikeProtocol.Message.FILE_END,
             BikeProtocol.Message.MEDIA_ACTION,
             BikeProtocol.Message.CONFIG_VALUE,
-            BikeProtocol.Message.CONFIG_RESULT -> mutableProtocolFrames.tryEmit(frame)
+            BikeProtocol.Message.CONFIG_RESULT -> mutableProtocolFrames.emit(frame)
             BikeProtocol.Message.PING -> {
                 gatt.enqueueFrame(
                     BikeProtocolCodec.encode(
@@ -244,7 +287,7 @@ class BikeConnectionService(context: Context) {
         }
     }
 
-    private fun handleProtocolError(frame: BikeFrame) {
+    private suspend fun handleProtocolError(frame: BikeFrame) {
         if (frame.payload.size < 6) return
         val buffer = ByteBuffer.wrap(frame.payload).order(ByteOrder.LITTLE_ENDIAN)
         val code = buffer.short.toInt() and 0xFFFF
@@ -254,11 +297,11 @@ class BikeConnectionService(context: Context) {
         if (buffer.remaining() != detailLength) return
         val detailBytes = ByteArray(detailLength)
         buffer.get(detailBytes)
-        mutableProtocolErrors.tryEmit(
+        mutableProtocolErrors.emit(
             ProtocolError(code, rejectedType, detailBytes.decodeToString()),
         )
-        mutableProtocolFrames.tryEmit(frame)
-        if (code == 2 || code == 15) mutableState.value = BikeConnectionState.Error
+        mutableProtocolFrames.emit(frame)
+        if (code == 2 || code == 15) gatt.close()
     }
 
     private fun scheduleReconnect() {
@@ -280,7 +323,7 @@ class BikeConnectionService(context: Context) {
 
     private fun handleHelloAck(payload: ByteArray) {
         if (payload.size < 26 || (payload[0].toInt() and 0xFF) != BikeProtocol.VERSION) {
-            mutableState.value = BikeConnectionState.Error
+            gatt.close()
             return
         }
         val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
@@ -289,31 +332,37 @@ class BikeConnectionService(context: Context) {
         val associationId = buffer.long
         buffer.int // capabilities
         val rideFormatCount = buffer.get().toInt() and 0xFF
-        if (buffer.remaining() < rideFormatCount + 1 || associationId == 0L) {
-            mutableState.value = BikeConnectionState.Error
+        if (buffer.remaining() < rideFormatCount + 1 ||
+            deviceId == 0L || associationId == 0L
+        ) {
+            gatt.close()
             return
         }
         buffer.position(buffer.position() + rideFormatCount)
         val nameLength = buffer.get().toInt() and 0xFF
         if (buffer.remaining() < nameLength) {
-            mutableState.value = BikeConnectionState.Error
+            gatt.close()
             return
         }
         val nameBytes = ByteArray(nameLength)
         buffer.get(nameBytes)
         val bluetoothAddress = activeBluetoothAddress ?: return run {
-            mutableState.value = BikeConnectionState.Error
+            gatt.close()
         }
         val endpoint = devices.find(bluetoothAddress)
         devices.save(
             KnownDevice(
                 deviceId = deviceId,
                 associationId = associationId,
-                displayName = nameBytes.decodeToString(),
+                displayName = nameBytes.decodeToString()
+                    .trim()
+                    .take(MAX_DEVICE_NAME_LENGTH)
+                    .ifBlank { "DIY Bike Computer" },
                 bluetoothAddress = bluetoothAddress,
                 systemAssociationId = endpoint?.systemAssociationId,
             ),
         )
+        initializationJob?.cancel()
         mutableState.value = BikeConnectionState.Ready
         sendTimeSync()
     }
@@ -337,42 +386,74 @@ class BikeConnectionService(context: Context) {
     private fun handleTelemetry(payload: ByteArray) {
         if (payload.size != 44) return
         val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
+        val rideState = buffer.get().toInt() and 0xFF
+        val motionState = buffer.get().toInt() and 0xFF
+        val batteryPercent = buffer.get().toInt() and 0xFF
+        val sdState = buffer.get().toInt() and 0xFF
+        val speedKmh = buffer.float
+        val distanceM = buffer.float
+        val averageSpeedKmh = buffer.float
+        val maxSpeedKmh = buffer.float
+        val movingTimeMs = buffer.long
+        val elapsedTimeMs = buffer.long
+        val pulseCount = buffer.int.toLong() and 0xFFFF_FFFFL
+        val rideId = buffer.int.toLong() and 0xFFFF_FFFFL
+        if (rideState !in 0..3 || motionState !in 0..1 || batteryPercent > 100 ||
+            sdState !in 0..3 || !speedKmh.isFinite() || speedKmh < 0f ||
+            !distanceM.isFinite() || distanceM < 0f ||
+            !averageSpeedKmh.isFinite() || averageSpeedKmh < 0f ||
+            !maxSpeedKmh.isFinite() || maxSpeedKmh < 0f ||
+            movingTimeMs < 0 || elapsedTimeMs < 0 || movingTimeMs > elapsedTimeMs
+        ) {
+            return
+        }
         mutableTelemetry.value = LiveTelemetry(
-            rideState = buffer.get().toInt() and 0xFF,
-            motionState = buffer.get().toInt() and 0xFF,
-            batteryPercent = buffer.get().toInt() and 0xFF,
-            sdState = buffer.get().toInt() and 0xFF,
-            speedKmh = buffer.float,
-            distanceM = buffer.float,
-            averageSpeedKmh = buffer.float,
-            maxSpeedKmh = buffer.float,
-            movingTimeMs = buffer.long,
-            elapsedTimeMs = buffer.long,
-            pulseCount = buffer.int.toLong() and 0xFFFF_FFFFL,
-            rideId = buffer.int.toLong() and 0xFFFF_FFFFL,
+            rideState = rideState,
+            motionState = motionState,
+            batteryPercent = batteryPercent,
+            sdState = sdState,
+            speedKmh = speedKmh,
+            distanceM = distanceM,
+            averageSpeedKmh = averageSpeedKmh,
+            maxSpeedKmh = maxSpeedKmh,
+            movingTimeMs = movingTimeMs,
+            elapsedTimeMs = elapsedTimeMs,
+            pulseCount = pulseCount,
+            rideId = rideId,
         )
     }
 
-    private fun handleRideEvent(payload: ByteArray) {
+    private suspend fun handleRideEvent(payload: ByteArray) {
         if (payload.size != 13) return
         val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-        mutableRideEvents.tryEmit(
+        val event = buffer.get().toInt() and 0xFF
+        val rideId = buffer.int.toLong() and 0xFFFF_FFFFL
+        val elapsedTimeMs = buffer.long
+        if (elapsedTimeMs < 0) return
+        mutableRideEvents.emit(
             RideEvent(
-                event = buffer.get().toInt() and 0xFF,
-                rideId = buffer.int.toLong() and 0xFFFF_FFFFL,
-                elapsedTimeMs = buffer.long,
+                event = event,
+                rideId = rideId,
+                elapsedTimeMs = elapsedTimeMs,
             ),
         )
     }
 
-    private fun handleDeviceEvent(payload: ByteArray) {
+    private suspend fun handleDeviceEvent(payload: ByteArray) {
         if (payload.size != 5) return
         val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-        mutableDeviceEvents.tryEmit(
+        mutableDeviceEvents.emit(
             DeviceEvent(
                 event = buffer.get().toInt() and 0xFF,
                 detail = buffer.int.toLong() and 0xFFFF_FFFFL,
             ),
         )
+    }
+
+    private companion object {
+        const val MAX_DECODE_EVENTS_PER_NOTIFICATION = 64
+        const val MAX_DEVICE_NAME_LENGTH = 64
+        const val CONNECTION_TIMEOUT_MS = 15_000L
+        const val INITIALIZATION_TIMEOUT_MS = 10_000L
     }
 }

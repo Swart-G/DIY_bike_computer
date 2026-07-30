@@ -25,8 +25,10 @@ class DeviceRepository(context: Context) {
     private val mutableDevices = MutableStateFlow(loadAndMigrate())
     val devices: StateFlow<List<KnownDevice>> = mutableDevices.asStateFlow()
 
+    @Synchronized
     fun knownDevices(): List<KnownDevice> = mutableDevices.value
 
+    @Synchronized
     fun knownDevice(): KnownDevice? {
         val activeAddress = preferences.getString(ACTIVE_ADDRESS, null)
         return mutableDevices.value.firstOrNull {
@@ -34,15 +36,18 @@ class DeviceRepository(context: Context) {
         } ?: mutableDevices.value.maxByOrNull { it.lastSeenUtcMs }
     }
 
+    @Synchronized
     fun find(bluetoothAddress: String): KnownDevice? =
         mutableDevices.value.firstOrNull {
             it.bluetoothAddress.equals(bluetoothAddress, ignoreCase = true)
         }
 
+    @Synchronized
     fun select(bluetoothAddress: String) {
         preferences.edit().putString(ACTIVE_ADDRESS, bluetoothAddress).apply()
     }
 
+    @Synchronized
     fun rememberEndpoint(
         bluetoothAddress: String,
         displayName: String?,
@@ -67,11 +72,13 @@ class DeviceRepository(context: Context) {
         select(bluetoothAddress)
     }
 
+    @Synchronized
     fun save(device: KnownDevice) {
         upsert(device.copy(lastSeenUtcMs = System.currentTimeMillis()))
         select(device.bluetoothAddress)
     }
 
+    @Synchronized
     fun forget(bluetoothAddress: String): KnownDevice? {
         val removed = find(bluetoothAddress) ?: return null
         val remaining = mutableDevices.value.filterNot {
@@ -90,6 +97,7 @@ class DeviceRepository(context: Context) {
         return removed
     }
 
+    @Synchronized
     private fun upsert(device: KnownDevice) {
         val next = mutableDevices.value.toMutableList()
         val index = next.indexOfFirst {
@@ -99,6 +107,7 @@ class DeviceRepository(context: Context) {
         persist(next.sortedByDescending { it.lastSeenUtcMs })
     }
 
+    @Synchronized
     private fun persist(devices: List<KnownDevice>) {
         val json = JSONArray()
         devices.forEach { device ->

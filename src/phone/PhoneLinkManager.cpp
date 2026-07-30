@@ -241,7 +241,8 @@ bool PhoneLinkManager::sendMessage(bikeproto::MessageType type, uint8_t flags,
                                    uint16_t payloadLength, bool indicate) {
   uint8_t encoded[bikeproto::kMaximumFrameBytes];
   uint16_t encodedLength = 0;
-  const uint16_t sequence = nextTxSequence_++;
+  const uint16_t sequence = nextTxSequence_;
+  nextTxSequence_ = sequence == 0xFFFF ? 1 : sequence + 1;
   if (!bikeproto::Codec::encode(type, flags, sequence, payload, payloadLength,
                                 encoded, sizeof(encoded), encodedLength)) {
     return false;

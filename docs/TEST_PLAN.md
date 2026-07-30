@@ -29,6 +29,12 @@ registers once without a false release while held, and paint is continuous. Fail
 unexpected TFT reinitialization, flicker, missing colours, missed taps, duplicated taps,
 shifted/inverted touch or UI overlap.
 
+Leave Ride speed and each live diagnostics page open for at least five minutes while
+their values change. Expected: only the intended dynamic regions change; the status
+bar, cards and buttons remain visually steady without periodic blank flashes, tearing
+or stale pixels. Failure: whole-screen pulsing at telemetry cadence or a partial update
+that clips changing text.
+
 ## 4. Hall and speed
 
 Steps: Diagnostics → Hall; observe unconnected level. Feed safe 3.3 V/open-drain pulses on GPIO4 at known intervals, then pulses below `min_pulse_interval_ms`. Stop pulses. Expected: accepted/rejected counters, last interval, raw/filtered speed; rejected noise; speed holds for one interval then naturally falls to zero below 3 km/h. Failure: counting without pulses, missed valid pulses, fixed timeout jump, or >3.3 V applied.

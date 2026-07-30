@@ -1,8 +1,14 @@
 .pio/
 .vscode/
 *.log
+__pycache__/
+*.py[cod]
 android/.gradle/
 android/.idea/
 android/**/build/
 android/local.properties
+android/keystore.properties
+android/signing/private/
+*.jks
+*.keystore
 *.iml

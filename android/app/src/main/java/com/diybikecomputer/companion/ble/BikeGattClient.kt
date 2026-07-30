@@ -11,6 +11,8 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,25 +44,36 @@ class BikeGattClient(private val context: Context) {
     private val mutableIncoming = MutableSharedFlow<ByteArray>(extraBufferCapacity = 16)
     val incoming: SharedFlow<ByteArray> = mutableIncoming.asSharedFlow()
 
+    private val callbackHandler = Handler(Looper.getMainLooper())
     private val pendingWrites = ArrayDeque<ByteArray>()
     private var writeInFlight = false
+    private var writeGeneration = 0L
+    @Volatile
     private var gatt: BluetoothGatt? = null
+    @Volatile
     private var rx: BluetoothGattCharacteristic? = null
+    @Volatile
     private var tx: BluetoothGattCharacteristic? = null
+    @Volatile
     var negotiatedMtu: Int = 23
         private set
 
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (this@BikeGattClient.gatt !== gatt) {
-                gatt.close()
+                runCatching { gatt.close() }
                 return
             }
             if (status == BluetoothGatt.GATT_SUCCESS &&
                 newState == BluetoothProfile.STATE_CONNECTED
             ) {
                 mutableState.value = GattState.Discovering
-                if (!gatt.requestMtu(247)) gatt.discoverServices()
+                val mtuRequested = runCatching { gatt.requestMtu(247) }.getOrDefault(false)
+                if (!mtuRequested &&
+                    !runCatching { gatt.discoverServices() }.getOrDefault(false)
+                ) {
+                    mutableState.value = GattState.Error
+                }
             } else {
                 clearConnection(gatt, status != BluetoothGatt.GATT_SUCCESS)
             }
@@ -69,17 +82,27 @@ class BikeGattClient(private val context: Context) {
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             if (this@BikeGattClient.gatt !== gatt) return
             if (status == BluetoothGatt.GATT_SUCCESS) negotiatedMtu = mtu
-            gatt.discoverServices()
+            if (!runCatching { gatt.discoverServices() }.getOrDefault(false)) {
+                mutableState.value = GattState.Error
+            }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (this@BikeGattClient.gatt !== gatt) return
             val service: BluetoothGattService? =
-                if (status == BluetoothGatt.GATT_SUCCESS) gatt.getService(serviceUuid) else null
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    runCatching { gatt.getService(serviceUuid) }.getOrNull()
+                } else {
+                    null
+                }
             rx = service?.getCharacteristic(rxUuid)
             tx = service?.getCharacteristic(txUuid)
             val txValue = tx
-            if (rx == null || txValue == null || !gatt.setCharacteristicNotification(txValue, true)) {
+            if (rx == null || txValue == null ||
+                !runCatching {
+                    gatt.setCharacteristicNotification(txValue, true)
+                }.getOrDefault(false)
+            ) {
                 mutableState.value = GattState.Error
                 return
             }
@@ -109,7 +132,7 @@ class BikeGattClient(private val context: Context) {
         ) {
             if (this@BikeGattClient.gatt !== gatt) return
             if (characteristic.uuid == txUuid) {
-                mutableIncoming.tryEmit(characteristic.value?.copyOf() ?: return)
+                publishIncoming(characteristic.value?.copyOf() ?: return)
             }
         }
 
@@ -119,7 +142,7 @@ class BikeGattClient(private val context: Context) {
             value: ByteArray,
         ) {
             if (this@BikeGattClient.gatt !== gatt) return
-            if (characteristic.uuid == txUuid) mutableIncoming.tryEmit(value.copyOf())
+            if (characteristic.uuid == txUuid) publishIncoming(value.copyOf())
         }
 
         override fun onCharacteristicWrite(
@@ -130,6 +153,7 @@ class BikeGattClient(private val context: Context) {
             if (this@BikeGattClient.gatt !== gatt) return
             synchronized(pendingWrites) {
                 writeInFlight = false
+                writeGeneration++
                 if (status != BluetoothGatt.GATT_SUCCESS) {
                     pendingWrites.clear()
                     mutableState.value = GattState.Error
@@ -143,7 +167,21 @@ class BikeGattClient(private val context: Context) {
     fun connect(device: BluetoothDevice) {
         closeActiveConnection()
         mutableState.value = GattState.Connecting
-        gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
+        val connection = runCatching {
+            device.connectGatt(
+                context,
+                false,
+                callback,
+                BluetoothDevice.TRANSPORT_LE,
+                BluetoothDevice.PHY_LE_1M_MASK,
+                callbackHandler,
+            )
+        }.getOrNull()
+        if (connection == null) {
+            mutableState.value = GattState.Error
+            return
+        }
+        gatt = connection
     }
 
     fun enqueueFrame(frame: ByteArray): Boolean {
@@ -172,11 +210,12 @@ class BikeGattClient(private val context: Context) {
     private fun closeActiveConnection() {
         val active = gatt
         gatt = null
-        active?.disconnect()
-        active?.close()
+        runCatching { active?.disconnect() }
+        runCatching { active?.close() }
         synchronized(pendingWrites) {
             pendingWrites.clear()
             writeInFlight = false
+            writeGeneration++
         }
         rx = null
         tx = null
@@ -186,29 +225,51 @@ class BikeGattClient(private val context: Context) {
     private fun pumpWrites() {
         val activeGatt = gatt ?: return
         val characteristic = rx ?: return
+        var generation = 0L
         val value = synchronized(pendingWrites) {
             if (writeInFlight || pendingWrites.isEmpty()) return
             writeInFlight = true
+            generation = ++writeGeneration
             pendingWrites.removeFirst()
         }
-        val accepted = if (Build.VERSION.SDK_INT >= 33) {
-            activeGatt.writeCharacteristic(
-                characteristic,
-                value,
-                BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-            ) == BluetoothStatusCodes.SUCCESS
-        } else {
-            characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            characteristic.value = value
-            activeGatt.writeCharacteristic(characteristic)
-        }
+        val accepted = runCatching {
+            if (Build.VERSION.SDK_INT >= 33) {
+                activeGatt.writeCharacteristic(
+                    characteristic,
+                    value,
+                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+                ) == BluetoothStatusCodes.SUCCESS
+            } else {
+                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                characteristic.value = value
+                activeGatt.writeCharacteristic(characteristic)
+            }
+        }.getOrDefault(false)
         if (!accepted) {
             synchronized(pendingWrites) {
                 writeInFlight = false
+                writeGeneration++
                 pendingWrites.addFirst(value)
             }
             mutableState.value = GattState.Error
+            return
         }
+        callbackHandler.postDelayed(
+            {
+                val timedOut = synchronized(pendingWrites) {
+                    if (!writeInFlight || writeGeneration != generation) {
+                        false
+                    } else {
+                        writeInFlight = false
+                        writeGeneration++
+                        pendingWrites.clear()
+                        true
+                    }
+                }
+                if (timedOut) mutableState.value = GattState.Error
+            },
+            WRITE_TIMEOUT_MS,
+        )
     }
 
     private fun writeDescriptor(
@@ -216,30 +277,44 @@ class BikeGattClient(private val context: Context) {
         descriptor: BluetoothGattDescriptor,
         value: ByteArray,
     ) {
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (gatt.writeDescriptor(descriptor, value) != BluetoothStatusCodes.SUCCESS) {
-                mutableState.value = GattState.Error
+        val accepted = runCatching {
+            if (Build.VERSION.SDK_INT >= 33) {
+                gatt.writeDescriptor(descriptor, value) == BluetoothStatusCodes.SUCCESS
+            } else {
+                descriptor.value = value
+                gatt.writeDescriptor(descriptor)
             }
-        } else {
-            descriptor.value = value
-            if (!gatt.writeDescriptor(descriptor)) mutableState.value = GattState.Error
+        }.getOrDefault(false)
+        if (!accepted) {
+            mutableState.value = GattState.Error
         }
     }
 
     private fun clearConnection(gatt: BluetoothGatt, error: Boolean) {
         if (this.gatt !== gatt) {
-            gatt.close()
+            runCatching { gatt.close() }
             return
         }
         this.gatt = null
-        gatt.close()
+        runCatching { gatt.close() }
         rx = null
         tx = null
         negotiatedMtu = 23
         synchronized(pendingWrites) {
             pendingWrites.clear()
             writeInFlight = false
+            writeGeneration++
         }
         mutableState.value = if (error) GattState.Error else GattState.Disconnected
+    }
+
+    private fun publishIncoming(value: ByteArray) {
+        if (!mutableIncoming.tryEmit(value)) {
+            mutableState.value = GattState.Error
+        }
+    }
+
+    private companion object {
+        const val WRITE_TIMEOUT_MS = 5_000L
     }
 }

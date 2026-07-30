@@ -250,7 +250,7 @@ void RideScreen::drawMedia(TFT_eSPI& tft, const RideViewModel& model) {
 }
 
 void RideScreen::drawSpeed(TFT_eSPI& tft, const RideViewModel& model) {
-  static const RideStats empty;
+  static const RideStats empty{};
   const RideStats& stats = model.stats ? *model.stats : empty;
   // Clear the complete sourcepack speed glyph box. The previous rectangle
   // started at y=104, leaving the top edges of a wider prior value visible
@@ -281,7 +281,7 @@ void RideScreen::drawSpeed(TFT_eSPI& tft, const RideViewModel& model) {
 }
 
 void RideScreen::drawStats(TFT_eSPI& tft, const RideViewModel& model) {
-  static const RideStats empty;
+  static const RideStats empty{};
   const RideStats& stats = model.stats ? *model.stats : empty;
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TEXT, BG);

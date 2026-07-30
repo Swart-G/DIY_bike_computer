@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <math.h>
 #include <strings.h>
 
 namespace app {
@@ -77,23 +78,23 @@ inline int interruptModeFromString(const char* value, int fallback) {
   return fallback;
 }
 inline void validateSettings(AppSettings& s) {
-  if (s.wheelCircumferenceM < 0.5f || s.wheelCircumferenceM > 3.5f) s.wheelCircumferenceM = 2.194f;
+  if (!isfinite(s.wheelCircumferenceM) || s.wheelCircumferenceM < 0.5f || s.wheelCircumferenceM > 3.5f) s.wheelCircumferenceM = 2.194f;
   if (s.pulsesPerRevolution < 1 || s.pulsesPerRevolution > 16) s.pulsesPerRevolution = 1;
-  if (s.stopThresholdKmh < 0.5f || s.stopThresholdKmh > 15.0f) s.stopThresholdKmh = 3.0f;
+  if (!isfinite(s.stopThresholdKmh) || s.stopThresholdKmh < 0.5f || s.stopThresholdKmh > 15.0f) s.stopThresholdKmh = 3.0f;
   if (s.autoPauseDelayMs < 1000 || s.autoPauseDelayMs > 60000) s.autoPauseDelayMs = 5000;
-  if (s.maxPlausibleSpeedKmh < 10.0f || s.maxPlausibleSpeedKmh > 150.0f) s.maxPlausibleSpeedKmh = 100.0f;
+  if (!isfinite(s.maxPlausibleSpeedKmh) || s.maxPlausibleSpeedKmh < 10.0f || s.maxPlausibleSpeedKmh > 150.0f) s.maxPlausibleSpeedKmh = 100.0f;
   if (s.uiUpdateIntervalMs < 50 || s.uiUpdateIntervalMs > 2000) s.uiUpdateIntervalMs = 200;
   if (s.logSampleIntervalMs < 250 || s.logSampleIntervalMs > 10000) s.logSampleIntervalMs = 1000;
   if (s.recoveryIntervalMs < 5000 || s.recoveryIntervalMs > 60000) s.recoveryIntervalMs = 15000;
   if (s.graphWindowSeconds < 10 || s.graphWindowSeconds > 300) s.graphWindowSeconds = 60;
   if (s.displayBrightnessPercent < 5 || s.displayBrightnessPercent > 100) s.displayBrightnessPercent = 80;
-  if (s.rgbSpeedTrendToleranceKmh < 0.1f || s.rgbSpeedTrendToleranceKmh > 5.0f) s.rgbSpeedTrendToleranceKmh = 0.5f;
-  if (s.rgbSpeedTrendTolerance5sKmh < 0.1f || s.rgbSpeedTrendTolerance5sKmh > 5.0f) s.rgbSpeedTrendTolerance5sKmh = 0.5f;
-  if (s.rgbSpeedTrendTolerance10sKmh < 0.1f || s.rgbSpeedTrendTolerance10sKmh > 5.0f) s.rgbSpeedTrendTolerance10sKmh = 0.5f;
+  if (!isfinite(s.rgbSpeedTrendToleranceKmh) || s.rgbSpeedTrendToleranceKmh < 0.1f || s.rgbSpeedTrendToleranceKmh > 5.0f) s.rgbSpeedTrendToleranceKmh = 0.5f;
+  if (!isfinite(s.rgbSpeedTrendTolerance5sKmh) || s.rgbSpeedTrendTolerance5sKmh < 0.1f || s.rgbSpeedTrendTolerance5sKmh > 5.0f) s.rgbSpeedTrendTolerance5sKmh = 0.5f;
+  if (!isfinite(s.rgbSpeedTrendTolerance10sKmh) || s.rgbSpeedTrendTolerance10sKmh < 0.1f || s.rgbSpeedTrendTolerance10sKmh > 5.0f) s.rgbSpeedTrendTolerance10sKmh = 0.5f;
   if (s.rgbLedBrightnessPercent < 5 || s.rgbLedBrightnessPercent > 100) s.rgbLedBrightnessPercent = 20;
   if (s.minPulseIntervalMs < 10 || s.minPulseIntervalMs > 2000) s.minPulseIntervalMs = 50;
   if (s.sensorInterruptMode != FALLING && s.sensorInterruptMode != RISING && s.sensorInterruptMode != CHANGE) s.sensorInterruptMode = FALLING;
-  if (s.batteryCalibrationFactor < 0.80f || s.batteryCalibrationFactor > 1.20f) s.batteryCalibrationFactor = 1.0f;
+  if (!isfinite(s.batteryCalibrationFactor) || s.batteryCalibrationFactor < 0.80f || s.batteryCalibrationFactor > 1.20f) s.batteryCalibrationFactor = 1.0f;
   if (s.batteryLowPercent < 16 || s.batteryLowPercent > 60) s.batteryLowPercent = 29;
   if (s.batteryCriticalPercent < 3 || s.batteryCriticalPercent >= s.batteryLowPercent) s.batteryCriticalPercent = 15;
 }
