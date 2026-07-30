@@ -4,6 +4,7 @@
 
 #include "battery/BatteryMonitor.h"
 #include "display/DisplayManager.h"
+#include "led/SpeedTrendLed.h"
 #include "phone/PhoneLinkManager.h"
 #include "rain/RainLockManager.h"
 #include "speed/HallSensor.h"
@@ -20,6 +21,7 @@ class UiApp {
  public:
   void begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
              UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
+             SpeedTrendLed& speedTrend,
              RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
              RideRepository& repository, PhoneLinkManager& phone,
              app::AppSettings& settings);
@@ -67,6 +69,8 @@ class UiApp {
   void drawSettingsLogInterval();
   void drawSettingsRgbLed();
   void drawSettingsRgbStableRange();
+  void drawSettingsRgbStableRange5s();
+  void drawSettingsRgbStableRange10s();
   void drawSettingsRgbBrightness();
   void drawRide();
   void drawFinishConfirm();
@@ -102,6 +106,7 @@ class UiApp {
   UsbMassStorageManager* usb_ = nullptr;
   HallSensor* sensor_ = nullptr;
   SpeedCalculator* speed_ = nullptr;
+  SpeedTrendLed* speedTrend_ = nullptr;
   RideStateMachine* ride_ = nullptr;
   BatteryMonitor* battery_ = nullptr;
   RideLogger* logger_ = nullptr;
@@ -160,7 +165,10 @@ class UiApp {
   uint32_t lastPairingCode_ = 0;
   uint32_t lastMediaRevision_ = 0;
   uint32_t lastNavigationRevision_ = 0;
+  uint32_t lastPhoneListRevision_ = 0;
   uint8_t lastHeaderBatteryPercent_ = 0xFF;
+  int16_t lastHeaderBatteryRemainingMinutes_ = -2;
+  bool lastHeaderBatteryCharging_ = false;
   bool lastHeaderSdAvailable_ = false;
   bool headerStateInitialized_ = false;
   int64_t lastClockMinute_ = -1;

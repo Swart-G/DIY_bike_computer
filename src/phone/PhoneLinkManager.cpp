@@ -33,13 +33,14 @@ bool PhoneLinkManager::begin() {
 
   const bool ok =
       transport_.begin(kDisplayName, deviceInfo, sizeof(deviceInfo));
-  if (ok && associationId_ && !transport_.hasStoredBond()) {
-    associationId_ = 0;
-    persistAssociation();
-    Serial.println("[BLE] cleared stale association without controller bond");
+  if (ok && rememberedPhoneCount_ && !transport_.hasStoredBond()) {
+    rememberedPhoneCount_ = 0;
+    memset(rememberedPhones_, 0, sizeof(rememberedPhones_));
+    persistAssociations();
+    Serial.println("[BLE] cleared stale phone list without controller bonds");
   }
-  transport_.setKnownAssociation(associationId_ != 0);
-  state_.paired = associationId_ != 0;
+  transport_.setKnownAssociation(rememberedPhoneCount_ != 0);
+  state_.paired = rememberedPhoneCount_ != 0;
   state_.capabilities = bikeproto::kImplementedCapabilities;
   strlcpy(state_.displayName, kDisplayName, sizeof(state_.displayName));
   state_.link = ok ? PhoneLinkState::Advertising : PhoneLinkState::Error;
@@ -84,7 +85,7 @@ void PhoneLinkManager::update(uint32_t nowMs) {
     lastAuthenticated_ = authenticated;
     if (authenticated) {
       state_.link = PhoneLinkState::Authenticating;
-      if (!associationId_ && transport_.pairingActive(nowMs)) {
+      if (transport_.pairingActive(nowMs)) {
         createAssociation();
         associationCreatedThisSession_ = true;
       }
@@ -118,10 +119,12 @@ void PhoneLinkManager::update(uint32_t nowMs) {
 
 void PhoneLinkManager::startPairing(uint32_t nowMs) {
   if (transport_.cancellingPairing()) return;
-  if (associationId_) {
-    noteError("Forget paired phone before pairing another");
+  if (!canRememberAnotherPhone()) {
+    noteError("Remembered phone list is full");
     return;
   }
+  associationId_ = 0;
+  associationCreatedThisSession_ = false;
   transport_.startPairing(nowMs);
   state_.pairingCode = transport_.pairingCode();
   state_.pairingExpiresMs = transport_.pairingExpiresMs();
@@ -129,10 +132,26 @@ void PhoneLinkManager::startPairing(uint32_t nowMs) {
 
 void PhoneLinkManager::cancelPairing() {
   if (sync_) sync_->cancel();
-  transport_.cancelPairing();
+  transport_.cancelPairing(false);
   associationId_ = 0;
-  transport_.setKnownAssociation(false);
-  persistAssociation();
+  transport_.setKnownAssociation(rememberedPhoneCount_ != 0);
+  resetSession();
+  state_.paired = rememberedPhoneCount_ != 0;
+  state_.pairingCode = 0;
+  state_.pairingExpiresMs = 0;
+  state_.connectedSinceMs = 0;
+  state_.link = PhoneLinkState::Advertising;
+  strlcpy(state_.displayName, kDisplayName, sizeof(state_.displayName));
+}
+
+void PhoneLinkManager::forgetAllPhones() {
+  if (sync_) sync_->cancel();
+  rememberedPhoneCount_ = 0;
+  associationId_ = 0;
+  memset(rememberedPhones_, 0, sizeof(rememberedPhones_));
+  ++phoneListRevision_;
+  persistAssociations();
+  transport_.cancelPairing(true);
   resetSession();
   state_.paired = false;
   state_.pairingCode = 0;
@@ -247,17 +266,43 @@ void PhoneLinkManager::loadIdentity() {
   deviceId_ = mac ? mac : randomU64();
   Preferences prefs;
   if (!prefs.begin("phone_link", true)) return;
-  associationId_ = prefs.getULong64("association", 0);
+  bool rewriteRegistry = false;
+  rememberedPhoneCount_ =
+      min<uint8_t>(prefs.getUChar("phone_count", 0),
+                   kMaximumRememberedPhones);
+  const size_t storedBytes = prefs.getBytesLength("phones_v2");
+  if (rememberedPhoneCount_ && storedBytes == sizeof(rememberedPhones_)) {
+    prefs.getBytes("phones_v2", rememberedPhones_, sizeof(rememberedPhones_));
+  } else {
+    rewriteRegistry = rememberedPhoneCount_ != 0;
+    rememberedPhoneCount_ = 0;
+    memset(rememberedPhones_, 0, sizeof(rememberedPhones_));
+    const uint64_t legacyAssociation =
+        prefs.getULong64("association", 0);
+    if (legacyAssociation) {
+      rememberedPhones_[0].associationId = legacyAssociation;
+      strlcpy(rememberedPhones_[0].displayName, "Android phone",
+              sizeof(rememberedPhones_[0].displayName));
+      rememberedPhoneCount_ = 1;
+      rewriteRegistry = true;
+    }
+  }
+  associationId_ = 0;
   prefs.end();
+  if (rewriteRegistry) persistAssociations();
 }
 
-void PhoneLinkManager::persistAssociation() {
+void PhoneLinkManager::persistAssociations() {
   Preferences prefs;
   if (!prefs.begin("phone_link", false)) {
-    noteError("Cannot persist phone association");
+    noteError("Cannot persist remembered phones");
     return;
   }
-  prefs.putULong64("association", associationId_);
+  prefs.putUChar("phone_count", rememberedPhoneCount_);
+  prefs.putBytes("phones_v2", rememberedPhones_, sizeof(rememberedPhones_));
+  prefs.putULong64("association",
+                   rememberedPhoneCount_ ? rememberedPhones_[0].associationId
+                                         : 0);
   prefs.end();
 }
 
@@ -265,8 +310,36 @@ void PhoneLinkManager::createAssociation() {
   associationId_ = randomU64();
   state_.paired = true;
   transport_.setKnownAssociation(true);
-  persistAssociation();
-  Serial.println("[BLE] phone association stored");
+  Serial.println("[BLE] pending phone association created");
+}
+
+int8_t PhoneLinkManager::findAssociation(uint64_t associationId) const {
+  if (!associationId) return -1;
+  for (uint8_t i = 0; i < rememberedPhoneCount_; ++i) {
+    if (rememberedPhones_[i].associationId == associationId) {
+      return static_cast<int8_t>(i);
+    }
+  }
+  return -1;
+}
+
+void PhoneLinkManager::rememberActiveAssociation(const char* displayName) {
+  int8_t index = findAssociation(associationId_);
+  if (index < 0) {
+    if (!associationId_ || !canRememberAnotherPhone()) return;
+    index = static_cast<int8_t>(rememberedPhoneCount_++);
+    rememberedPhones_[index].associationId = associationId_;
+  }
+  strlcpy(rememberedPhones_[index].displayName,
+          displayName && displayName[0] ? displayName : "Android phone",
+          sizeof(rememberedPhones_[index].displayName));
+  ++phoneListRevision_;
+  persistAssociations();
+  transport_.setKnownAssociation(true);
+  state_.paired = true;
+  Serial.printf("[BLE] remembered phone %u/%u\n",
+                static_cast<unsigned>(index + 1),
+                static_cast<unsigned>(kMaximumRememberedPhones));
 }
 
 void PhoneLinkManager::resetSession() {
@@ -274,6 +347,7 @@ void PhoneLinkManager::resetSession() {
   state_.authorized = false;
   state_.protocolVersion = 0;
   associationCreatedThisSession_ = false;
+  associationId_ = 0;
   nextTxSequence_ = 1;
   if (mediaState_.available) {
     mediaState_ = media::MediaState();
@@ -550,10 +624,19 @@ void PhoneLinkManager::handleHello(const bikeproto::Frame& frame) {
   state_.protocolVersion = bikeproto::kProtocolVersion;
   state_.capabilities =
       requestedCapabilities & bikeproto::kImplementedCapabilities;
+  const int8_t rememberedIndex = findAssociation(suppliedAssociation);
+  const bool newAssociation =
+      associationCreatedThisSession_ && rememberedIndex < 0;
+  if (rememberedIndex >= 0) {
+    associationId_ = rememberedPhones_[rememberedIndex].associationId;
+    associationCreatedThisSession_ = false;
+  } else if (!associationCreatedThisSession_) {
+    associationId_ = 0;
+  }
   state_.authorized =
       associationId_ != 0 &&
-      (suppliedAssociation == associationId_ ||
-       associationCreatedThisSession_);
+      (associationCreatedThisSession_ ||
+       suppliedAssociation == associationId_);
   if (!state_.authorized) {
     state_.link = PhoneLinkState::Authenticating;
     sendError(bikeproto::ErrorCode::NotAuthorized, frame.type,
@@ -561,6 +644,9 @@ void PhoneLinkManager::handleHello(const bikeproto::Frame& frame) {
     Serial.println("[PROTO] HELLO rejected, association mismatch");
     return;
   }
+  rememberActiveAssociation(state_.displayName);
+  if (newAssociation) transport_.finishPairing();
+  associationCreatedThisSession_ = false;
   state_.link = PhoneLinkState::Ready;
   state_.lastError[0] = '\0';
   sendHelloAck(frame.sequence);

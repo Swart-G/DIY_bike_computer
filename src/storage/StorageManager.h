@@ -28,6 +28,9 @@ class StorageManager {
   String sdInfoText() const;
   const String& lastStatus() const { return lastStatus_; }
   SdTestResult runSdTest();
+  bool ensureReadyForIo(const char* context, String& error);
+  bool ensureDirectory(const char* path, String& error);
+  bool createDirectory(const char* path, String& error);
 
   bool loadSettings(app::AppSettings& settings, String& error);
   bool saveSettings(const app::AppSettings& settings, String& error);
@@ -38,12 +41,16 @@ class StorageManager {
   bool writeJsonAtomic(const char* path, JsonDocument& document, String& error);
   bool readJson(const char* path, JsonDocument& document, String& error);
   bool removePath(const char* path, String& error);
+  bool recoverIoFailure(const char* context);
   void reportIoFailure(const char* context);
   uint32_t activeFrequencyHz() const { return activeFrequencyHz_; }
+  uint32_t ioRecoveryCount() const { return ioRecoveryCount_; }
+  bool takeDisplayResetRequest();
 
  private:
-  bool ensureDir(const char* path);
-  bool tryBeginSd(SPIClass& spi, uint32_t frequency, bool formatIfEmpty);
+  bool ensureDir(const char* path, String* error = nullptr);
+  bool tryBeginSd(SPIClass& spi, uint32_t frequency, bool formatIfEmpty,
+                  bool isolateDisplay = false);
   bool writeTextFile(const char* path, const String& content, String& error);
   bool readTextFile(const char* path, String& content, String& error);
 
@@ -52,5 +59,7 @@ class StorageManager {
   bool sdAvailable_ = false;
   bool continueWithoutSaving_ = false;
   bool usbModeActive_ = false;
+  bool displayResetRequest_ = false;
+  uint32_t ioRecoveryCount_ = 0;
   String lastStatus_;
 };

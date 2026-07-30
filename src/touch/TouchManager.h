@@ -43,9 +43,12 @@ class TouchManager {
   bool writeByte(uint8_t reg, uint8_t value);
   void transformRaw(TouchContact& contact);
   void clearContacts();
+  void releaseIfExpired(uint32_t nowMs, bool force = false);
 
   bool ready_ = false;
   TouchPoint point_;
   uint8_t consecutiveReadFailures_ = 0;
   uint32_t lastReadAttemptMs_ = 0;
+  uint32_t lastRecoveryAttemptMs_ = 0;
+  uint32_t lastValidTouchMs_ = 0;
 };

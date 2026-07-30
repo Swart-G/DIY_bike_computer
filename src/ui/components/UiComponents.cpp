@@ -4,6 +4,19 @@
 
 namespace ui {
 
+namespace {
+
+int16_t gBatteryRemainingMinutes = -1;
+bool gBatteryCharging = false;
+
+}  // namespace
+
+void Components::setBatteryRuntimeEstimate(int16_t remainingMinutes,
+                                           bool charging) {
+  gBatteryRemainingMinutes = remainingMinutes;
+  gBatteryCharging = charging;
+}
+
 void Components::header(TFT_eSPI& tft, const String& title, const HeaderStatus& status) {
   tft.fillRect(0, 0, SCREEN_W, HEADER_H, BG);
   tft.drawFastHLine(12, 39, 456, BORDER);
@@ -19,15 +32,35 @@ void Components::header(TFT_eSPI& tft, const String& title, const HeaderStatus& 
 
   int16_t right = 458;
   if (status.batteryAvailable) {
-    const int16_t x = right - 32;
-    tft.drawRoundRect(x, 13, 28, 14, 2, TEXT_MUTED);
-    tft.fillRect(x + 28, 17, 3, 6, TEXT_MUTED);
-    const int16_t fill = static_cast<int16_t>((constrain(status.batteryPercent, 0, 100) * 22) / 100);
-    if (fill > 0) tft.fillRect(x + 3, 16, fill, 8, status.batteryPercent <= 15 ? DANGER : SUCCESS);
+    const int16_t x = right - 29;
+    tft.drawRoundRect(x, 13, 26, 14, 2, TEXT_MUTED);
+    tft.fillRect(x + 26, 17, 3, 6, TEXT_MUTED);
+    const int16_t fill = static_cast<int16_t>(
+        (constrain(status.batteryPercent, 0, 100) * 20) / 100);
+    if (fill > 0) {
+      tft.fillRect(x + 3, 16, fill, 8,
+                   status.batteryPercent <= 15 ? DANGER : SUCCESS);
+    }
+    tft.setTextDatum(MR_DATUM);
+    tft.setTextColor(TEXT, BG);
+    tft.drawString(String(status.batteryPercent) + "%", x - 5, 20, 1);
+    char remaining[14] = "~ --";
+    if (gBatteryCharging) {
+      strlcpy(remaining, "CHG", sizeof(remaining));
+    } else if (gBatteryRemainingMinutes >= 0) {
+      const uint16_t hours = gBatteryRemainingMinutes / 60;
+      const uint8_t minutes = gBatteryRemainingMinutes % 60;
+      snprintf(remaining, sizeof(remaining), "~ %uh %02um",
+               static_cast<unsigned>(hours),
+               static_cast<unsigned>(minutes));
+    }
+    tft.setTextColor(TEXT_MUTED, BG);
+    tft.drawString(remaining, x - 39, 20, 1);
+    right -= 128;
   } else {
     IconRenderer::draw(tft, Icon::Battery, right - 17, 20, TEXT_MUTED);
+    right -= 42;
   }
-  right -= 42;
 
   tft.drawRect(right - 18, 13, 19, 14, status.sdAvailable ? TEXT_MUTED : DANGER);
   tft.setTextDatum(MC_DATUM);

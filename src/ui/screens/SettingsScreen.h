@@ -38,6 +38,12 @@ class SettingsScreen {
   static void drawRgbStableRange(TFT_eSPI& tft,
                                  const SettingsStatus& status,
                                  const app::AppSettings& settings);
+  static void drawRgbStableRange5s(TFT_eSPI& tft,
+                                   const SettingsStatus& status,
+                                   const app::AppSettings& settings);
+  static void drawRgbStableRange10s(TFT_eSPI& tft,
+                                    const SettingsStatus& status,
+                                    const app::AppSettings& settings);
   static void drawRgbBrightness(TFT_eSPI& tft,
                                 const SettingsStatus& status,
                                 const app::AppSettings& settings);

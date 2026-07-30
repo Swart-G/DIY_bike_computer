@@ -5,6 +5,7 @@
 
 #include "media/MediaState.h"
 #include "navigation/NavigationState.h"
+#include "led/SpeedTrendLed.h"
 #include "speed/RideStateMachine.h"
 #include "ui/components/UiComponents.h"
 
@@ -27,6 +28,8 @@ struct RideViewModel {
   uint16_t graphWindowSeconds = 60;
   uint8_t page = 0;
   uint8_t pageCount = 3;
+  bool trendPageEnabled = false;
+  const SpeedTrendSnapshot* speedTrend = nullptr;
   const media::MediaState* media = nullptr;
   const navigation::NavigationState* navigation = nullptr;
   int64_t epochNowMs = 0;
@@ -46,6 +49,7 @@ class RideScreen {
   static void drawSpeed(TFT_eSPI& tft, const RideViewModel& model);
   static void drawStats(TFT_eSPI& tft, const RideViewModel& model);
   static void drawGraph(TFT_eSPI& tft, const RideViewModel& model);
+  static void drawSpeedTrend(TFT_eSPI& tft, const RideViewModel& model);
   static void drawNavigation(TFT_eSPI& tft, const RideViewModel& model);
   static void drawMedia(TFT_eSPI& tft, const RideViewModel& model);
   static void drawControls(TFT_eSPI& tft, RideState state);

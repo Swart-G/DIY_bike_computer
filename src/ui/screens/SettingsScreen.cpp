@@ -182,30 +182,41 @@ void SettingsScreen::drawRgbLed(TFT_eSPI& tft,
   ui_exact::ExactScreenRenderer(tft).draw(
       ui_exact::ScreenId::SCREEN_72_SETTINGS_DISPLAY);
   Components::header(tft, "Speed LED", status.header);
-  toggleRow(tft, 57, "Indicator", settings.rgbSpeedTrendEnabled);
-  row(tft, 113, "Stable range",
+  toggleRow(tft, 59, "Indicator", settings.rgbSpeedTrendEnabled);
+  row(tft, 109, "2 s stable range",
       "+/- " + String(settings.rgbSpeedTrendToleranceKmh, 1) + " km/h");
-  row(tft, 169, "Brightness",
+  row(tft, 159, "5 s stable range",
+      "+/- " + String(settings.rgbSpeedTrendTolerance5sKmh, 1) + " km/h");
+  row(tft, 209, "10 s stable range",
+      "+/- " + String(settings.rgbSpeedTrendTolerance10sKmh, 1) + " km/h");
+  row(tft, 259, "Brightness",
       String(settings.rgbLedBrightnessPercent) + "%");
-  row(tft, 225, "Comparison window", "2.0 s", false);
-
-  tft.fillRect(18, 279, 444, 31, BG);
-  tft.setTextDatum(ML_DATUM);
-  tft.fillCircle(31, 294, 4, PURPLE);
-  tft.setTextColor(TEXT_MUTED, BG);
-  tft.drawString("Faster", 40, 294, 1);
-  tft.fillCircle(171, 294, 4, SUCCESS);
-  tft.drawString("Steady", 180, 294, 1);
-  tft.fillCircle(311, 294, 4, DANGER);
-  tft.drawString("Slower", 320, 294, 1);
 }
 
 void SettingsScreen::drawRgbStableRange(
     TFT_eSPI& tft, const SettingsStatus& status,
     const app::AppSettings& settings) {
-  valueEditor(tft, status, "Stable range",
+  valueEditor(tft, status, "2 s stable range",
               String(settings.rgbSpeedTrendToleranceKmh, 1), "+/- km/h",
               settings.rgbSpeedTrendToleranceKmh, 0.1f, 5.0f, "0.1", "5.0");
+}
+
+void SettingsScreen::drawRgbStableRange5s(
+    TFT_eSPI& tft, const SettingsStatus& status,
+    const app::AppSettings& settings) {
+  valueEditor(tft, status, "5 s stable range",
+              String(settings.rgbSpeedTrendTolerance5sKmh, 1), "+/- km/h",
+              settings.rgbSpeedTrendTolerance5sKmh, 0.1f, 5.0f, "0.1",
+              "5.0");
+}
+
+void SettingsScreen::drawRgbStableRange10s(
+    TFT_eSPI& tft, const SettingsStatus& status,
+    const app::AppSettings& settings) {
+  valueEditor(tft, status, "10 s stable range",
+              String(settings.rgbSpeedTrendTolerance10sKmh, 1), "+/- km/h",
+              settings.rgbSpeedTrendTolerance10sKmh, 0.1f, 5.0f, "0.1",
+              "5.0");
 }
 
 void SettingsScreen::drawRgbBrightness(

@@ -6,7 +6,7 @@
 #include "bus/SharedSpiBus.h"
 #include "config/hardware_config.h"
 #include "ui/UiTheme.h"
-#include "ui_exact/exact_screen_renderer.h"
+#include "ui/components/IconRenderer.h"
 
 #if __has_include(<esp_arduino_version.h>)
 #include <esp_arduino_version.h>
@@ -15,25 +15,91 @@
 namespace {
 
 constexpr uint16_t kFrameTransferRows = 4;
+constexpr uint32_t kDisplayHealthIntervalMs = 2500;
+constexpr uint32_t kDisplayRecoveryRetryMs = 1800;
+constexpr uint32_t kDisplayDiscoveryIntervalMs = 5000;
+constexpr uint8_t kDisplayFailuresBeforeRecovery = 2;
+constexpr uint8_t kCommandReadMadctl = 0x0B;
+constexpr uint8_t kCommandReadPixelFormat = 0x0C;
+constexpr int16_t kBootAnimationX = 166;
+constexpr int16_t kBootAnimationY = 43;
+constexpr int16_t kBootAnimationWidth = 148;
+constexpr int16_t kBootAnimationHeight = 82;
+
+constexpr int8_t kSpokeX[16] = {
+    0, 5, 8, 11, 12, 11, 8, 5, 0, -5, -8, -11, -12, -11, -8, -5,
+};
+constexpr int8_t kSpokeY[16] = {
+    -12, -11, -8, -5, 0, 5, 8, 11, 12, 11, 8, 5, 0, -5, -8, -11,
+};
+
+bool isFloatingHealthSignature(uint8_t madctl, uint8_t pixelFormat) {
+  return (madctl == 0x00 && pixelFormat == 0x00) ||
+         (madctl == 0xFF && pixelFormat == 0xFF);
+}
+
+void drawBootBike(TFT_eSPI& gfx, uint8_t phase) {
+  constexpr int16_t cx = hw::DISPLAY_WIDTH / 2;
+  constexpr int16_t cy = 78;
+  constexpr int16_t leftWheelX = cx - 40;
+  constexpr int16_t rightWheelX = cx + 40;
+  constexpr int16_t wheelY = cy + 14;
+
+  ui::IconRenderer::draw(gfx, ui::Icon::Bike, cx, cy, ui::ACCENT, 2);
+
+  // Three rotating diameters produce six proper spokes per wheel. The
+  // endpoints stay inside the accent wheel rim instead of covering it.
+  constexpr uint8_t kSpokeOffsets[3] = {0, 3, 6};
+  for (uint8_t offset : kSpokeOffsets) {
+    const uint8_t first = (phase + offset) & 0x0F;
+    const uint8_t opposite = (first + 8) & 0x0F;
+    gfx.drawLine(leftWheelX + kSpokeX[first],
+                 wheelY + kSpokeY[first],
+                 leftWheelX + kSpokeX[opposite],
+                 wheelY + kSpokeY[opposite], ui::TEXT_MUTED);
+    gfx.drawLine(rightWheelX + kSpokeX[first],
+                 wheelY + kSpokeY[first],
+                 rightWheelX + kSpokeX[opposite],
+                 wheelY + kSpokeY[opposite], ui::TEXT_MUTED);
+  }
+  gfx.fillCircle(leftWheelX, wheelY, 2, ui::TEXT);
+  gfx.fillCircle(rightWheelX, wheelY, 2, ui::TEXT);
+
+  // Moving road dashes make progress visible while the bicycle itself remains
+  // stable and recognisable.
+  const int16_t offset = static_cast<int16_t>((phase % 6) * 8);
+  for (int16_t x = 170 - offset; x < 318; x += 48) {
+    const int16_t clippedX = max<int16_t>(170, x);
+    const int16_t clippedRight = min<int16_t>(310, x + 24);
+    if (clippedRight > clippedX) {
+      gfx.drawFastHLine(clippedX, 116, clippedRight - clippedX,
+                        ui::TEXT_MUTED);
+    }
+  }
+}
 
 }
 
-bool DisplayManager::begin(uint8_t brightnessPercent) {
-  pinMode(hw::PIN_LCD_CS, OUTPUT);
-  pinMode(hw::PIN_SD_CS, OUTPUT);
+void DisplayManager::initializePanelLocked() {
   hw::releaseSharedSpiDevices();
+  tft_.init();
+  tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
+  tft_.setRotation(hw::DISPLAY_ROTATION);
+  tft_.setTextFont(2);
+  tft_.setTextColor(TFT_WHITE, ui::BG);
+}
+
+bool DisplayManager::begin(uint8_t brightnessPercent) {
+  hw::configureSharedSpiChipSelects();
 
   pinMode(hw::PIN_LCD_BACKLIGHT, OUTPUT);
   setBrightness(0);
 
   {
     hw::SharedSpiBusGuard bus;
-    tft_.init();
-    tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
-    tft_.setRotation(hw::DISPLAY_ROTATION);
-    tft_.setTextFont(2);
-    tft_.setTextColor(TFT_WHITE, ui::BG);
+    initializePanelLocked();
     tft_.fillScreen(ui::BG);
+    healthMonitoringAvailable_ = captureHealthSignatureLocked();
   }
 
   ready_ = true;
@@ -53,6 +119,53 @@ bool DisplayManager::begin(uint8_t brightnessPercent) {
   }
   setBrightness(brightnessPercent);
   return ready_;
+}
+
+bool DisplayManager::captureHealthSignatureLocked() {
+  const uint8_t madctl = tft_.readcommand8(kCommandReadMadctl);
+  const uint8_t pixelFormat = tft_.readcommand8(kCommandReadPixelFormat);
+  if (isFloatingHealthSignature(madctl, pixelFormat)) {
+    return false;
+  }
+  healthMadctl_ = madctl;
+  healthPixelFormat_ = pixelFormat;
+  return true;
+}
+
+bool DisplayManager::panelHealthMatchesLocked() {
+  const uint8_t madctl = tft_.readcommand8(kCommandReadMadctl);
+  const uint8_t pixelFormat = tft_.readcommand8(kCommandReadPixelFormat);
+  return !isFloatingHealthSignature(madctl, pixelFormat) &&
+         madctl == healthMadctl_ && pixelFormat == healthPixelFormat_;
+}
+
+void DisplayManager::restoreFrameLocked() {
+  if (!frameBufferReady_) {
+    tft_.fillScreen(ui::BG);
+    return;
+  }
+
+  uint16_t* framePixels = static_cast<uint16_t*>(frame_.getPointer());
+  if (framePixels == nullptr || frameTransferBuffer_ == nullptr || frameTransferRows_ == 0) {
+    frame_.pushSprite(0, 0);
+    return;
+  }
+
+  const int16_t w = tft_.width();
+  const int16_t h = tft_.height();
+  const bool oldSwapBytes = tft_.getSwapBytes();
+  tft_.setSwapBytes(false);
+  tft_.startWrite();
+  tft_.setAddrWindow(0, 0, w, h);
+  for (int16_t y = 0; y < h; y += frameTransferRows_) {
+    const int16_t rows = min<int16_t>(frameTransferRows_, h - y);
+    const size_t pixelCount = static_cast<size_t>(w) * rows;
+    memcpy(frameTransferBuffer_, framePixels + static_cast<size_t>(y) * w,
+           pixelCount * sizeof(uint16_t));
+    tft_.pushPixels(frameTransferBuffer_, static_cast<uint32_t>(pixelCount));
+  }
+  tft_.endWrite();
+  tft_.setSwapBytes(oldSwapBytes);
 }
 
 void DisplayManager::setBrightness(uint8_t percent) {
@@ -126,6 +239,10 @@ void DisplayManager::beginPartialFrame() {
 
 void DisplayManager::commitFrame() {
   if (frameBufferReady_ && frameActive_) {
+    if (!ready_) {
+      frameActive_ = false;
+      return;
+    }
     uint16_t* framePixels = static_cast<uint16_t*>(frame_.getPointer());
     if (framePixels != nullptr && frameTransferBuffer_ != nullptr && frameTransferRows_ > 0) {
       const int16_t w = tft_.width();
@@ -167,6 +284,10 @@ void DisplayManager::commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h)
     commitFrame();
     return;
   }
+  if (!ready_) {
+    frameActive_ = false;
+    return;
+  }
   x = constrain(x, 0, tft_.width() - 1);
   y = constrain(y, 0, tft_.height() - 1);
   w = constrain(w, 1, tft_.width() - x);
@@ -197,19 +318,169 @@ void DisplayManager::commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h)
   frameActive_ = false;
 }
 
-void DisplayManager::showBoot(const String& line1, const String& line2) {
+bool DisplayManager::service(uint32_t nowMs, bool allowRecovery) {
+  if (!allowRecovery || frameActive_ || directFrameBusLocked_) {
+    return false;
+  }
+
+  if (!healthMonitoringAvailable_) {
+    if (nowMs - lastHealthCheckMs_ < kDisplayDiscoveryIntervalMs) {
+      return false;
+    }
+    lastHealthCheckMs_ = nowMs;
+    hw::SharedSpiBusGuard bus;
+    if (!captureHealthSignatureLocked()) {
+      return false;
+    }
+    initializePanelLocked();
+    healthMonitoringAvailable_ = captureHealthSignatureLocked();
+    if (!healthMonitoringAvailable_) {
+      return false;
+    }
+    ready_ = true;
+    consecutiveHealthFailures_ = 0;
+    ++recoveryCount_;
+    restoreFrameLocked();
+    return true;
+  }
+
+  if (ready_ && nowMs - lastHealthCheckMs_ < kDisplayHealthIntervalMs) {
+    return false;
+  }
+  if (!ready_ && nowMs - lastRecoveryAttemptMs_ < kDisplayRecoveryRetryMs) {
+    return false;
+  }
+
+  if (ready_) {
+    lastHealthCheckMs_ = nowMs;
+    hw::SharedSpiBusGuard bus;
+    if (panelHealthMatchesLocked()) {
+      consecutiveHealthFailures_ = 0;
+      return false;
+    }
+    if (++consecutiveHealthFailures_ < kDisplayFailuresBeforeRecovery) {
+      return false;
+    }
+    ready_ = false;
+    Serial.println("[DISPLAY] ST7796 health probe failed; entering recovery");
+  }
+
+  lastRecoveryAttemptMs_ = nowMs;
   hw::SharedSpiBusGuard bus;
+  initializePanelLocked();
+  if (!panelHealthMatchesLocked()) {
+    ready_ = false;
+    return false;
+  }
+
+  ready_ = true;
+  consecutiveHealthFailures_ = 0;
+  ++recoveryCount_;
+  restoreFrameLocked();
+  return true;
+}
+
+bool DisplayManager::reinitializeAfterSharedBusReset() {
+  hw::SharedSpiBusGuard bus;
+  initializePanelLocked();
+  healthMonitoringAvailable_ = captureHealthSignatureLocked();
+  ready_ = true;
+  consecutiveHealthFailures_ = 0;
+  lastHealthCheckMs_ = millis();
+  ++recoveryCount_;
+  restoreFrameLocked();
+  return true;
+}
+
+void DisplayManager::resetBoot(const String& version) {
+  bootLogCount_ = 0;
+  bootAnimationPhase_ = 0;
+  memset(bootLogs_, 0, sizeof(bootLogs_));
+  version.substring(0, sizeof(bootVersion_) - 1).toCharArray(bootVersion_, sizeof(bootVersion_));
+  renderBootFrame("Starting services...", String());
+}
+
+void DisplayManager::addBootLog(const String& label, bool ok, const String& detail) {
+  char line[kBootLogLength] = {};
+  const String message = String(ok ? "[OK] " : "[!!] ") + label +
+                         (detail.length() ? String("  ") + detail : String());
+  message.substring(0, sizeof(line) - 1).toCharArray(line, sizeof(line));
+
+  if (bootLogCount_ < kBootLogCapacity) {
+    strncpy(bootLogs_[bootLogCount_++], line, kBootLogLength - 1);
+  } else {
+    for (uint8_t i = 1; i < kBootLogCapacity; ++i) {
+      memcpy(bootLogs_[i - 1], bootLogs_[i], kBootLogLength);
+    }
+    strncpy(bootLogs_[kBootLogCapacity - 1], line, kBootLogLength - 1);
+  }
+  ++bootAnimationPhase_;
+  renderBootFrame(label, detail);
+}
+
+void DisplayManager::animateBoot(uint32_t durationMs) {
+  const uint32_t startedMs = millis();
+  do {
+    ++bootAnimationPhase_;
+    renderBootAnimationFrame();
+    delay(45);
+  } while (millis() - startedMs < durationMs);
+}
+
+void DisplayManager::renderBootFrame(const String& line1, const String& line2) {
+  beginFrame(ui::BG);
   TFT_eSPI& gfx = tft();
-  ui_exact::ExactScreenRenderer exact(gfx);
-  exact.draw(ui_exact::ScreenId::SCREEN_00_BOOT);
-  gfx.fillRect(90, 249, 300, 43, ui::BG);
+
+  const int16_t cx = width() / 2;
+  drawBootBike(gfx, bootAnimationPhase_);
+
+  gfx.setTextDatum(MC_DATUM);
+  gfx.setTextColor(ui::TEXT, ui::BG);
+  gfx.drawString("BIKE COMPUTER", cx, 145, 4);
+  gfx.setTextColor(ui::TEXT_MUTED, ui::BG);
+  gfx.drawString(bootVersion_[0] ? bootVersion_ : "firmware", cx, 172, 2);
+
+  gfx.fillRoundRect(70, 194, 340, 82, 10, ui::SURFACE);
+  gfx.setTextDatum(ML_DATUM);
+  for (uint8_t i = 0; i < bootLogCount_; ++i) {
+    const uint16_t color = strncmp(bootLogs_[i], "[OK]", 4) == 0 ? ui::SUCCESS : ui::WARNING;
+    gfx.setTextColor(color, ui::SURFACE);
+    gfx.drawString(bootLogs_[i], 84, 204 + i * 14, 1);
+  }
+
   gfx.setTextDatum(MC_DATUM);
   gfx.setTextColor(ui::TEXT_MUTED, ui::BG);
-  gfx.drawString(line1.length() ? line1 : "Starting services...",
-                 width() / 2, 260, 1);
-  if (line2.length() > 0) {
-    gfx.drawString(line2, width() / 2, 280, 1);
+  gfx.drawString(line1.length() ? line1 : "Starting services...", cx, 294, 1);
+  if (line2.length()) {
+    gfx.setTextDatum(MR_DATUM);
+    gfx.drawString(line2.substring(0, 24), width() - 18, 309, 1);
   }
+
+  const int16_t progressWidth = min<int16_t>(444, 28 + bootLogCount_ * 72);
+  gfx.fillRoundRect(18, 313, 444, 4, 2, ui::SURFACE);
+  gfx.fillRoundRect(18, 313, progressWidth, 4, 2, ui::ACCENT);
+  commitFrame();
+}
+
+void DisplayManager::renderBootAnimationFrame() {
+  if (!frameBufferReady_ || !ready_) {
+    // Without the PSRAM sprite a partial animation would expose every erase
+    // and redraw over SPI. Keep the last complete frame instead of blinking.
+    return;
+  }
+
+  beginPartialFrame();
+  TFT_eSPI& gfx = tft();
+  gfx.fillRect(kBootAnimationX, kBootAnimationY, kBootAnimationWidth,
+               kBootAnimationHeight, ui::BG);
+  drawBootBike(gfx, bootAnimationPhase_);
+  commitFrameArea(kBootAnimationX, kBootAnimationY, kBootAnimationWidth,
+                  kBootAnimationHeight);
+}
+
+void DisplayManager::showBoot(const String& line1, const String& line2) {
+  ++bootAnimationPhase_;
+  renderBootFrame(line1, line2);
 }
 
 void DisplayManager::drawHeader(const String& title, const String& status) {

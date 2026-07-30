@@ -7,8 +7,11 @@
 `/config/bike_config.json` — человекочитаемая конфигурация. Важные параметры также дублируются в NVS; корректный SD-файл имеет приоритет при старте. Некорректные значения заменяются безопасными defaults. Legacy-поле `display_brightness_percent` читается ради совместимости, но в UI 2.0 игнорируется: backlight работает в фиксированном штатном режиме.
 
 ```json
-{"format_version":1,"wheel_circumference_m":2.194,"pulses_per_revolution":1,"stop_threshold_kmh":3.0,"auto_pause_enabled":true,"auto_pause_delay_ms":5000,"max_plausible_speed_kmh":100,"display_brightness_percent":80,"rgb_speed_indicator":{"enabled":true,"pin":48,"comparison_window_ms":2000,"stable_tolerance_kmh":0.5,"brightness_percent":20},"battery":{"enabled":true,"adc_pin":6,"calibration_factor":1.0,"low_percent":29,"critical_percent":15}}
+{"format_version":1,"wheel_circumference_m":2.194,"pulses_per_revolution":1,"stop_threshold_kmh":3.0,"auto_pause_enabled":true,"auto_pause_delay_ms":5000,"max_plausible_speed_kmh":100,"display_brightness_percent":80,"rgb_speed_indicator":{"enabled":true,"pin":48,"comparison_windows_ms":[2000,5000,10000],"stable_tolerance_2s_kmh":0.5,"stable_tolerance_5s_kmh":0.5,"stable_tolerance_10s_kmh":0.5,"brightness_percent":20},"battery":{"enabled":true,"adc_pin":6,"calibration_factor":1.0,"low_percent":29,"critical_percent":15}}
 ```
+
+При чтении для совместимости также принимается прежнее
+`rgb_speed_indicator.stable_tolerance_kmh`; оно становится допуском окна 2 секунды.
 
 ## Папка заезда
 
@@ -45,6 +48,10 @@ ride_time_ms,event,details
 `/state/current_ride.json` содержит `format_version`, ride ID/folder, prior state, sample index, distance, timers, pulse counts и флаг logging gap. Он записывается через `.tmp`, flush/close, replacement/rename. Небольшой snapshot дублируется в Preferences/NVS на Start, Pause, Resume и периодически. После перезагрузки заезд всегда открывается как `PAUSED`.
 
 CSV никогда не переписывается целиком. Events flush сразу; samples append-only. При потере SD скорость и статистика продолжаются, последние samples сохраняются в RAM ring buffer и выгружаются после успешного восстановления карты.
+Если append не смог даже открыть файл, прошивка может один раз перемонтировать карту
+на 1 МГц и повторить строку, поскольку в этом случае на носитель не попал ни один байт.
+После `short write` автоматического повтора нет: возможный частичный хвост остаётся
+диагностическим свидетельством и исключается риск дублирования строки.
 
 ## USB MSC
 

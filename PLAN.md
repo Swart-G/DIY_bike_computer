@@ -7,7 +7,12 @@ Completed in firmware 1.0.0:
 - Full ride state machine and distinct elapsed, recording, moving, stopped and pause timings.
 - Production `RideLogger`, atomic recovery, NVS checkpoint, SD-loss RAM buffer and summary/history.
 - GPIO6 battery sampling, Li-Po SoC/trend and calibration persistence.
-- GPIO48 RGB speed-trend indication with a two-second comparison and persistent settings.
+- GPIO48 RGB speed-trend indication plus an optional 2/5/10-second F1 Ride page with
+  independent persistent tolerances.
+- ST7796 health probing/framebuffer restore, FT6336 retry and dropped-scan tolerance,
+  flicker-free spoked-wheel bicycle boot animation with bounded logs, runtime SD
+  safe-first mount/preflight with bounded multi-attempt recovery, enlarged Back targets
+  and a four-phone NVS registry.
 - Settings/config validation, diagnostics, graph and USB MSC owner model.
 
 Verification remains hardware-dependent: execute the complete manual plan after wiring.

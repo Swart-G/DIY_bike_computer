@@ -16,7 +16,9 @@ static constexpr uint8_t RECOVERY_FORMAT_VERSION = 1;
 // in AppSettings so format-1 files continue to parse, but runtime always uses this value.
 static constexpr uint8_t DISPLAY_FIXED_BRIGHTNESS_PERCENT = 80;
 
-static constexpr const char* SD_TEST_FILE = "/BIKE_SPEEDOMETER_SD_TEST.txt";
+// Keep the diagnostic filename within 8.3 so the root write test does not
+// depend on long-filename support or on any application directory.
+static constexpr const char* SD_TEST_FILE = "/SDTEST.TXT";
 static constexpr const char* CONFIG_FILE = "/config/bike_config.json";
 static constexpr const char* RECOVERY_FILE = "/state/current_ride.json";
 static constexpr const char* RECOVERY_TMP_FILE = "/state/current_ride.tmp";
@@ -43,6 +45,8 @@ struct AppSettings {
   uint8_t displayBrightnessPercent = 80;
   bool rgbSpeedTrendEnabled = true;
   float rgbSpeedTrendToleranceKmh = 0.5f;
+  float rgbSpeedTrendTolerance5sKmh = 0.5f;
+  float rgbSpeedTrendTolerance10sKmh = 0.5f;
   uint8_t rgbLedBrightnessPercent = 20;
 
   bool sensorPullupEnabled = true;
@@ -84,6 +88,8 @@ inline void validateSettings(AppSettings& s) {
   if (s.graphWindowSeconds < 10 || s.graphWindowSeconds > 300) s.graphWindowSeconds = 60;
   if (s.displayBrightnessPercent < 5 || s.displayBrightnessPercent > 100) s.displayBrightnessPercent = 80;
   if (s.rgbSpeedTrendToleranceKmh < 0.1f || s.rgbSpeedTrendToleranceKmh > 5.0f) s.rgbSpeedTrendToleranceKmh = 0.5f;
+  if (s.rgbSpeedTrendTolerance5sKmh < 0.1f || s.rgbSpeedTrendTolerance5sKmh > 5.0f) s.rgbSpeedTrendTolerance5sKmh = 0.5f;
+  if (s.rgbSpeedTrendTolerance10sKmh < 0.1f || s.rgbSpeedTrendTolerance10sKmh > 5.0f) s.rgbSpeedTrendTolerance10sKmh = 0.5f;
   if (s.rgbLedBrightnessPercent < 5 || s.rgbLedBrightnessPercent > 100) s.rgbLedBrightnessPercent = 20;
   if (s.minPulseIntervalMs < 10 || s.minPulseIntervalMs > 2000) s.minPulseIntervalMs = 50;
   if (s.sensorInterruptMode != FALLING && s.sensorInterruptMode != RISING && s.sensorInterruptMode != CHANGE) s.sensorInterruptMode = FALLING;

@@ -29,12 +29,24 @@ void SpeedTrendLed::update(float speedKmh,
     appendSample(speedKmh, nowMs);
   }
 
-  float baselineKmh = speedKmh;
-  const SpeedTrendState next =
-      baselineSample(nowMs, baselineKmh)
-          ? speedtrend::classify(speedKmh, baselineKmh,
-                                 settings.rgbSpeedTrendToleranceKmh)
-          : SpeedTrendState::Stable;
+  snapshot_.currentKmh = speedKmh;
+  const float tolerances[3] = {
+      settings.rgbSpeedTrendToleranceKmh,
+      settings.rgbSpeedTrendTolerance5sKmh,
+      settings.rgbSpeedTrendTolerance10sKmh,
+  };
+  for (uint8_t i = 0; i < 3; ++i) {
+    float baselineKmh = speedKmh;
+    SpeedTrendReading& reading = snapshot_.readings[i];
+    reading.ready =
+        baselineSample(nowMs, reading.windowMs, baselineKmh);
+    reading.deltaKmh = reading.ready ? speedKmh - baselineKmh : 0.0f;
+    reading.state =
+        reading.ready
+            ? speedtrend::classify(speedKmh, baselineKmh, tolerances[i])
+            : SpeedTrendState::Stable;
+  }
+  const SpeedTrendState next = snapshot_.readings[0].state;
   if (!ledOn_ || next != state_ ||
       shownBrightnessPercent_ != settings.rgbLedBrightnessPercent) {
     show(next, settings.rgbLedBrightnessPercent);
@@ -46,6 +58,7 @@ void SpeedTrendLed::resetHistory() {
   sampleCount_ = 0;
   lastSampleMs_ = 0;
   state_ = SpeedTrendState::Stable;
+  snapshot_ = SpeedTrendSnapshot();
 }
 
 void SpeedTrendLed::appendSample(float speedKmh, uint32_t nowMs) {
@@ -56,14 +69,15 @@ void SpeedTrendLed::appendSample(float speedKmh, uint32_t nowMs) {
   lastSampleMs_ = nowMs;
 }
 
-bool SpeedTrendLed::baselineSample(uint32_t nowMs, float& speedKmh) const {
+bool SpeedTrendLed::baselineSample(uint32_t nowMs, uint32_t windowMs,
+                                   float& speedKmh) const {
   if (sampleCount_ < 2) return false;
   for (uint8_t offset = 0; offset < sampleCount_; ++offset) {
     const uint8_t index =
         (writeIndex_ + SAMPLE_CAPACITY - 1 - offset) % SAMPLE_CAPACITY;
     const Sample& sample = samples_[index];
     if (static_cast<uint32_t>(nowMs - sample.timestampMs) >=
-        COMPARISON_WINDOW_MS) {
+        windowMs) {
       speedKmh = sample.speedKmh;
       return true;
     }

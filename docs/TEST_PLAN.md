@@ -4,7 +4,12 @@ For every section record firmware version, SD brand and battery voltage. Failure
 
 ## 1. Build and boot
 
-Steps: run `pio run`, upload, open `pio device monitor`, boot with all peripherals attached. Expected: version 1.0.0, memory information and one result per init stage; splash then Menu/Recovery. Failure: compile error, boot loop, black display or repeated error spam.
+Steps: run `pio run`, upload, open `pio device monitor`, boot with all peripherals
+attached. Expected: version `2.1.0-dev`, memory information and one result per init
+stage; the bicycle wheel spokes and road visibly advance without a blank-frame flash,
+the latest boot-stage logs remain readable, then Menu/Recovery opens. Failure: compile
+error, boot loop, static/black display, dots on the wheel rims, visible splash blinking
+or repeated error spam.
 
 ## 2. Boot without optional hardware
 
@@ -12,7 +17,18 @@ Steps: remove SD, then separately disconnect Hall and FT6336; reboot and press C
 
 ## 3. Display and touch
 
-Steps: Settings → Diagnostics → Display; inspect RGB/white/black, primitives/text/orientation. Diagnostics → Touch raw; tap all four corners and test two simultaneous points. Diagnostics → Paint; draw rapid diagonals, Clear, Back. Expected: 480×320 landscape, fixed normal backlight, both FT6336 points map correctly, continuous paint line. Failure: flicker, missing colours, shifted/inverted touch or UI overlap.
+Steps: Settings → Diagnostics → Display; inspect RGB/white/black,
+primitives/text/orientation. While on a normal screen disconnect the TFT, wait for the
+Serial health failure, reconnect it without resetting power and wait up to five seconds.
+Diagnostics → Touch raw; tap all four corners and test two simultaneous points. Briefly
+disconnect/reconnect FT6336. Diagnostics → Paint; draw rapid diagonals, Clear, Back.
+Make repeated short taps and slow presses across Home and Settings.
+Expected: 480×320 landscape, fixed normal backlight, the last UI frame returns
+automatically after TFT reconnection, FT6336 returns within about one second, both touch
+points stay inside the bordered field without covering Paint/Back, every touch-down
+registers once without a false release while held, and paint is continuous. Failure:
+reboot, permanent black display, flicker, missing colours, missed taps, duplicated taps,
+shifted/inverted touch or UI overlap.
 
 ## 4. Hall and speed
 
@@ -20,11 +36,39 @@ Steps: Diagnostics → Hall; observe unconnected level. Feed safe 3.3 V/open-dra
 
 ## 5. Battery
 
-Steps: power from a measured 1S pack; Diagnostics → Battery; wait for several sample series; compare filtered voltage with meter; use CAL −/+ then SAVE; reboot. Expected: GPIO6 raw ADC, ADC mV, instant/filtered battery voltage, factor, SoC and trend; saved calibration survives reboot. Failure: static value, implausible voltage, fast percentage jitter or blocking UI. Verify low/critical visual state with a controlled safe supply; do not over-discharge a Li-Po.
+Steps: power from a measured 1S pack; Diagnostics → Battery; wait for several sample
+series; compare filtered voltage with meter; use CAL −/+ then SAVE; reboot. Continue a
+controlled discharge for at least five minutes and long enough to observe a one-percent
+drop, then connect a charger. Expected: GPIO6 raw ADC, ADC mV, instant/filtered battery
+voltage, factor, SoC and trend; every header shows the percent and initially `~ --`, then
+a smoothed `~ Nh NN m` estimate; charging shows `CHG`; saved calibration survives
+reboot. Failure: fabricated time before a usable decline, static value, implausible
+voltage, fast percentage/time jitter or blocking UI. Verify low/critical visual state
+with a controlled safe supply; do not over-discharge a Li-Po.
 
 ## 6. SD
 
-Steps: boot with FAT SD; Diagnostics → SD → Run test; inspect card type/capacity/free space/frequency and `/BIKE_SPEEDOMETER_SD_TEST.txt` on a computer. Repeat after reinserting card. Expected: read/write match, no format prompt, fallback frequency if required. Failure: UI crash, automatic format, corrupt test text or continuous retries.
+Steps: boot with FAT SD; Diagnostics → SD → Run test; inspect card
+type/capacity/free space/frequency and `/SDTEST.TXT` on a computer. The test separately
+verifies short-name root write/read and creation/validation of `/config`.
+Repeat after reinserting the card and immediately after a cold boot. Provoke one bounded
+open failure if possible and retain the Serial log. Expected: read/write match, no
+format prompt, three consecutive internal write/read cycles pass on the first Run,
+`SPI kHz` is 400, and `I/O recoveries` remains zero on healthy wiring. A
+transient failure performs at most three progressively delayed 400 kHz remount attempts
+and reports `SD recovered at 400 kHz, attempt N`; it never formats the card. Immediately
+start a ride and confirm the root preflight, `/rides` and the unique ride directory,
+`meta.json`, both CSV headers and START all complete without ENODEV.
+Failure: UI crash, automatic format, corrupt test text, repeated append data, ENODEV on
+cycle 1/2/3 or ride start, reuse of an existing ride directory, or continuous retries.
+Also retain a cold-boot Serial trace: BLE must initialize before SD mount, and the first
+post-boot SD access must not show `Card Failed! cmd: 0x0d`. If a display-isolated retry
+is forced, confirm the display is restored from its framebuffer without an ESP restart
+and the card becomes usable without removing device power.
+If `CMD13` still disappears at 400 kHz, record socket 3.3 V with a scope or min/max
+meter during BLE startup and full-screen transfer, then repeat with the specified local
+decoupling, external CS pull-up and a known-good FAT32 card. Failure after those checks
+is a card/socket/wiring fault, not a filesystem-format condition.
 
 ## 7. Ride lifecycle and statistics
 
@@ -67,11 +111,30 @@ Steps: run at least three hours with real or pulse-generator input; vary speed, 
 ## 14. Speed trend RGB LED
 
 Steps: open Settings → Speed LED; verify Indicator uses an inline toggle. Open the
-dedicated Stable range and Brightness editors, test Back cancellation and Save, then
-reboot with and without SD. With a pulse generator, hold speed steady
-for more than two seconds, increase it beyond the configured tolerance, hold again, and
-decrease it beyond the tolerance. Expected: GPIO48 LED is green within the inclusive
-range, purple when the two-second speed delta is positive, red when negative, and off
-when disabled. Settings survive both reboot cases; Hall counts and UI remain responsive.
+dedicated 2 s, 5 s, 10 s Stable range and Brightness editors, test Back cancellation and
+Save, then reboot with and without SD. With a pulse generator, hold speed steady for
+more than ten seconds, increase it beyond the configured tolerances, hold again, and
+decrease it beyond the tolerances. Swipe through Ride pages. Expected: the additional
+F1-style page exists only while Indicator is enabled; all three segments independently
+show 2/5/10-second signed deltas. GPIO48 LED has exactly the 2-second segment colour:
+green within the inclusive range, purple when positive, red when negative, and off when
+disabled. Settings survive both reboot cases; Hall counts and UI remain responsive.
 Failure: wrong colour order, flicker, a blocking loop, changes inside the tolerance, or
 LED traffic from the Hall ISR.
+
+## 15. Remembered phones
+
+Steps: pair phone A and complete HELLO, disconnect it, return to Phone, then use Add
+phone to pair phone B. Reboot and reconnect each phone in turn. Cancel a third pairing
+window, then use Forget all. Expected: A and B remain as separate named rows after
+disconnect and reboot, only the active row is green, Cancel preserves A/B, no more than
+four rows can be added, and Forget all clears both the list and BLE bonds. Failure:
+pairing B silently replaces A, Cancel deletes existing phones, an unknown association is
+authorized, or the list disappears after reboot.
+
+## 16. Common navigation targets
+
+Steps: on every Diagnostics, History, Phone and Settings detail screen tap around the
+visible upper-left chevron, including 20–30 px below/right of the glyph. Expected: the
+126×58 target returns exactly one level and never activates a neighbouring control.
+Failure: missed Back taps, double navigation or accidental value changes.

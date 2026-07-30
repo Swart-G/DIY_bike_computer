@@ -68,7 +68,12 @@ ui_exact::ScreenId sourceScreen(const RideViewModel& model) {
   if (model.page == 2) {
     return ui_exact::ScreenId::SCREEN_14_RIDE_GRAPH;
   }
-  if (model.navigation && model.navigation->available && model.page == 3) {
+  const uint8_t trendPages = model.trendPageEnabled ? 1 : 0;
+  if (model.trendPageEnabled && model.page == 3) {
+    return ui_exact::ScreenId::SCREEN_14_RIDE_GRAPH;
+  }
+  if (model.navigation && model.navigation->available &&
+      model.page == 3 + trendPages) {
     return ui_exact::ScreenId::SCREEN_15_RIDE_NAVIGATION;
   }
   return ui_exact::ScreenId::SCREEN_16_RIDE_MEDIA;
@@ -131,8 +136,10 @@ void RideScreen::draw(TFT_eSPI& tft, const RideViewModel& model) {
     drawStats(tft, model);
   } else if (model.page == 2) {
     drawGraph(tft, model);
+  } else if (model.trendPageEnabled && model.page == 3) {
+    drawSpeedTrend(tft, model);
   } else if (model.navigation && model.navigation->available &&
-             model.page == 3) {
+             model.page == 3 + (model.trendPageEnabled ? 1 : 0)) {
     drawNavigation(tft, model);
   } else {
     drawMedia(tft, model);
@@ -335,6 +342,64 @@ void RideScreen::drawGraph(TFT_eSPI& tft, const RideViewModel& model) {
     }
     px = x;
     py = y;
+  }
+}
+
+void RideScreen::drawSpeedTrend(TFT_eSPI& tft,
+                                const RideViewModel& model) {
+  tft.fillRect(18, 61, 444, 190, BG);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TEXT_MUTED, BG);
+  tft.drawString("SPEED TREND", 24, 67, 1);
+  tft.setTextDatum(TR_DATUM);
+  tft.setTextColor(TEXT, BG);
+  tft.drawString(String(model.speedKmh, 1), 418, 62, 6);
+  tft.setTextColor(TEXT_MUTED, BG);
+  tft.drawString("km/h", 456, 91, 1);
+
+  const SpeedTrendSnapshot empty;
+  const SpeedTrendSnapshot& trend =
+      model.speedTrend ? *model.speedTrend : empty;
+  constexpr int16_t segmentX[] = {24, 174, 324};
+  constexpr int16_t segmentW = 132;
+  constexpr int16_t segmentY = 111;
+  constexpr int16_t segmentH = 126;
+  const char* labels[] = {"2 SEC", "5 SEC", "10 SEC"};
+
+  for (uint8_t i = 0; i < 3; ++i) {
+    const SpeedTrendReading& reading = trend.readings[i];
+    uint16_t color = SUCCESS;
+    const char* stateText = "STEADY";
+    if (reading.state == SpeedTrendState::Accelerating) {
+      color = PURPLE;
+      stateText = "FASTER";
+    } else if (reading.state == SpeedTrendState::Decelerating) {
+      color = DANGER;
+      stateText = "SLOWER";
+    }
+
+    tft.fillRoundRect(segmentX[i], segmentY, segmentW, segmentH, 12,
+                      SURFACE);
+    tft.drawRoundRect(segmentX[i], segmentY, segmentW, segmentH, 12, color);
+    tft.fillRoundRect(segmentX[i] + 1, segmentY + 1, segmentW - 2, 13, 10,
+                      color);
+    tft.fillRect(segmentX[i] + 1, segmentY + 8, segmentW - 2, 7, color);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TEXT_MUTED, SURFACE);
+    tft.drawString(labels[i], segmentX[i] + segmentW / 2, segmentY + 32, 1);
+    tft.setTextColor(color, SURFACE);
+    const String delta =
+        reading.ready
+            ? String(reading.deltaKmh >= 0.0f ? "+" : "") +
+                  String(reading.deltaKmh, 1)
+            : String("--");
+    tft.drawString(delta, segmentX[i] + segmentW / 2, segmentY + 66, 4);
+    tft.setTextColor(TEXT_MUTED, SURFACE);
+    tft.drawString(reading.ready ? "km/h" : "collecting",
+                   segmentX[i] + segmentW / 2, segmentY + 89, 1);
+    tft.setTextColor(color, SURFACE);
+    tft.drawString(reading.ready ? stateText : "WAIT",
+                   segmentX[i] + segmentW / 2, segmentY + 109, 2);
   }
 }
 

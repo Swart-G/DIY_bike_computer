@@ -49,6 +49,7 @@ void BatteryMonitor::completeSeries(uint32_t nowMs) {
   percent_ = stablePercent_;
   pushTrend(filteredVoltage_);
   updateState();
+  updateRuntimeEstimate(nowMs);
   seriesCount_ = 0;
   discardRemaining_ = hw::BATTERY_DISCARD_SAMPLES;
   seriesStartedMs_ = nowMs;
@@ -81,6 +82,71 @@ void BatteryMonitor::updateState() {
   else state_ = BatteryState::Stable;
 }
 
+void BatteryMonitor::updateRuntimeEstimate(uint32_t nowMs) {
+  if (state_ == BatteryState::Charging) {
+    runtimeAnchorMs_ = 0;
+    smoothedPercentPerHour_ = 0.0f;
+    runtimeEstimateReady_ = false;
+    return;
+  }
+  if (state_ == BatteryState::WarmingUp || percent_ == 0) return;
+
+  if (runtimeAnchorMs_ == 0) {
+    runtimeAnchorMs_ = nowMs;
+    runtimeAnchorPercent_ = percent_;
+    return;
+  }
+  if (percent_ > runtimeAnchorPercent_) {
+    runtimeAnchorMs_ = nowMs;
+    runtimeAnchorPercent_ = percent_;
+    runtimeEstimateReady_ = false;
+    return;
+  }
+
+  const uint32_t elapsedMs = nowMs - runtimeAnchorMs_;
+  const uint8_t drop = runtimeAnchorPercent_ - percent_;
+  if (elapsedMs < 5UL * 60UL * 1000UL || drop < 1) return;
+
+  const float percentPerHour =
+      drop * (3600000.0f / static_cast<float>(elapsedMs));
+  if (percentPerHour < 0.15f || percentPerHour > 60.0f) {
+    runtimeAnchorMs_ = nowMs;
+    runtimeAnchorPercent_ = percent_;
+    return;
+  }
+  smoothedPercentPerHour_ =
+      smoothedPercentPerHour_ > 0.0f
+          ? smoothedPercentPerHour_ * 0.75f + percentPerHour * 0.25f
+          : percentPerHour;
+  const int32_t remaining = static_cast<int32_t>(
+      roundf((percent_ / smoothedPercentPerHour_) * 60.0f));
+  runtimeRemainingMinutes_ =
+      static_cast<int16_t>(constrain(remaining, 1L, 5999L));
+  runtimeEstimateReady_ = true;
+  runtimeEstimateAtMs_ = nowMs;
+  runtimeAnchorMs_ = nowMs;
+  runtimeAnchorPercent_ = percent_;
+}
+
+int16_t BatteryMonitor::remainingMinutes() const {
+  if (!runtimeEstimateReady_) return -1;
+  const uint32_t elapsedMinutes =
+      (millis() - runtimeEstimateAtMs_) / 60000UL;
+  return static_cast<int16_t>(
+      max<int32_t>(1, runtimeRemainingMinutes_ -
+                          static_cast<int32_t>(elapsedMinutes)));
+}
+
+String BatteryMonitor::remainingTimeText() const {
+  if (!enabled_) return "--";
+  if (charging()) return "charging";
+  if (!runtimeEstimateReady_) return "calculating";
+  const int16_t remaining = remainingMinutes();
+  const uint16_t hours = remaining / 60;
+  const uint8_t minutes = remaining % 60;
+  return String("~ ") + String(hours) + "h " + String(minutes) + "m";
+}
+
 String BatteryMonitor::stateText() const {
   switch (state_) {
     case BatteryState::Low: return "low"; case BatteryState::Critical: return "critical";
@@ -97,6 +163,8 @@ String BatteryMonitor::diagnosticText() const {
   String t = "GPIO" + String(adcPin_) + " / ADC1\nRaw ADC: " + String(rawAdc_) +
       "\nADC: " + String(adcMillivolts_) + " mV\nInstant: " + String(instantVoltage_, 3) +
       " V\nFiltered: " + String(filteredVoltage_, 3) + " V\nCalibration: " + String(calibrationFactor_, 3) +
-      "\nEstimate: " + String(percent_) + "%\nTrend: " + trendText() + "\nState: " + stateText();
+      "\nEstimate: " + String(percent_) + "%\nRuntime: " +
+      remainingTimeText() + "\nTrend: " + trendText() + "\nState: " +
+      stateText();
   return t;
 }

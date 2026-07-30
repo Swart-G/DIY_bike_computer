@@ -39,6 +39,11 @@ void HomeScreen::draw(TFT_eSPI& tft, const HomeViewModel& model) {
     tft.setTextColor(TEXT_MUTED, SURFACE);
     tft.drawString(historySubtitle, 86, 238, 1);
   }
+
+  // Replace the tiny sourcepack glyph with the same eight-tooth renderer used
+  // by every live Settings control.
+  tft.fillRect(210, 278, 30, 32, BG);
+  IconRenderer::draw(tft, Icon::Settings, 225, 294, TEXT_MUTED);
 }
 
 }  // namespace ui

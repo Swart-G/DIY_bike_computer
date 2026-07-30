@@ -36,8 +36,26 @@ void test_speed_intervals_and_ppr() {
   TEST_ASSERT_EQUAL_FLOAT(0, speedmath::kmhFromIntervalUs(0, 2.194f, 1));
 }
 void test_settings_validation() {
-  app::AppSettings s; s.wheelCircumferenceM=10; s.pulsesPerRevolution=0; s.autoPauseDelayMs=50; s.batteryCalibrationFactor=2; s.displayBrightnessPercent=0; s.rgbSpeedTrendToleranceKmh=9; s.rgbLedBrightnessPercent=0; app::validateSettings(s);
-  TEST_ASSERT_FLOAT_WITHIN(.001f,2.194f,s.wheelCircumferenceM); TEST_ASSERT_EQUAL_UINT8(1,s.pulsesPerRevolution); TEST_ASSERT_EQUAL_UINT32(5000,s.autoPauseDelayMs); TEST_ASSERT_FLOAT_WITHIN(.001f,1,s.batteryCalibrationFactor); TEST_ASSERT_EQUAL_UINT8(80,s.displayBrightnessPercent); TEST_ASSERT_FLOAT_WITHIN(.001f,.5f,s.rgbSpeedTrendToleranceKmh); TEST_ASSERT_EQUAL_UINT8(20,s.rgbLedBrightnessPercent);
+  app::AppSettings s;
+  s.wheelCircumferenceM = 10;
+  s.pulsesPerRevolution = 0;
+  s.autoPauseDelayMs = 50;
+  s.batteryCalibrationFactor = 2;
+  s.displayBrightnessPercent = 0;
+  s.rgbSpeedTrendToleranceKmh = 9;
+  s.rgbSpeedTrendTolerance5sKmh = 9;
+  s.rgbSpeedTrendTolerance10sKmh = 9;
+  s.rgbLedBrightnessPercent = 0;
+  app::validateSettings(s);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 2.194f, s.wheelCircumferenceM);
+  TEST_ASSERT_EQUAL_UINT8(1, s.pulsesPerRevolution);
+  TEST_ASSERT_EQUAL_UINT32(5000, s.autoPauseDelayMs);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, 1, s.batteryCalibrationFactor);
+  TEST_ASSERT_EQUAL_UINT8(80, s.displayBrightnessPercent);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, .5f, s.rgbSpeedTrendToleranceKmh);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, .5f, s.rgbSpeedTrendTolerance5sKmh);
+  TEST_ASSERT_FLOAT_WITHIN(.001f, .5f, s.rgbSpeedTrendTolerance10sKmh);
+  TEST_ASSERT_EQUAL_UINT8(20, s.rgbLedBrightnessPercent);
 }
 void test_speed_trend_tolerance() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(SpeedTrendState::Accelerating),
@@ -185,5 +203,23 @@ void test_protocol_maximum_payload_vector() {
       protocolvectors::kMaximumPayloadCrc,
       bikeproto::readU16(encoded + length - sizeof(uint16_t)));
 }
-void setup(){ UNITY_BEGIN(); RUN_TEST(test_speed_intervals_and_ppr); RUN_TEST(test_settings_validation); RUN_TEST(test_speed_trend_tolerance); RUN_TEST(test_battery_math); RUN_TEST(test_ride_pause_and_distance); RUN_TEST(test_auto_pause_is_motion_state_not_ride_state); RUN_TEST(test_rain_lock_requires_continuous_two_point_hold); RUN_TEST(test_rain_lock_accepts_swapped_order_and_rejects_wrong_zones); RUN_TEST(test_protocol_matches_canonical_vectors); RUN_TEST(test_protocol_partial_multiple_and_crc_error); RUN_TEST(test_protocol_maximum_payload_vector); UNITY_END(); }
+void setup() {
+  Serial.begin(115200);
+  // Native ESP32-S3 USB/JTAG can enumerate after the application has started;
+  // leave enough time for PlatformIO's test monitor to attach.
+  delay(5000);
+  UNITY_BEGIN();
+  RUN_TEST(test_speed_intervals_and_ppr);
+  RUN_TEST(test_settings_validation);
+  RUN_TEST(test_speed_trend_tolerance);
+  RUN_TEST(test_battery_math);
+  RUN_TEST(test_ride_pause_and_distance);
+  RUN_TEST(test_auto_pause_is_motion_state_not_ride_state);
+  RUN_TEST(test_rain_lock_requires_continuous_two_point_hold);
+  RUN_TEST(test_rain_lock_accepts_swapped_order_and_rejects_wrong_zones);
+  RUN_TEST(test_protocol_matches_canonical_vectors);
+  RUN_TEST(test_protocol_partial_multiple_and_crc_error);
+  RUN_TEST(test_protocol_maximum_payload_vector);
+  UNITY_END();
+}
 void loop() {}

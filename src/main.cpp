@@ -61,6 +61,11 @@ void logInitResult(const char* name, bool ok) {
   Serial.println(ok ? "OK" : "FAILED");
 }
 
+void bootInitResult(const char* name, bool ok, const String& detail = String()) {
+  logInitResult(name, ok);
+  g_display.addBootLog(name, ok, detail);
+}
+
 }  // namespace
 
 void setup() {
@@ -69,21 +74,35 @@ void setup() {
   printBootInfo();
 
   g_display.begin(app::DISPLAY_FIXED_BRIGHTNESS_PERCENT);
-  g_display.showBoot("Initializing hardware", app::FIRMWARE_VERSION);
-  logInitResult("Display", g_display.isReady());
-  logInitResult("Display framebuffer", g_display.frameBufferReady());
-  logInitResult("Display transfer buffer", g_display.frameTransferBufferReady());
+  g_display.resetBoot(app::FIRMWARE_VERSION);
+  g_display.animateBoot(170);
+  bootInitResult("Display", g_display.isReady(),
+                 g_display.healthMonitoringAvailable() ? "health monitor" : "write only");
+  bootInitResult("Framebuffer", g_display.frameBufferReady(),
+                 g_display.frameTransferBufferReady() ? "DMA-safe copy" : "fallback");
 
   const bool touchOk = g_touch.begin();
-  logInitResult("Touch FT6336", touchOk);
+  bootInitResult("Touch FT6336", touchOk);
+
+  // BLE controller startup is the largest short 3.3 V load step during boot.
+  // Bring it up before mounting the SD card so a marginal supply cannot leave
+  // an already-mounted card latched in a state that ignores CMD0 until power
+  // is removed. The animated settle interval keeps boot feedback live.
+  const bool bleOk = g_phone.begin();
+  bootInitResult("BLE companion", bleOk);
+  g_display.animateBoot(180);
 
   g_display.showBoot("Initializing SD", "No SD is allowed");
   const bool sdOk = g_storage.begin();
-  logInitResult("SD", sdOk);
+  if (g_storage.takeDisplayResetRequest()) {
+    g_display.reinitializeAfterSharedBusReset();
+  }
+  bootInitResult("SD card", sdOk, sdOk ? "mounted" : "no-SD mode");
 
   String configError;
   const bool configOk = g_storage.loadSettings(g_settings, configError);
-  logInitResult("Config", configOk);
+  bootInitResult("Configuration", configOk,
+                 configError.length() ? configError : String("loaded"));
   if (configError.length() > 0) {
     Serial.print("Config note: ");
     Serial.println(configError);
@@ -91,14 +110,13 @@ void setup() {
 
   const bool sensorOk = g_sensor.begin(g_settings);
   const String hallLabel = String("Hall sensor GPIO") + String(hw::PIN_HALL_SENSOR);
-  logInitResult(hallLabel.c_str(), sensorOk);
+  bootInitResult(hallLabel.c_str(), sensorOk);
 
   const bool batteryOk = g_battery.begin(g_settings);
   Serial.print("Battery monitor: ");
   Serial.println(batteryOk ? "enabled" : "initialization failed");
+  g_display.addBootLog("Battery", batteryOk);
 
-  const bool bleOk = g_phone.begin();
-  logInitResult("BLE companion", bleOk);
   g_rideLogger.setClock(&g_phone.clock());
   g_rideSync.begin(g_storage, g_rideRepository);
   g_phone.attachSync(g_rideSync);
@@ -108,15 +126,26 @@ void setup() {
   g_speed.reset();
   g_speedTrendLed.begin(g_settings);
   g_ride.begin(&g_settings);
-  g_ui.begin(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed, g_ride, g_battery,
+  g_ui.begin(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed,
+             g_speedTrendLed, g_ride, g_battery,
              g_rideLogger, g_rideRepository, g_phone, g_settings);
 
+  g_display.addBootLog("Ready", true, "opening UI");
+  g_display.animateBoot(220);
   Serial.println("Boot complete");
 }
 
 void loop() {
   const uint32_t nowMs = millis();
   g_phone.update(nowMs);
+  if (g_storage.takeDisplayResetRequest()) {
+    g_display.reinitializeAfterSharedBusReset();
+    Serial.println("[DISPLAY] restored after SD bus isolation");
+  }
+  if (g_display.service(nowMs, !g_usb.active())) {
+    Serial.print("[DISPLAY] ST7796 recovered, count=");
+    Serial.println(g_display.recoveryCount());
+  }
   if (g_phone.clock().generation() != g_appliedClockGeneration) {
     g_appliedClockGeneration = g_phone.clock().generation();
     String clockError;
@@ -127,7 +156,6 @@ void loop() {
     }
   }
   g_ui.loop();
-  g_speedTrendLed.update(g_speed.currentKmh(), g_settings, nowMs);
   const RideStats& stats = g_ride.stats();
   LiveTelemetryInput telemetry;
   switch (g_ride.state()) {

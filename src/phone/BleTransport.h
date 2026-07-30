@@ -19,7 +19,8 @@ class BleTransport final : private BLEServerCallbacks,
              uint16_t deviceInfoLength);
   void update(uint32_t nowMs);
   void startPairing(uint32_t nowMs);
-  void cancelPairing();
+  void finishPairing();
+  void cancelPairing(bool clearBonds = false);
   void setKnownAssociation(bool known) { knownAssociation_ = known; }
 
   bool connected() const { return connected_; }

@@ -12,6 +12,11 @@
 class RideSyncManager;
 class ConfigSyncManager;
 
+struct RememberedPhone {
+  uint64_t associationId = 0;
+  char displayName[32] = {0};
+};
+
 struct LiveTelemetryInput {
   uint8_t rideState = 0;
   uint8_t motionState = 0;
@@ -31,10 +36,13 @@ struct LiveTelemetryInput {
 
 class PhoneLinkManager {
  public:
+  static constexpr uint8_t kMaximumRememberedPhones = 4;
+
   bool begin();
   void update(uint32_t nowMs);
   void startPairing(uint32_t nowMs);
   void cancelPairing();
+  void forgetAllPhones();
   void updateLiveData(const LiveTelemetryInput& data, uint32_t nowMs);
   void attachSync(RideSyncManager& sync) { sync_ = &sync; }
   void attachConfig(ConfigSyncManager& config) { config_ = &config; }
@@ -47,6 +55,14 @@ class PhoneLinkManager {
   }
   uint64_t deviceId() const { return deviceId_; }
   uint64_t associationId() const { return associationId_; }
+  uint8_t rememberedPhoneCount() const { return rememberedPhoneCount_; }
+  const RememberedPhone* rememberedPhone(uint8_t index) const {
+    return index < rememberedPhoneCount_ ? &rememberedPhones_[index] : nullptr;
+  }
+  bool canRememberAnotherPhone() const {
+    return rememberedPhoneCount_ < kMaximumRememberedPhones;
+  }
+  uint32_t phoneListRevision() const { return phoneListRevision_; }
   uint16_t negotiatedMtu() const { return transport_.negotiatedMtu(); }
   ClockManager& clock() { return clock_; }
   const ClockManager& clock() const { return clock_; }
@@ -70,8 +86,10 @@ class PhoneLinkManager {
 
  private:
   void loadIdentity();
-  void persistAssociation();
+  void persistAssociations();
   void createAssociation();
+  int8_t findAssociation(uint64_t associationId) const;
+  void rememberActiveAssociation(const char* displayName);
   void resetSession();
   void processIncoming();
   void handleFrame(const bikeproto::Frame& frame);
@@ -98,6 +116,9 @@ class PhoneLinkManager {
   PhoneState state_;
   uint64_t deviceId_ = 0;
   uint64_t associationId_ = 0;
+  RememberedPhone rememberedPhones_[kMaximumRememberedPhones];
+  uint8_t rememberedPhoneCount_ = 0;
+  uint32_t phoneListRevision_ = 0;
   uint16_t nextTxSequence_ = 1;
   bool lastConnected_ = false;
   bool lastAuthenticated_ = false;

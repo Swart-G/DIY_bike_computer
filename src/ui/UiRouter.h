@@ -29,6 +29,8 @@ enum class UiScreen : uint8_t {
   SettingsLogInterval,
   SettingsRgbLed,
   SettingsRgbStableRange,
+  SettingsRgbStableRange5s,
+  SettingsRgbStableRange10s,
   SettingsRgbBrightness,
   Ride,
   FinishConfirm,

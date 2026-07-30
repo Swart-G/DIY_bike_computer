@@ -96,16 +96,24 @@ void BleTransport::startPairing(uint32_t nowMs) {
     // bonding every time the runtime passkey changes so reconnects reuse LTK.
     configureBondingSecurity();
   }
+  if (server_ && server_->getConnectedCount()) {
+    server_->disconnect(server_->getConnId());
+  }
   Serial.printf("[BLE] pairing enabled for %lu ms\n",
                 static_cast<unsigned long>(kPairingWindowMs));
 }
 
-void BleTransport::cancelPairing() {
+void BleTransport::finishPairing() {
   pairingCode_ = 0;
   pairingExpiresMs_ = 0;
-  knownAssociation_ = false;
+}
+
+void BleTransport::cancelPairing(bool clearBonds) {
+  pairingCode_ = 0;
+  pairingExpiresMs_ = 0;
   restartAdvertising_ = false;
-  clearBondsPending_ = true;
+  clearBondsPending_ = clearBonds;
+  if (clearBonds) knownAssociation_ = false;
   portENTER_CRITICAL(&rxMux_);
   rxRead_ = rxWrite_ = rxCount_ = 0;
   portEXIT_CRITICAL(&rxMux_);
@@ -113,10 +121,11 @@ void BleTransport::cancelPairing() {
   if (server_ && server_->getConnectedCount()) {
     server_->disconnect(server_->getConnId());
   } else {
-    clearStoredBonds();
+    if (clearBonds) clearStoredBonds();
     BLEDevice::startAdvertising();
   }
-  Serial.println("[BLE] pairing cancelled by user");
+  Serial.println(clearBonds ? "[BLE] all phone bonds removed"
+                            : "[BLE] pairing window cancelled");
 }
 
 bool BleTransport::pairingActive(uint32_t nowMs) const {

@@ -165,9 +165,11 @@ Privileged/application-authoritative messages are `TIME_SYNC`, `RIDE_LIST_REQUES
 2. successful HELLO;
 3. matching nonzero association ID.
 
-Failed checks return `NOT_AUTHORIZED`. At most one application association is supported
-in protocol 1. Clearing an association requires clearing the ESP association/bond and
-the Android companion association before pairing again.
+Failed checks return `NOT_AUTHORIZED`. Protocol 1 still carries one association ID per
+HELLO/session, but firmware keeps a bounded registry of up to four such IDs. Each bonded
+phone must present its own exact nonzero value. Cancel closes only the current pairing
+window; the on-device `Forget all` action clears the complete ESP registry and controller
+bonds, after which each Android companion must pair again.
 
 ## Core payloads
 

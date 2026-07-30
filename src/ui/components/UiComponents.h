@@ -20,6 +20,8 @@ struct HeaderStatus {
 
 class Components {
  public:
+  static void setBatteryRuntimeEstimate(int16_t remainingMinutes,
+                                        bool charging);
   static void header(TFT_eSPI& tft, const String& title, const HeaderStatus& status);
   static void button(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h,
                      const String& label, bool primary = false, bool danger = false,

@@ -19,6 +19,9 @@ class BatteryMonitor {
   float voltage() const { return filteredVoltage_; }
   uint8_t percent() const { return percent_; }
   BatteryState state() const { return state_; }
+  int16_t remainingMinutes() const;
+  bool charging() const { return state_ == BatteryState::Charging; }
+  String remainingTimeText() const;
   const char* trendText() const;
   String stateText() const;
   String statusText() const;
@@ -30,6 +33,7 @@ class BatteryMonitor {
   void completeSeries(uint32_t nowMs);
   void pushTrend(float voltage);
   void updateState();
+  void updateRuntimeEstimate(uint32_t nowMs);
 
   bool enabled_ = false;
   int adcPin_ = -1;
@@ -51,4 +55,10 @@ class BatteryMonitor {
   uint8_t trendCount_ = 0;
   uint8_t trendIndex_ = 0;
   BatteryState state_ = BatteryState::WarmingUp;
+  uint32_t runtimeAnchorMs_ = 0;
+  uint8_t runtimeAnchorPercent_ = 0;
+  float smoothedPercentPerHour_ = 0.0f;
+  int16_t runtimeRemainingMinutes_ = 0;
+  uint32_t runtimeEstimateAtMs_ = 0;
+  bool runtimeEstimateReady_ = false;
 };

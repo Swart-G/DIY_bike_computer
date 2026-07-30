@@ -26,6 +26,12 @@ constexpr int16_t kHistorySwipeMinDy = 46;
 constexpr int16_t kHistorySwipeMaxDx = 64;
 constexpr uint32_t kHistorySwipeMaxMs = 800;
 
+bool headerBackHit(int16_t x, int16_t y) {
+  // The drawn chevron is intentionally compact, but the touch target also
+  // covers the title-side padding so it remains easy to hit while riding.
+  return x >= 0 && x < 126 && y >= 0 && y < 58;
+}
+
 String flashSizeText() {
   return String(static_cast<uint32_t>(ESP.getFlashChipSize() / (1024UL * 1024UL))) + " MB";
 }
@@ -50,6 +56,7 @@ void drawPanel(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, uint16
 
 void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
                   UsbMassStorageManager& usb, HallSensor& sensor, SpeedCalculator& speed,
+                  SpeedTrendLed& speedTrend,
                   RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
                   RideRepository& repository, PhoneLinkManager& phone,
                   app::AppSettings& settings) {
@@ -59,6 +66,7 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   usb_ = &usb;
   sensor_ = &sensor;
   speed_ = &speed;
+  speedTrend_ = &speedTrend;
   ride_ = &ride;
   battery_ = &battery;
   logger_ = &logger;
@@ -95,10 +103,12 @@ void UiApp::loop() {
   const uint8_t linkState = static_cast<uint8_t>(phoneState.link);
   if (linkState != lastPhoneLinkState_ ||
       phoneState.pairingCode != lastPairingCode_ ||
+      phone_->phoneListRevision() != lastPhoneListRevision_ ||
       phone_->mediaRevision() != lastMediaRevision_ ||
       phone_->navigationRevision() != lastNavigationRevision_) {
     lastPhoneLinkState_ = linkState;
     lastPairingCode_ = phoneState.pairingCode;
+    lastPhoneListRevision_ = phone_->phoneListRevision();
     lastMediaRevision_ = phone_->mediaRevision();
     lastNavigationRevision_ = phone_->navigationRevision();
     const uint8_t pageCount = ridePageCount();
@@ -107,8 +117,12 @@ void UiApp::loop() {
   }
   touch_->update();
   updateModel(now);
+  ui::Components::setBatteryRuntimeEstimate(battery_->remainingMinutes(),
+                                            battery_->charging());
   const bool sdAvailable = storage_->sdAvailable();
   const uint8_t batteryPercent = battery_->percent();
+  const int16_t batteryRemainingMinutes = battery_->remainingMinutes();
+  const bool batteryCharging = battery_->charging();
   int64_t clockMinute = -1;
   if (phone_->clock().synced()) {
     clockMinute =
@@ -119,10 +133,14 @@ void UiApp::loop() {
   if (!headerStateInitialized_ ||
       sdAvailable != lastHeaderSdAvailable_ ||
       batteryPercent != lastHeaderBatteryPercent_ ||
+      batteryRemainingMinutes != lastHeaderBatteryRemainingMinutes_ ||
+      batteryCharging != lastHeaderBatteryCharging_ ||
       clockMinute != lastClockMinute_) {
     headerStateInitialized_ = true;
     lastHeaderSdAvailable_ = sdAvailable;
     lastHeaderBatteryPercent_ = batteryPercent;
+    lastHeaderBatteryRemainingMinutes_ = batteryRemainingMinutes;
+    lastHeaderBatteryCharging_ = batteryCharging;
     lastClockMinute_ = clockMinute;
     dirty_ = true;
   }
@@ -148,7 +166,13 @@ void UiApp::loop() {
     wasTouched_ = false;
   } else {
     if (router_.current() == Screen::PaintTest && touchedNow) {
-      handlePaint();
+      if (!wasTouched_ &&
+          (headerBackHit(touch_->x(), touch_->y()) ||
+           touch_->y() >= 258)) {
+        handleTap(touch_->x(), touch_->y());
+      } else {
+        handlePaint();
+      }
     } else if (router_.current() == Screen::PaintTest && !touchedNow) {
       lastPaintValid_ = false;
     }
@@ -200,6 +224,8 @@ void UiApp::enter(Screen screen) {
       screen == Screen::SettingsAutoPauseDelay ||
       screen == Screen::SettingsLogInterval ||
       screen == Screen::SettingsRgbStableRange ||
+      screen == Screen::SettingsRgbStableRange5s ||
+      screen == Screen::SettingsRgbStableRange10s ||
       screen == Screen::SettingsRgbBrightness) {
     settingsEdit_ = *settings_;
   }
@@ -222,6 +248,7 @@ void UiApp::enter(Screen screen) {
 void UiApp::updateModel(uint32_t nowMs) {
   sensorSnapshot_ = sensor_->snapshot();
   speed_->update(sensorSnapshot_, *settings_, nowMs);
+  speedTrend_->update(speed_->currentKmh(), *settings_, nowMs);
   ride_->update(nowMs, speed_->filteredKmh(), sensorSnapshot_.pulseCount, sensorSnapshot_.rejectedPulseCount);
   battery_->update(nowMs);
   recordGraphSample(nowMs);
@@ -411,25 +438,31 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::Phone:
-      if (y < 42 && x < 90) {
+      if (headerBackHit(x, y)) {
         enter(router_.previous() == Screen::Settings ? Screen::Settings : Screen::Home);
       } else if (phone_->state().pairingCode &&
                  hit(x, y, 150, 266, 180, 40)) {
         phone_->cancelPairing();
         dirty_ = true;
-      } else if (phone_->state().paired && !phone_->state().pairingCode &&
-                 !phone_->ready() &&
-                 hit(x, y, 120, 247, 240, 42)) {
-        phone_->cancelPairing();
+      } else if (!phone_->state().pairingCode &&
+                 phone_->rememberedPhoneCount() > 0 &&
+                 hit(x, y, 18, 264, 214, 42) &&
+                 phone_->canRememberAnotherPhone()) {
+        phone_->startPairing(millis());
         dirty_ = true;
-      } else if (!phone_->state().paired &&
+      } else if (!phone_->state().pairingCode &&
+                 phone_->rememberedPhoneCount() > 0 &&
+                 hit(x, y, 248, 264, 214, 42)) {
+        phone_->forgetAllPhones();
+        dirty_ = true;
+      } else if (phone_->rememberedPhoneCount() == 0 &&
                  hit(x, y, 106, 225, 268, 45)) {
         phone_->startPairing(millis());
         dirty_ = true;
       }
       break;
     case Screen::History:
-      if (y < 42 && x < 90) enter(Screen::Home);
+      if (headerBackHit(x, y)) enter(Screen::Home);
       else if (historyCount_ && y >= 57) {
         const uint8_t visible =
             min<uint8_t>(historyCount_ - historyScrollOffset_, 3);
@@ -442,7 +475,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::HistoryDetail:
-      if ((y < 42 && x < 90) || hit(x, y, 304, 242, 176, 78)) {
+      if (headerBackHit(x, y) || hit(x, y, 304, 242, 176, 78)) {
         enter(Screen::History);
       } else if (hit(x, y, 8, 242, 150, 78)) {
         enter(Screen::DeleteRideConfirm);
@@ -480,7 +513,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       break;
 
     case Screen::Diagnostics:
-      if (y < 42 && x < 90) {
+      if (headerBackHit(x, y)) {
         enter(Screen::Settings);
       } else if (hit(x, y, 18, 57, 214, 56)) {
         enter(Screen::DisplayTest);
@@ -502,7 +535,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
 
     case Screen::DisplayTest:
       if (!exactPreviewActive_) {
-        if (y < 42 && x < 90) {
+        if (headerBackHit(x, y)) {
           enter(Screen::Diagnostics);
         } else if (hit(x, y, 170, 269, 140, 38)) {
           exactPreviewActive_ = true;
@@ -528,21 +561,21 @@ void UiApp::handleTap(int16_t x, int16_t y) {
     case Screen::SystemInfo:
     case Screen::SensorTest:
       if (hit(x, y, kBackX, kBackY, kBackW, kBackH) ||
-          (y < 42 && x < 90)) {
+          headerBackHit(x, y)) {
         enter(Screen::Diagnostics);
       }
       break;
     case Screen::TouchRawTest:
       if (hit(x, y, 14, 270, 110, 40)) {
         enter(Screen::PaintTest);
-      } else if ((y < 42 && x < 90) ||
+      } else if (headerBackHit(x, y) ||
                  hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
         enter(Screen::Diagnostics);
       }
       break;
 
     case Screen::BatteryTest:
-      if (y < 42 && x < 90) enter(Screen::Diagnostics);
+      if (headerBackHit(x, y)) enter(Screen::Diagnostics);
       else if (hit(x,y,12,262,108,58)) { settings_->batteryCalibrationFactor -= 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
       else if (hit(x,y,118,262,108,58)) { settings_->batteryCalibrationFactor += 0.005f; app::validateSettings(*settings_); battery_->updateSettings(*settings_); dirty_=true; }
       else if (hit(x,y,224,262,124,58)) { String e; const bool saved=storage_->saveSettings(*settings_,e); if(saved && logger_->active()) logger_->event(*storage_,*ride_,"CONFIG_CHANGED","battery calibration saved"); lastMessage_=saved?"Calibration saved":e; dirty_=true; }
@@ -550,18 +583,22 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       break;
 
     case Screen::SettingsRgbLed:
-      if (y < 42 && x < 90) {
+      if (headerBackHit(x, y)) {
         enter(Screen::Settings);
-      } else if (hit(x, y, 18, 57, 444, 48)) {
+      } else if (hit(x, y, 18, 59, 444, 48)) {
         app::AppSettings candidate = *settings_;
         candidate.rgbSpeedTrendEnabled =
             !candidate.rgbSpeedTrendEnabled;
         commitSettings(candidate, "Speed LED setting saved",
                        "speed LED indicator changed", false);
         dirty_ = true;
-      } else if (hit(x, y, 18, 113, 444, 48)) {
+      } else if (hit(x, y, 18, 109, 444, 48)) {
         enter(Screen::SettingsRgbStableRange);
-      } else if (hit(x, y, 18, 169, 444, 48)) {
+      } else if (hit(x, y, 18, 159, 444, 48)) {
+        enter(Screen::SettingsRgbStableRange5s);
+      } else if (hit(x, y, 18, 209, 444, 48)) {
+        enter(Screen::SettingsRgbStableRange10s);
+      } else if (hit(x, y, 18, 259, 444, 48)) {
         enter(Screen::SettingsRgbBrightness);
       }
       break;
@@ -569,7 +606,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
     case Screen::PaintTest:
       if (hit(x, y, 18, 270, 208, 37)) {
         dirty_ = true;
-      } else if ((y < 42 && x < 90) || hit(x, y, 238, 270, 224, 37)) {
+      } else if (headerBackHit(x, y) || hit(x, y, 238, 270, 224, 37)) {
         enter(Screen::Diagnostics);
       }
       break;
@@ -579,20 +616,20 @@ void UiApp::handleTap(int16_t x, int16_t y) {
         sdTestResult_ = storage_->runSdTest();
         sdTestRun_ = true;
         dirty_ = true;
-      } else if (y < 42 && x < 90) {
+      } else if (headerBackHit(x, y)) {
         enter(Screen::Diagnostics);
       }
       break;
 
     case Screen::UsbStorage:
       if (hit(x, y, 142, 273, 196, 34) ||
-          (!usb_->active() && y < 42 && x < 90)) {
+          (!usb_->active() && headerBackHit(x, y))) {
         if (usb_->active()) ESP.restart(); else enter(Screen::Home);
       }
       break;
 
     case Screen::Settings:
-      if (y < 42 && x < 90) {
+      if (headerBackHit(x, y)) {
         const bool returnToRide = settingsOpenedFromRide_;
         settingsOpenedFromRide_ = false;
         enter(returnToRide ? Screen::Ride : Screen::Home);
@@ -614,7 +651,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::SettingsRide:
-      if (y < 42 && x < 90) enter(Screen::Settings);
+      if (headerBackHit(x, y)) enter(Screen::Settings);
       else if (hit(x, y, 18, 57, 444, 48)) enter(Screen::SettingsWheel);
       else if (hit(x, y, 18, 113, 444, 48)) enter(Screen::SettingsStopThreshold);
       else if (hit(x, y, 398, 169, 64, 48)) {
@@ -630,10 +667,10 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::SettingsDisplay:
-      if (y < 42 && x < 90) enter(Screen::Settings);
+      if (headerBackHit(x, y)) enter(Screen::Settings);
       break;
     case Screen::SettingsSystem:
-      if (y < 42 && x < 90) enter(Screen::Settings);
+      if (headerBackHit(x, y)) enter(Screen::Settings);
       else if (hit(x, y, 18, 113, 444, 48) && storage_->sdAvailable()) {
         if (settingsLockedDuringRide()) {
           showSettingsLockedNotice();
@@ -644,7 +681,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       break;
     case Screen::SettingsWheel:
-      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRide);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.wheelCircumferenceM =
             max(0.5f, settingsEdit_.wheelCircumferenceM - 0.005f);
@@ -664,7 +701,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       dirty_ = true;
       break;
     case Screen::SettingsStopThreshold:
-      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRide);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.stopThresholdKmh =
             max(0.5f, settingsEdit_.stopThresholdKmh - 0.5f);
@@ -683,7 +720,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       dirty_ = true;
       break;
     case Screen::SettingsLogInterval:
-      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRide);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.logSampleIntervalMs =
             settingsEdit_.logSampleIntervalMs <= 250
@@ -705,7 +742,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       dirty_ = true;
       break;
     case Screen::SettingsAutoPauseDelay:
-      if (y < 42 && x < 90) enter(Screen::SettingsRide);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRide);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.autoPauseDelayMs =
             settingsEdit_.autoPauseDelayMs <= 1000
@@ -726,7 +763,7 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       dirty_ = true;
       break;
     case Screen::SettingsRgbStableRange:
-      if (y < 42 && x < 90) enter(Screen::SettingsRgbLed);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRgbLed);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.rgbSpeedTrendToleranceKmh =
             max(0.1f, settingsEdit_.rgbSpeedTrendToleranceKmh - 0.1f);
@@ -744,8 +781,46 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       }
       dirty_ = true;
       break;
+    case Screen::SettingsRgbStableRange5s:
+      if (headerBackHit(x, y)) enter(Screen::SettingsRgbLed);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendTolerance5sKmh =
+            max(0.1f, settingsEdit_.rgbSpeedTrendTolerance5sKmh - 0.1f);
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendTolerance5sKmh =
+            min(5.0f, settingsEdit_.rgbSpeedTrendTolerance5sKmh + 0.1f);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.rgbSpeedTrendTolerance5sKmh =
+            settingsEdit_.rgbSpeedTrendTolerance5sKmh;
+        if (commitSettings(candidate, "5 s range saved",
+                           "speed trend 5 s range saved", false)) {
+          enter(Screen::SettingsRgbLed);
+        }
+      }
+      dirty_ = true;
+      break;
+    case Screen::SettingsRgbStableRange10s:
+      if (headerBackHit(x, y)) enter(Screen::SettingsRgbLed);
+      else if (hit(x, y, 74, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendTolerance10sKmh =
+            max(0.1f, settingsEdit_.rgbSpeedTrendTolerance10sKmh - 0.1f);
+      } else if (hit(x, y, 320, 171, 86, 52)) {
+        settingsEdit_.rgbSpeedTrendTolerance10sKmh =
+            min(5.0f, settingsEdit_.rgbSpeedTrendTolerance10sKmh + 0.1f);
+      } else if (hit(x, y, 150, 287, 180, 27)) {
+        app::AppSettings candidate = *settings_;
+        candidate.rgbSpeedTrendTolerance10sKmh =
+            settingsEdit_.rgbSpeedTrendTolerance10sKmh;
+        if (commitSettings(candidate, "10 s range saved",
+                           "speed trend 10 s range saved", false)) {
+          enter(Screen::SettingsRgbLed);
+        }
+      }
+      dirty_ = true;
+      break;
     case Screen::SettingsRgbBrightness:
-      if (y < 42 && x < 90) enter(Screen::SettingsRgbLed);
+      if (headerBackHit(x, y)) enter(Screen::SettingsRgbLed);
       else if (hit(x, y, 74, 171, 86, 52)) {
         settingsEdit_.rgbLedBrightnessPercent =
             settingsEdit_.rgbLedBrightnessPercent <= 5
@@ -932,6 +1007,12 @@ void UiApp::draw() {
     case Screen::SettingsRgbStableRange:
       drawSettingsRgbStableRange();
       break;
+    case Screen::SettingsRgbStableRange5s:
+      drawSettingsRgbStableRange5s();
+      break;
+    case Screen::SettingsRgbStableRange10s:
+      drawSettingsRgbStableRange10s();
+      break;
     case Screen::SettingsRgbBrightness:
       drawSettingsRgbBrightness();
       break;
@@ -1098,10 +1179,11 @@ void UiApp::drawMainMenu() {
 void UiApp::drawPhone() {
   TFT_eSPI& tft = display_->tft();
   const PhoneState& phone = phone_->state();
+  const uint8_t rememberedCount = phone_->rememberedPhoneCount();
   const ui_exact::ScreenId source =
       phone.pairingCode
           ? ui_exact::ScreenId::SCREEN_31_PHONE_PAIRING
-          : (!phone.paired
+          : (!rememberedCount
                  ? ui_exact::ScreenId::SCREEN_30_PHONE_UNPAIRED
                  : (phone_->ready()
                         ? ui_exact::ScreenId::SCREEN_32_PHONE_CONNECTED
@@ -1138,32 +1220,37 @@ void UiApp::drawPhone() {
     tft.drawString(expires, 240, 252, 1);
     ui::Components::button(tft, 150, 266, 180, 40, "Cancel", false, true,
                            true);
-  } else if (phone.paired && phone_->ready()) {
-    tft.fillRect(18, 58, 444, 52, ui::BG);
-    const String peerName =
-        phone.displayName[0] ? String(phone.displayName) : String("Android phone");
-    const uint8_t nameFont = tft.textWidth(peerName, 4) <= 432 ? 4 : 2;
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(ui::TEXT, ui::BG);
-    tft.drawString(peerName, 24, nameFont == 4 ? 63 : 68, nameFont);
-    tft.fillCircle(28, 100, 3, ui::SUCCESS);
-    tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(ui::TEXT_MUTED, ui::BG);
-    tft.drawString("Connected", 36, 100, 1);
-    ui::Components::card(tft, 24, 119, 192, 67, "PROTOCOL",
-                         phone.protocolVersion
-                             ? String(phone.protocolVersion)
-                             : String("--"));
-    ui::Components::card(tft, 228, 119, 228, 67, "ATT MTU",
-                         String(phone.negotiatedMtu), String(), true);
-    ui::Components::button(tft, 24, 208, 432, 43, "CONNECTED", false,
-                           false, false);
-    ui::Components::button(tft, 24, 263, 432, 41,
-                           phone.authorized ? "Paired and authorized"
-                                            : "Waiting for secure HELLO",
-                           false, false, false);
-  } else if (phone.paired) {
-    ui::Components::button(tft, 120, 247, 240, 42, "Cancel pairing", false,
+  } else if (rememberedCount) {
+    tft.fillRect(0, 40, 480, 280, ui::BG);
+    for (uint8_t i = 0; i < rememberedCount; ++i) {
+      const RememberedPhone* remembered = phone_->rememberedPhone(i);
+      if (!remembered) continue;
+      const int16_t y = 48 + i * 50;
+      const bool connected =
+          phone_->ready() &&
+          remembered->associationId == phone_->associationId();
+      tft.fillRoundRect(18, y, 444, 43, 10, ui::SURFACE);
+      tft.drawRoundRect(18, y, 444, 43, 10,
+                        connected ? ui::SUCCESS : ui::BORDER);
+      tft.fillCircle(34, y + 21, 4,
+                     connected ? ui::SUCCESS : ui::TEXT_MUTED);
+      tft.setTextDatum(ML_DATUM);
+      tft.setTextColor(ui::TEXT, ui::SURFACE);
+      tft.drawString(remembered->displayName[0]
+                         ? remembered->displayName
+                         : "Android phone",
+                     48, y + 21, 2);
+      tft.setTextDatum(MR_DATUM);
+      tft.setTextColor(connected ? ui::SUCCESS : ui::TEXT_MUTED,
+                       ui::SURFACE);
+      tft.drawString(connected ? "Connected" : "Remembered", 448,
+                     y + 21, 1);
+    }
+    ui::Components::button(
+        tft, 18, 264, 214, 42,
+        phone_->canRememberAnotherPhone() ? "Add phone" : "List full",
+        true, false, phone_->canRememberAnotherPhone());
+    ui::Components::button(tft, 248, 264, 214, 42, "Forget all", false,
                            true, true);
   }
 }
@@ -1241,25 +1328,39 @@ void UiApp::drawTouchRawTest() {
   ui::Components::card(tft, 170, 58, 142, 72, "Y", String(p.y));
   ui::Components::card(tft, 322, 58, 140, 72, "POINTS",
                        String(p.points));
-  tft.fillRect(330, 145, 130, 58, ui::BG);
-  tft.setTextDatum(MR_DATUM);
+  tft.fillRect(18, 134, 444, 20, ui::BG);
+  tft.setTextDatum(ML_DATUM);
   tft.setTextColor(p.intLevel ? ui::TEXT : ui::SUCCESS, ui::BG);
-  tft.drawString(p.intLevel ? "HIGH" : "LOW", 456, 160, 2);
+  tft.drawString(String("INT: ") + (p.intLevel ? "HIGH" : "LOW"), 20, 144, 1);
   const uint32_t age = p.lastTouchMs ? millis() - p.lastTouchMs : 0;
+  tft.setTextDatum(MR_DATUM);
   tft.setTextColor(ui::TEXT, ui::BG);
-  tft.drawString(p.lastTouchMs ? String(age) + " ms ago" : "Never", 456,
-                 190, 2);
-  tft.fillRect(112, 212, 256, 82, ui::BG);
-  tft.drawFastVLine(240, 216, 74, ui::BORDER);
-  tft.drawFastHLine(120, 253, 240, ui::BORDER);
+  tft.drawString(p.lastTouchMs ? String(age) + " ms ago" : "Never", 458,
+                 144, 1);
+
+  constexpr int16_t fieldX = 18;
+  constexpr int16_t fieldY = 156;
+  constexpr int16_t fieldW = 444;
+  constexpr int16_t fieldH = 98;
+  tft.fillRoundRect(fieldX, fieldY, fieldW, fieldH, 10, ui::SURFACE);
+  tft.drawRoundRect(fieldX, fieldY, fieldW, fieldH, 10, ui::BORDER);
+  tft.drawFastVLine(fieldX + fieldW / 2, fieldY + 7, fieldH - 14, ui::BORDER);
+  tft.drawFastHLine(fieldX + 7, fieldY + fieldH / 2, fieldW - 14, ui::BORDER);
   for (uint8_t i = 0; i < 2; ++i) {
     const TouchContact& contact = p.contacts[i];
     if (!contact.valid) continue;
     const uint16_t color = i == 0 ? ui::UI_CYAN : ui::UI_ORANGE;
-    const int16_t px = 120 + (contact.x * 240) / 480;
-    const int16_t py = 216 + (contact.y * 74) / 320;
-    tft.drawCircle(px, py, 5, color);
-    tft.fillCircle(px, py, 2, color);
+    const int16_t px = fieldX + 7 +
+                       (contact.x * (fieldW - 15)) /
+                           (hw::DISPLAY_WIDTH - 1);
+    const int16_t py = fieldY + 7 +
+                       (contact.y * (fieldH - 15)) /
+                           (hw::DISPLAY_HEIGHT - 1);
+    tft.drawCircle(px, py, 7, color);
+    tft.fillCircle(px, py, 3, color);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(color, ui::SURFACE);
+    tft.drawString(String(i + 1), px, py - 13, 1);
   }
   drawSoftButton(14, 270, 110, 40, "PAINT", ui::UI_CYAN);
   drawBackButton();
@@ -1291,19 +1392,19 @@ void UiApp::drawSdTest() {
   header.batteryPercent = battery_->percent();
   ui::Components::header(tft, "SD test", header);
   tft.fillRect(18, 52, 444, 207, ui::BG);
-  drawTextBlock(storage_->sdInfoText(), 24, 62, 20,
+  drawTextBlock(storage_->sdInfoText(), 24, 56, 14,
                 storage_->sdAvailable() ? ui::UI_TEXT : ui::UI_RED,
-                ui::UI_BG);
+                ui::UI_BG, 1);
   if (sdTestRun_) {
-    drawTextBlock(sdTestResult_.message, 24, 142, 20,
+    drawTextBlock(sdTestResult_.message, 24, 160, 18,
                   sdTestResult_.ok ? ui::UI_GREEN : ui::UI_RED,
-                  ui::UI_BG);
-    drawTextBlock(sdTestResult_.readBack.substring(0, 180), 24, 168, 18,
-                  ui::UI_MUTED, ui::UI_BG);
+                  ui::UI_BG, 1);
+    drawTextBlock(sdTestResult_.readBack.substring(0, 180), 24, 198, 15,
+                  ui::UI_MUTED, ui::UI_BG, 1);
   } else {
     drawTextBlock(
-        "Press Run to create and read:\n/BIKE_SPEEDOMETER_SD_TEST.txt", 24,
-        176, 20, ui::UI_MUTED, ui::UI_BG);
+        "Press Run to test root write/read\nand /config directory creation.", 24,
+        176, 18, ui::UI_MUTED, ui::UI_BG, 1);
   }
   ui::Components::button(
       tft, 128, 270, 224, 37, sdTestRun_ ? "Run again" : "Run test", true,
@@ -1527,6 +1628,26 @@ void UiApp::drawSettingsRgbStableRange() {
                                          settingsEdit_);
 }
 
+void UiApp::drawSettingsRgbStableRange5s() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRgbStableRange5s(display_->tft(), status,
+                                           settingsEdit_);
+}
+
+void UiApp::drawSettingsRgbStableRange10s() {
+  ui::SettingsStatus status;
+  status.header.showBack = true;
+  status.header.sdAvailable = storage_->sdAvailable();
+  status.header.batteryAvailable = battery_->enabled();
+  status.header.batteryPercent = battery_->percent();
+  ui::SettingsScreen::drawRgbStableRange10s(display_->tft(), status,
+                                            settingsEdit_);
+}
+
 void UiApp::drawSettingsRgbBrightness() {
   ui::SettingsStatus status;
   status.header.showBack = true;
@@ -1555,6 +1676,8 @@ void UiApp::drawRide() {
   model.graphWindowSeconds = settings_->graphWindowSeconds;
   model.page = ridePage_;
   model.pageCount = ridePageCount();
+  model.trendPageEnabled = settings_->rgbSpeedTrendEnabled;
+  model.speedTrend = speedTrend_ ? &speedTrend_->snapshot() : nullptr;
   model.navigation = &phone_->navigationState();
   model.media = &phone_->mediaState();
   model.epochNowMs =
@@ -1571,14 +1694,16 @@ void UiApp::drawRide() {
 }
 
 uint8_t UiApp::ridePageCount() const {
-  return 3 + (phone_ && phone_->navigationState().available ? 1 : 0) +
+  return 3 + (settings_ && settings_->rgbSpeedTrendEnabled ? 1 : 0) +
+         (phone_ && phone_->navigationState().available ? 1 : 0) +
          (phone_ && phone_->mediaState().available ? 1 : 0);
 }
 
 bool UiApp::rideMediaPage() const {
   if (!phone_ || !phone_->mediaState().available) return false;
   const uint8_t index =
-      3 + (phone_->navigationState().available ? 1 : 0);
+      3 + (settings_ && settings_->rgbSpeedTrendEnabled ? 1 : 0) +
+      (phone_->navigationState().available ? 1 : 0);
   return ridePage_ == index;
 }
 
@@ -1682,6 +1807,8 @@ bool UiApp::commitSettings(const app::AppSettings& candidate,
     return false;
   }
   *settings_ = validated;
+  const uint8_t pageCount = ridePageCount();
+  if (pageCount && ridePage_ >= pageCount) ridePage_ = pageCount - 1;
   if (updateSensor) sensor_->updateSettings(*settings_);
   if (logger_->active() && eventDetails) {
     logger_->event(*storage_, *ride_, "CONFIG_CHANGED", eventDetails);

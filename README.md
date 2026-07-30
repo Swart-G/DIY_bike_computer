@@ -11,10 +11,17 @@ ownership remain the reliability core. Version 2.0 adds the
 `bike_computer_v2_exact_sourcepack` UI, global two-point Rain Lock,
 Auto Pause, versioned BLE, resumable ride synchronization, Android GPS/Room
 history/export, system MediaSession controls, safe device settings and feature-gated
-experimental navigation. The built-in GPIO48 RGB LED shows the two-second display-speed
-trend with persistent tolerance and brightness settings. All 60 supplied RGB565/RLE
+experimental navigation. The built-in GPIO48 RGB LED mirrors the two-second segment of
+an optional F1-style 2/5/10-second speed-trend page; every segment has a persistent
+tolerance. The ST7796 is health-monitored and reinitialized with the latest framebuffer
+after a disconnect, while the animated boot screen shows bounded stage logs. Up to four
+companion phones are remembered and listed on-device. All 60 supplied RGB565/RLE
 screens are linked as a pixel-exact regression baseline; production screens replace only their declared
 dynamic regions with runtime data. Android remains optional.
+
+The common status header includes battery percentage plus a learned, smoothed remaining
+runtime estimate; it intentionally shows `~ --` until a meaningful discharge history
+has been observed.
 
 Build:
 
