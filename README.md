@@ -1,11 +1,10 @@
-# DIY Bike Computer 2.1
+# DIY Bike Computer 2.1.1
 
 Firmware and Android companion project for an ESP32-S3-N16R8 bike computer with
 ST7796 480×320 TFT, FT6336 touch, SPI microSD, native USB Mass Storage, wired Hall
 sensor and 1S Li-Po monitor.
 
-Version `2.1` is the software release baseline; firmware remains marked `2.1.0-dev`
-until the real-device acceptance gates pass. The autonomous Hall speed/distance, ride
+Version `2.1.1` is the current software release. The autonomous Hall speed/distance, ride
 state, logging/recovery, history, battery, diagnostics and strict USB/firmware SD
 ownership remain the reliability core. Version 2.0 adds the
 `bike_computer_v2_exact_sourcepack` UI, global two-point Rain Lock,
@@ -13,11 +12,15 @@ Auto Pause, versioned BLE, resumable ride synchronization, Android GPS/Room
 history/export, system MediaSession controls, safe device settings and feature-gated
 experimental navigation. The built-in GPIO48 RGB LED mirrors the two-second segment of
 an optional F1-style 2/5/10-second speed-trend page; every segment has a persistent
-tolerance. The ST7796 is health-monitored and reinitialized with the latest framebuffer
-after a disconnect, while the animated boot screen shows bounded stage logs. Up to four
+tolerance. The ST7796 and SD use the proven 1.0 shared-SPI ownership model without
+background panel probes or automatic bus/card reinitialization, while the animated boot
+screen shows bounded stage logs. Up to four
 companion phones are remembered and listed on-device. All 60 supplied RGB565/RLE
 screens are linked as a pixel-exact regression baseline; production screens replace only their declared
-dynamic regions with runtime data. Android remains optional.
+dynamic regions with runtime data. The optional Android companion remembers multiple
+bike computers, provides a connection-aware live Home screen, mirrors Ride and Speed
+LED settings, records phone GPS during active rides, lets the user pin the controlled
+system media player, and exports full telemetry+location CSV, brief XLSX and GPX.
 
 The common status header includes battery percentage plus a learned, smoothed remaining
 runtime estimate; it intentionally shows `~ --` until a meaningful discharge history

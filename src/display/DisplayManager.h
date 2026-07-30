@@ -11,9 +11,6 @@ class DisplayManager {
   bool isReady() const { return ready_; }
   bool frameBufferReady() const { return frameBufferReady_; }
   bool frameTransferBufferReady() const { return frameTransferBuffer_ != nullptr; }
-  bool healthMonitoringAvailable() const { return healthMonitoringAvailable_; }
-  uint32_t recoveryCount() const { return recoveryCount_; }
-  bool reinitializeAfterSharedBusReset();
 
   int16_t width();
   int16_t height();
@@ -24,7 +21,6 @@ class DisplayManager {
   void beginPartialFrame();
   void commitFrame();
   void commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h);
-  bool service(uint32_t nowMs, bool allowRecovery = true);
   void resetBoot(const String& version);
   void addBootLog(const String& label, bool ok, const String& detail = String());
   void animateBoot(uint32_t durationMs);
@@ -38,10 +34,6 @@ class DisplayManager {
   static constexpr uint8_t kBootLogCapacity = 5;
   static constexpr uint8_t kBootLogLength = 34;
 
-  void initializePanelLocked();
-  bool captureHealthSignatureLocked();
-  bool panelHealthMatchesLocked();
-  void restoreFrameLocked();
   void renderBootFrame(const String& line1, const String& line2);
   void renderBootAnimationFrame();
 
@@ -53,14 +45,7 @@ class DisplayManager {
   bool frameBufferReady_ = false;
   bool frameActive_ = false;
   bool directFrameBusLocked_ = false;
-  bool healthMonitoringAvailable_ = false;
   uint8_t brightnessPercent_ = 0;
-  uint8_t healthMadctl_ = 0;
-  uint8_t healthPixelFormat_ = 0;
-  uint8_t consecutiveHealthFailures_ = 0;
-  uint32_t lastHealthCheckMs_ = 0;
-  uint32_t lastRecoveryAttemptMs_ = 0;
-  uint32_t recoveryCount_ = 0;
   uint8_t bootLogCount_ = 0;
   uint8_t bootAnimationPhase_ = 0;
   char bootVersion_[20] = {};

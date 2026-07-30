@@ -22,10 +22,13 @@ ui/          onboarding, home, live, history, device, sync, setup, diagnostics
 ```
 
 The app mirrors ESP ride state; it does not create a competing ride state machine.
-Repositories expose immutable `StateFlow`/`Flow` models to Compose. The current Compose
-shell includes Home/Live, History, Ride Detail, speed chart, GPS route, Device settings,
-sync/diagnostics and contextual GPS/Media setup. CSV and GPX exports use the Storage
-Access Framework.
+Repositories expose immutable `StateFlow`/`Flow` models to Compose. The Compose shell
+has three primary destinations: Home, History and Settings. Home is connection-focused
+until a link is ready, then replaces that content with battery, speed, distance,
+average/maximum speed, ride timing, motion and storage telemetry. History includes
+filters, aggregate metrics, ride detail, speed chart and optional GPS route. Settings
+contains remembered devices, the editable firmware Ride/Speed LED settings, phone-side
+location/media controls and read-only device information.
 
 ## Connection lifecycle
 
@@ -34,12 +37,18 @@ reconnected directly with bounded `1, 2, 4, 8, 15, 30 s` backoff after ESP reboo
 temporary range loss or Bluetooth disruption; app reopen also reconnects. Pairing scan
 uses the system Companion Device chooser and is never permanent.
 
+The Android repository keeps multiple remembered bike computers, one selected reconnect
+target and the Companion Device association ID where Android exposes it. Forget requires
+confirmation, closes an active GATT link, removes only that app entry and asks Android
+to disassociate it. Existing local ride history is deliberately retained.
+
 Android states:
 
 ```text
-UNPAIRED -> SEARCHING -> CONNECTING -> INITIALIZING -> READY
+UNPAIRED -> CONNECTING -> INITIALIZING -> READY
                                           ^             |
                                           + RECONNECTING+
+READY -> DISCONNECTED
 any state -> ERROR
 ```
 
@@ -63,21 +72,29 @@ Logical Room entities: `Device`, `Ride`, `RideFile`, `GpsPoint`, `RideEvent`. La
 CSV samples may remain as verified app-private files with indexed summaries instead of
 one Room row per sample. Imports are transactional and idempotent.
 
-CSV export is always available for a synced ride. GPX export is offered only when GPS
-points exist. Exports use Android storage access APIs.
+Full CSV export is available for a synced ride. It preserves every firmware
+`samples.csv` column and appends `timestamp_utc_ms`, latitude, longitude, altitude,
+accuracy and diagnostic GPS speed from the nearest phone point within five seconds.
+Missing location stays blank and never fabricates a coordinate. Brief XLSX export
+contains only the ride summary (date, distance, moving/elapsed time, average/maximum
+speed, integrity and GPS point count), not the sample stream. GPX is offered only when
+GPS points exist. All exports use Android storage access APIs.
 
 ## GPS Assist
 
 `RIDE_STARTED` starts/attaches a foreground location session keyed by ESP `ride_id`;
 `RIDE_FINISHED` ends it. Reconnect to the same active `ride_id` resumes that session and
 may leave an explicit gap. Hall-derived speed/distance remain the displayed primary
-values.
+values. Disabling location immediately stops the foreground service.
 
 ## Media and navigation
 
-Media reads the active system MediaSession through notification-listener access and
-sends bounded title/artist/player strings plus supported actions. ESP actions are
-executed only when supported.
+Media uses direct `MediaController.TransportControls` for active system MediaSessions
+obtained through notification-listener access. The user may pin an exact player; in
+Auto mode the playing session is preferred. A pinned but inactive player remains
+unavailable instead of silently controlling another source. Bounded title/artist/player
+strings and supported actions are sent to the ESP, and ESP actions are executed only
+when supported.
 
 `NavigationProvider` exposes normalized maneuver state independent of a map SDK.
 Navigation is experimental and feature-gated; provider absence leaves every other

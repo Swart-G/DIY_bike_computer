@@ -6,10 +6,7 @@ namespace hw {
 
 void lockSharedSpiBus();
 void unlockSharedSpiBus();
-void configureSharedSpiChipSelects();
 void releaseSharedSpiDevices();
-void clockSdCardIdle(uint16_t byteCount = 2);
-bool abortSdTransfer();
 
 class SharedSpiBusGuard {
  public:
@@ -21,7 +18,6 @@ class SharedSpiBusGuard {
 
  private:
   bool locked_ = false;
-  bool sdTraffic_ = false;
 };
 
 }  // namespace hw

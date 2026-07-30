@@ -75,11 +75,13 @@ documentation and stated hardware check are complete.
 - [x] Add contextual permissions and foreground location service.
 - [x] Attach sessions by ESP ride ID and preserve gaps.
 - [x] Add route map and GPX; retain Hall authority.
+- [x] Add full telemetry+location CSV and summary-only XLSX exports.
 
 ## Phase 8 — media
 
 - [x] Add MediaSession bridge, bounded metadata and supported-actions mask.
 - [x] Add ESP Media state/screen and safe controls.
+- [x] Add user-selectable player pinning with safe Auto fallback.
 
 ## Phase 9 — experimental navigation
 
@@ -92,15 +94,17 @@ documentation and stated hardware check are complete.
 - [x] Add distinct MotionState and auto-pause timing.
 - [x] Add CONFIG_GET/SET/RESULT with ESP validation.
 - [x] Exclude all hardware/GPIO mapping.
-- [x] Add Android Device Settings.
+- [x] Add Android Ride and Speed LED settings plus read-only device information.
+- [x] Add remembered bike-computer list, switching and confirmed forgetting.
+- [x] Replace Android Status/Bike navigation with connection-aware Home and Settings.
 
 ## Phase 11 — production polish
 
 - [ ] Complete `TEST_PLAN.md` and `TEST_PLAN_V2.md` on hardware.
 - [ ] Long ride, reconnect, SD removal, USB conflict and heap/performance tests.
 - [ ] Check backward-compatible config and v1 rides.
-- [x] Review software diff/docs and keep version `2.1.0-dev` until every acceptance
-  gate passes.
+- [x] Review software diff/docs and release version `2.1.1` after the hardware-driven
+  SD/display stability rollback; retain remaining acceptance gates in the test plan.
 
 ## Last software gate — 2026-07-28
 
@@ -111,3 +115,12 @@ documentation and stated hardware check are complete.
 - [x] `./gradlew testDebugUnitTest assembleDebug` — four canonical protocol tests pass.
 - [x] `git diff --check`; fixed GPIO contract files have no diff.
 - [ ] Hardware upload and all real-device acceptance procedures remain required.
+
+## Android UX/export gate — 2026-07-30
+
+- [x] `pio run` — RAM 79,548 / 327,680 bytes; Flash
+  2,559,557 / 6,553,600 bytes.
+- [x] `./gradlew lintDebug testDebugUnitTest assembleDebug` with JDK 21.
+- [x] XLSX package/content unit test and `git diff --check`.
+- [ ] Verify two physical bike computers, Companion Device disassociation, background
+  GPS/CSV alignment and pinned media control on representative Android versions.

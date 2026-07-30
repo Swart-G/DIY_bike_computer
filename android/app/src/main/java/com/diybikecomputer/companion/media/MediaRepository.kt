@@ -46,18 +46,66 @@ data class MediaSnapshot(
     }
 }
 
+data class MediaPlayerOption(
+    val packageName: String,
+    val name: String,
+    val playing: Boolean,
+    val title: String,
+)
+
 class MediaRepository(private val context: Context) {
+    private val preferences =
+        context.getSharedPreferences("media_control", Context.MODE_PRIVATE)
     private val mutableState = MutableStateFlow(MediaSnapshot())
     val state: StateFlow<MediaSnapshot> = mutableState.asStateFlow()
+    private val mutablePlayers = MutableStateFlow<List<MediaPlayerOption>>(emptyList())
+    val players: StateFlow<List<MediaPlayerOption>> = mutablePlayers.asStateFlow()
+    private val mutablePreferredPackage =
+        MutableStateFlow(preferences.getString("preferred_package", null))
+    val preferredPackage: StateFlow<String?> = mutablePreferredPackage.asStateFlow()
+    private var controllers: List<MediaController> = emptyList()
     private var controller: MediaController? = null
     private val callback = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) = refresh()
         override fun onMetadataChanged(metadata: MediaMetadata?) = refresh()
-        override fun onSessionDestroyed() = bind(null)
+        override fun onSessionDestroyed() {
+            controllers = controllers.filterNot { it.sessionToken == controller?.sessionToken }
+            selectController()
+        }
     }
 
     @Synchronized
-    fun bind(next: MediaController?) {
+    fun updateControllers(next: List<MediaController>) {
+        controllers = next
+        selectController()
+    }
+
+    @Synchronized
+    fun setPreferredPlayer(packageName: String?) {
+        mutablePreferredPackage.value = packageName
+        preferences.edit().apply {
+            if (packageName == null) remove("preferred_package")
+            else putString("preferred_package", packageName)
+        }.apply()
+        selectController()
+    }
+
+    @Synchronized
+    private fun selectController() {
+        val preferred = mutablePreferredPackage.value
+        val next = if (preferred != null) {
+            controllers.firstOrNull {
+                it.packageName == preferred && isPlaying(it.playbackState)
+            } ?: controllers.firstOrNull { it.packageName == preferred }
+        } else {
+            controllers.firstOrNull { isPlaying(it.playbackState) }
+                ?: controllers.firstOrNull()
+        }
+        bind(next)
+    }
+
+    @Synchronized
+    private fun bind(next: MediaController?) {
         if (controller?.sessionToken == next?.sessionToken) {
             refresh()
             return
@@ -86,6 +134,21 @@ class MediaRepository(private val context: Context) {
 
     @Synchronized
     private fun refresh() {
+        mutablePlayers.value = controllers
+            .groupBy(MediaController::getPackageName)
+            .map { (packageName, packageControllers) ->
+                val representative = packageControllers.firstOrNull {
+                    isPlaying(it.playbackState)
+                } ?: packageControllers.first()
+                MediaPlayerOption(
+                    packageName = packageName,
+                    name = playerName(representative),
+                    playing = packageControllers.any { isPlaying(it.playbackState) },
+                    title = representative.metadata
+                        ?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty(),
+                )
+            }
+            .sortedWith(compareByDescending<MediaPlayerOption> { it.playing }.thenBy { it.name })
         val active = controller
         if (active == null) {
             mutableState.value = MediaSnapshot()
@@ -114,11 +177,7 @@ class MediaRepository(private val context: Context) {
             positionMs = playback?.position?.coerceAtLeast(0) ?: 0,
             updateRealtimeMs = playback?.lastPositionUpdateTime ?: SystemClock.elapsedRealtime(),
             playbackSpeed = playback?.playbackSpeed ?: 0f,
-            player = runCatching {
-                context.packageManager.getApplicationLabel(
-                    context.packageManager.getApplicationInfo(active.packageName, 0),
-                ).toString()
-            }.getOrDefault(active.packageName),
+            player = playerName(active),
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
                 ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE).orEmpty(),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
@@ -130,4 +189,10 @@ class MediaRepository(private val context: Context) {
         state?.state == PlaybackState.STATE_PLAYING ||
             state?.state == PlaybackState.STATE_BUFFERING ||
             state?.state == PlaybackState.STATE_CONNECTING
+
+    private fun playerName(controller: MediaController): String = runCatching {
+        context.packageManager.getApplicationLabel(
+            context.packageManager.getApplicationInfo(controller.packageName, 0),
+        ).toString()
+    }.getOrDefault(controller.packageName)
 }

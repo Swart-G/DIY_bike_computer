@@ -76,27 +76,15 @@ void setup() {
   g_display.begin(app::DISPLAY_FIXED_BRIGHTNESS_PERCENT);
   g_display.resetBoot(app::FIRMWARE_VERSION);
   g_display.animateBoot(170);
-  bootInitResult("Display", g_display.isReady(),
-                 g_display.healthMonitoringAvailable() ? "health monitor" : "write only");
+  bootInitResult("Display", g_display.isReady(), "write only");
   bootInitResult("Framebuffer", g_display.frameBufferReady(),
                  g_display.frameTransferBufferReady() ? "DMA-safe copy" : "fallback");
 
   const bool touchOk = g_touch.begin();
   bootInitResult("Touch FT6336", touchOk);
 
-  // BLE controller startup is the largest short 3.3 V load step during boot.
-  // Bring it up before mounting the SD card so a marginal supply cannot leave
-  // an already-mounted card latched in a state that ignores CMD0 until power
-  // is removed. The animated settle interval keeps boot feedback live.
-  const bool bleOk = g_phone.begin();
-  bootInitResult("BLE companion", bleOk);
-  g_display.animateBoot(180);
-
   g_display.showBoot("Initializing SD", "No SD is allowed");
   const bool sdOk = g_storage.begin();
-  if (g_storage.takeDisplayResetRequest()) {
-    g_display.reinitializeAfterSharedBusReset();
-  }
   bootInitResult("SD card", sdOk, sdOk ? "mounted" : "no-SD mode");
 
   String configError;
@@ -116,6 +104,10 @@ void setup() {
   Serial.print("Battery monitor: ");
   Serial.println(batteryOk ? "enabled" : "initialization failed");
   g_display.addBootLog("Battery", batteryOk);
+
+  const bool bleOk = g_phone.begin();
+  bootInitResult("BLE companion", bleOk);
+  g_display.animateBoot(180);
 
   g_rideLogger.setClock(&g_phone.clock());
   g_rideSync.begin(g_storage, g_rideRepository);
@@ -138,14 +130,6 @@ void setup() {
 void loop() {
   const uint32_t nowMs = millis();
   g_phone.update(nowMs);
-  if (g_storage.takeDisplayResetRequest()) {
-    g_display.reinitializeAfterSharedBusReset();
-    Serial.println("[DISPLAY] restored after SD bus isolation");
-  }
-  if (g_display.service(nowMs, !g_usb.active())) {
-    Serial.print("[DISPLAY] ST7796 recovered, count=");
-    Serial.println(g_display.recoveryCount());
-  }
   if (g_phone.clock().generation() != g_appliedClockGeneration) {
     g_appliedClockGeneration = g_phone.clock().generation();
     String clockError;

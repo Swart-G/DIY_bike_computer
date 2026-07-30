@@ -58,9 +58,19 @@ battery voltage.
   controls, with no sourcepack button visible underneath.
 - No Brightness label, percentage, slider or editor exists; an old config containing
   `display_brightness_percent` still loads.
-- In the Android companion, the four primary destinations use a Material 3 bottom
+- In the Android companion, the three primary destinations use a Material 3 bottom
   navigation bar with icons, labels and a persistent selected state. Opening a ride
   detail and choosing any destination closes the detail and navigates directly.
+- Android exposes exactly Home, History and Settings; the former Status destination is
+  absent because live status is on Home.
+- Before READY, Home names the selected bike computer and shows the current connection
+  phase plus recovery guidance. After READY, that connection card disappears and Home
+  shows battery, current/average/maximum speed, pulse-derived distance, ride/motion
+  timing and SD state.
+- Pair two bike computers, switch between their remembered rows, restart the app and
+  verify the selected target reconnects. Forget one non-active row and verify the
+  active connection remains READY; forget the active row, confirm GATT closes and
+  local ride history remains.
 - Android History shows aggregate distance, ride count and moving time, followed by
   per-ride distance, average speed, maximum speed, moving time and sync integrity.
   Ride detail shows a summary hero, four metric cards, a readable filled speed chart,
@@ -144,10 +154,17 @@ Ride remains valid in every failure case; reconnect attaches to the existing `ri
 Map and GPX are hidden when no points exist. Compare primary distance against ESP Hall,
 not Android GPS.
 
+Export a synchronized ride with and without GPS. The full CSV must retain the complete
+firmware header and append the six Android location columns; points more than five
+seconds away leave blank fields. Open the brief XLSX in Excel or LibreOffice and verify
+it contains summary metrics only, not per-sample rows.
+
 ## Media
 
 Test no notification access, no session, unsupported actions, metadata truncation,
 play/pause/toggle/next/previous/seek and active-player switching with available players.
+In Auto mode verify the playing session wins. Pin each available player and verify an
+inactive pinned player never falls through to and controls a different application.
 
 ## Navigation
 
@@ -158,7 +175,8 @@ the ride page sequence incorrectly.
 ## Settings and security
 
 - valid CONFIG_GET/SET round trips for wheel circumference, threshold, auto pause,
-  auto-pause delay, log interval and graph window;
+  auto-pause delay, log interval, graph window, Speed LED enable, independent 2/5/10 s
+  tolerances and LED brightness;
 - invalid/out-of-range values are rejected or safely clamped by ESP;
 - GPIO/hardware mapping is not exposed;
 - unauthorized config/download and arbitrary paths are rejected;

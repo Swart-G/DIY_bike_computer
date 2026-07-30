@@ -1,5 +1,6 @@
 package com.diybikecomputer.companion.ble
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
@@ -26,6 +27,7 @@ enum class BikeConnectionState {
     Initializing,
     Ready,
     Reconnecting,
+    Disconnected,
     Error,
 }
 
@@ -64,6 +66,7 @@ class BikeConnectionService(context: Context) {
         else BikeConnectionState.Reconnecting,
     )
     val state: StateFlow<BikeConnectionState> = mutableState.asStateFlow()
+    val knownDevices: StateFlow<List<KnownDevice>> = devices.devices
     private val mutableTelemetry = MutableStateFlow(LiveTelemetry())
     val telemetry: StateFlow<LiveTelemetry> = mutableTelemetry.asStateFlow()
     private val mutableRideEvents = MutableSharedFlow<RideEvent>(extraBufferCapacity = 8)
@@ -78,6 +81,7 @@ class BikeConnectionService(context: Context) {
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
     private var intentionalDisconnect = false
+    private var activeBluetoothAddress: String? = devices.knownDevice()?.bluetoothAddress
 
     init {
         scope.launch {
@@ -98,7 +102,8 @@ class BikeConnectionService(context: Context) {
                     }
                     GattState.Disconnected -> {
                         mutableState.value =
-                            if (devices.knownDevice() == null) BikeConnectionState.Unpaired
+                            if (devices.knownDevices().isEmpty()) BikeConnectionState.Unpaired
+                            else if (intentionalDisconnect) BikeConnectionState.Disconnected
                             else BikeConnectionState.Reconnecting
                         scheduleReconnect()
                     }
@@ -119,17 +124,28 @@ class BikeConnectionService(context: Context) {
         }
     }
 
-    fun connect(device: BluetoothDevice) {
+    @SuppressLint("MissingPermission")
+    fun connect(device: BluetoothDevice, systemAssociationId: Int? = null) {
         intentionalDisconnect = false
         reconnectJob?.cancel()
         decoder.reset()
         nextSequence = 1
-        devices.saveBluetoothAddress(device.address)
+        activeBluetoothAddress = device.address
+        devices.rememberEndpoint(
+            bluetoothAddress = device.address,
+            displayName = runCatching { device.name }.getOrNull(),
+            systemAssociationId = systemAssociationId,
+        )
         gatt.connect(device)
     }
 
-    fun connectKnown(): Boolean {
-        val address = devices.knownBluetoothAddress() ?: return false
+    @SuppressLint("MissingPermission")
+    fun connectKnown(bluetoothAddress: String? = null): Boolean {
+        val target = bluetoothAddress?.let(devices::find) ?: devices.knownDevice()
+            ?: return false
+        val address = target.bluetoothAddress
+        devices.select(address)
+        activeBluetoothAddress = address
         val adapter = appContext.getSystemService(BluetoothManager::class.java).adapter
             ?: return false
         return runCatching {
@@ -138,10 +154,12 @@ class BikeConnectionService(context: Context) {
                 intentionalDisconnect = true
                 reconnectJob?.cancel()
                 gatt.close()
-                devices.forgetApplicationAssociation()
-                mutableState.value = BikeConnectionState.Unpaired
+                devices.forget(address)
+                mutableState.value =
+                    if (devices.knownDevices().isEmpty()) BikeConnectionState.Unpaired
+                    else BikeConnectionState.Disconnected
             } else {
-                connect(device)
+                connect(device, target.systemAssociationId)
             }
             true
         }.getOrDefault(false)
@@ -152,6 +170,25 @@ class BikeConnectionService(context: Context) {
         reconnectJob?.cancel()
         gatt.close()
     }
+
+    fun forgetDevice(bluetoothAddress: String): KnownDevice? {
+        val isActive = activeBluetoothAddress.equals(bluetoothAddress, ignoreCase = true)
+        if (isActive) {
+            intentionalDisconnect = true
+            reconnectJob?.cancel()
+            gatt.close()
+            activeBluetoothAddress = null
+            mutableTelemetry.value = LiveTelemetry()
+        }
+        val removed = devices.forget(bluetoothAddress)
+        if (isActive || devices.knownDevices().isEmpty()) {
+            mutableState.value =
+                if (devices.knownDevices().isEmpty()) BikeConnectionState.Unpaired
+                else BikeConnectionState.Disconnected
+        }
+        return removed
+    }
+
     fun knownDevice(): KnownDevice? = devices.knownDevice()
 
     fun send(messageType: Int, flags: Int, payload: ByteArray): Boolean {
@@ -161,7 +198,7 @@ class BikeConnectionService(context: Context) {
     }
 
     private fun sendHello() {
-        val associationId = devices.knownDevice()?.associationId ?: 0L
+        val associationId = activeBluetoothAddress?.let(devices::find)?.associationId ?: 0L
         val name = "Bike Computer Android".encodeToByteArray()
         val payload = ByteBuffer.allocate(3 + 1 + 1 + 8 + 4 + 1 + name.size)
             .order(ByteOrder.LITTLE_ENDIAN)
@@ -225,7 +262,7 @@ class BikeConnectionService(context: Context) {
     }
 
     private fun scheduleReconnect() {
-        if (intentionalDisconnect || devices.knownBluetoothAddress() == null ||
+        if (intentionalDisconnect || devices.knownDevice() == null ||
             reconnectJob?.isActive == true
         ) {
             return
@@ -264,11 +301,17 @@ class BikeConnectionService(context: Context) {
         }
         val nameBytes = ByteArray(nameLength)
         buffer.get(nameBytes)
+        val bluetoothAddress = activeBluetoothAddress ?: return run {
+            mutableState.value = BikeConnectionState.Error
+        }
+        val endpoint = devices.find(bluetoothAddress)
         devices.save(
             KnownDevice(
                 deviceId = deviceId,
                 associationId = associationId,
                 displayName = nameBytes.decodeToString(),
+                bluetoothAddress = bluetoothAddress,
+                systemAssociationId = endpoint?.systemAssociationId,
             ),
         )
         mutableState.value = BikeConnectionState.Ready

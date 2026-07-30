@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.diybikecomputer.companion.device.CompanionDevicePairing
+import com.diybikecomputer.companion.device.KnownDevice
 import com.diybikecomputer.companion.ui.BikeComputerApp
 import com.diybikecomputer.companion.ui.theme.BikeComputerTheme
 import com.diybikecomputer.companion.media.MediaBridgeService
@@ -60,6 +61,17 @@ class MainActivity : ComponentActivity() {
         }
         pendingExportRideId = null
     }
+    private val xlsxExport = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+    ) { uri ->
+        val rideId = pendingExportRideId
+        if (uri != null && rideId != null) {
+            lifecycleScope.launch { exporter.exportSummaryXlsx(rideId, uri) }
+        }
+        pendingExportRideId = null
+    }
     private val chooser = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
@@ -76,7 +88,10 @@ class MainActivity : ComponentActivity() {
         }
         pairingInProgress = false
         if (device != null) {
-            connection.connect(device)
+            connection.connect(
+                device,
+                association.systemAssociationIdFor(device.address),
+            )
         } else {
             pairingMessage = "No device was selected"
         }
@@ -126,13 +141,20 @@ class MainActivity : ComponentActivity() {
                         pairingInProgress = pairingInProgress,
                         pairingMessage = pairingMessage,
                         onPair = ::requestPairing,
-                        onEnableGps = ::requestGpsAssist,
+                        onConnectDevice = { connection.connectKnown(it) },
+                        onForgetDevice = ::forgetDevice,
+                        onGpsChanged = ::handleGpsSetting,
                         onEnableMedia = {
                             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         },
+                        onMediaPlayerSelected = app.mediaRepository::setPreferredPlayer,
                         onExportCsv = {
                             pendingExportRideId = it
                             csvExport.launch("ride_${it.substringAfterLast(':')}.csv")
+                        },
+                        onExportXlsx = {
+                            pendingExportRideId = it
+                            xlsxExport.launch("ride_${it.substringAfterLast(':')}_summary.xlsx")
                         },
                         onExportGpx = {
                             pendingExportRideId = it
@@ -143,7 +165,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (hasNearbyPermission() && !connection.connectKnown()) {
-            association.latestAssociatedDevice()?.let(connection::connect)
+            association.latestAssociatedDevice()?.let { device ->
+                connection.connect(device, association.systemAssociationIdFor(device.address))
+            }
         }
     }
 
@@ -171,6 +195,25 @@ class MainActivity : ComponentActivity() {
         locationPermissions.launch(permissions.toTypedArray())
     }
 
+    private fun handleGpsSetting(enabled: Boolean) {
+        if (enabled) {
+            requestGpsAssist()
+        } else {
+            app.gpsRepository.setEnabled(false)
+            gpsEnabled = false
+            app.gpsCoordinator.onDisabled()
+        }
+    }
+
+    private fun forgetDevice(device: KnownDevice) {
+        connection.forgetDevice(device.bluetoothAddress)
+        association.disassociate(
+            device.systemAssociationId
+                ?: association.systemAssociationIdFor(device.bluetoothAddress),
+            device.bluetoothAddress,
+        )
+    }
+
     private fun beginAssociation() {
         association.associate(
             object : CompanionDevicePairing.Callback {
@@ -182,7 +225,12 @@ class MainActivity : ComponentActivity() {
                 override fun onAssociated(association: android.companion.AssociationInfo) {
                     pairingInProgress = false
                     pairingMessage = null
-                    this@MainActivity.association.deviceFor(association)?.let(connection::connect)
+                    this@MainActivity.association.deviceFor(association)?.let {
+                        connection.connect(
+                            it,
+                            if (Build.VERSION.SDK_INT >= 33) association.id else null,
+                        )
+                    }
                         ?: run {
                             pairingMessage = "Associated device address is unavailable"
                         }

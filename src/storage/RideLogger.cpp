@@ -8,67 +8,24 @@
 #include "storage/StorageManager.h"
 #include "time/ClockManager.h"
 
-namespace {
-
-class Guard {
- public:
-  Guard() : g_(true) {}
-
- private:
-  hw::SharedSpiBusGuard g_;
-};
-
-enum class AppendResult : uint8_t {
-  Ok,
-  OpenFailed,
-  ShortWrite,
-};
-
-AppendResult appendOnce(const char* file, const char* line) {
-  Guard guard;
-  File f = SD.open(file, FILE_APPEND);
-  if (!f) return AppendResult::OpenFailed;
-  const size_t length = strlen(line);
-  const bool ok = f.print(line) == length;
-  f.flush();
-  f.close();
-  return ok ? AppendResult::Ok : AppendResult::ShortWrite;
-}
-
-}
+namespace { class Guard { public: Guard(): g_(true) {} private: hw::SharedSpiBusGuard g_; }; }
 
 bool RideLogger::append(StorageManager& storage, const char* file, const char* line) {
   if (!storage.loggingEnabled()) return false;
-  AppendResult result = appendOnce(file, line);
-  if (result == AppendResult::Ok) return true;
-
-  // It is safe to retry only when open failed and therefore no part of the
-  // append reached the card. A short write may already contain a partial CSV
-  // row, so retrying it could duplicate data.
-  if (result == AppendResult::OpenFailed &&
-      storage.recoverIoFailure("open write")) {
-    result = appendOnce(file, line);
-    if (result == AppendResult::Ok) return true;
-  }
-
-  storage.reportIoFailure(result == AppendResult::OpenFailed
-                              ? "open write"
-                              : "short write");
-  return false;
+  Guard guard;
+  File f = SD.open(file, FILE_APPEND);
+  if (!f) { storage.reportIoFailure("open write"); return false; }
+  const bool ok = f.print(line) == strlen(line);
+  f.flush(); f.close();
+  if (!ok) storage.reportIoFailure("short write");
+  return ok;
 }
 bool RideLogger::start(StorageManager& storage, const app::AppSettings& settings, const BatteryMonitor& battery, String& error) {
   if (!storage.loggingEnabled()) { error = "Logging unavailable"; return false; }
-  if (!storage.ensureReadyForIo("ride start preflight", error)) return false;
   Preferences prefs; prefs.begin("bike", false); rideId_ = prefs.getUInt("next_ride_id", 1); prefs.putUInt("next_ride_id", rideId_ + 1); prefs.end();
   snprintf(folder_, sizeof(folder_), "/rides/ride_%06lu", static_cast<unsigned long>(rideId_));
-  if (!storage.ensureDirectory("/rides", error)) {
-    if (error.length() == 0) error = "Cannot create rides directory";
-    return false;
-  }
-  if (!storage.createDirectory(folder_, error)) {
-    if (error.length() == 0) error = "Cannot create ride directory";
-    return false;
-  }
+  { Guard guard; if (!SD.exists("/rides") && !SD.mkdir("/rides")) { error = "Cannot create rides directory"; return false; }
+    if (SD.exists(folder_) || !SD.mkdir(folder_)) { error = "Cannot create ride directory"; return false; } }
   sampleIndex_ = 0; sampleIntervalMs_ = settings.logSampleIntervalMs; bufferedCount_ = 0; bufferedHead_ = 0; loggingGap_ = false; active_ = true;
   rideStartedMonotonicMs_ = ClockManager::monotonicMs();
   startedAtUtcMs_ =

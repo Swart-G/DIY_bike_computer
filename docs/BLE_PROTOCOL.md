@@ -280,6 +280,11 @@ Value types are `1 BOOLEAN`, `2 U32`, `3 FLOAT32`. Keys are:
 4 auto_pause_delay_ms     U32, 1000 .. 60000
 5 log_sample_interval_ms  U32, 250 .. 10000
 6 graph_window_seconds    U32, 10 .. 300
+7 rgb_speed_enabled       BOOLEAN
+8 rgb_tolerance_2s_kmh    FLOAT32, 0.1 .. 5.0
+9 rgb_tolerance_5s_kmh    FLOAT32, 0.1 .. 5.0
+10 rgb_tolerance_10s_kmh  FLOAT32, 0.1 .. 5.0
+11 rgb_brightness_percent U32, 5 .. 100
 ```
 
 Result codes are `0 OK`, `1 UNKNOWN_KEY`, `2 WRONG_TYPE`, `3 INVALID_VALUE`,

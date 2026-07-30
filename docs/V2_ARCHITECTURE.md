@@ -1,6 +1,6 @@
 # DIY Bike Computer 2.0 architecture
 
-Status: development contract for firmware `2.1.0-dev`.
+Status: architecture contract for firmware `2.1.1`.
 
 ## Product boundary
 

@@ -1403,7 +1403,7 @@ void UiApp::drawSdTest() {
                   ui::UI_MUTED, ui::UI_BG, 1);
   } else {
     drawTextBlock(
-        "Press Run to test root write/read\nand /config directory creation.", 24,
+        "Press Run to test root write/read\nusing /SDTEST.TXT.", 24,
         176, 18, ui::UI_MUTED, ui::UI_BG, 1);
   }
   ui::Components::button(

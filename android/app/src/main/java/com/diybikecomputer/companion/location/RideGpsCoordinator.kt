@@ -20,7 +20,7 @@ class RideGpsCoordinator(
 ) {
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
-    private var activeRideId: Long? = null
+    private var activeRideKey: String? = null
 
     init {
         scope.launch {
@@ -36,7 +36,7 @@ class RideGpsCoordinator(
                 if (telemetry.rideState == 1 && telemetry.rideId != 0L) {
                     start(telemetry.rideId)
                 } else if ((telemetry.rideState == 0 || telemetry.rideState == 3) &&
-                    activeRideId != null
+                    activeRideKey != null
                 ) {
                     stop()
                 }
@@ -53,10 +53,15 @@ class RideGpsCoordinator(
         }
     }
 
+    fun onDisabled() {
+        scope.launch { stop() }
+    }
+
     private suspend fun start(numericRideId: Long) {
-        if (!gps.enabled() || activeRideId == numericRideId) return
+        if (!gps.enabled()) return
         val device = connection.knownDevice() ?: return
         val rideKey = "${java.lang.Long.toUnsignedString(device.deviceId)}:$numericRideId"
+        if (activeRideKey == rideKey) return
         database.deviceDao().upsert(
             DeviceEntity(
                 deviceId = device.deviceId,
@@ -85,7 +90,7 @@ class RideGpsCoordinator(
                 ),
             )
         }
-        activeRideId = numericRideId
+        activeRideKey = rideKey
         ContextCompat.startForegroundService(
             context,
             Intent(context, RideLocationService::class.java)
@@ -95,7 +100,7 @@ class RideGpsCoordinator(
     }
 
     private fun stop() {
-        activeRideId = null
+        activeRideKey = null
         context.startService(
             Intent(context, RideLocationService::class.java)
                 .setAction(RideLocationService.ACTION_STOP),

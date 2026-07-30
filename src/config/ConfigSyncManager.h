@@ -34,6 +34,11 @@ class ConfigSyncManager {
     AutoPauseDelay = 4,
     LogInterval = 5,
     GraphWindow = 6,
+    RgbSpeedTrendEnabled = 7,
+    RgbStableTolerance2s = 8,
+    RgbStableTolerance5s = 9,
+    RgbStableTolerance10s = 10,
+    RgbBrightness = 11,
   };
 
   void sendValue(uint16_t key, uint16_t requestSequence,

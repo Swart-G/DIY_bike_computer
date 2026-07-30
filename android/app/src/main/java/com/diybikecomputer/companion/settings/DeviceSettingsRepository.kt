@@ -20,6 +20,11 @@ data class DeviceSettings(
     val autoPauseDelayMs: Long = 5_000,
     val logIntervalMs: Long = 1_000,
     val graphWindowSeconds: Long = 60,
+    val speedLedEnabled: Boolean = true,
+    val speedLedTolerance2sKmh: Float = 0.5f,
+    val speedLedTolerance5sKmh: Float = 0.5f,
+    val speedLedTolerance10sKmh: Float = 0.5f,
+    val speedLedBrightnessPercent: Long = 20,
     val loadedKeys: Set<Int> = emptySet(),
     val lastResult: String? = null,
 )
@@ -32,7 +37,24 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
         const val AUTO_PAUSE_DELAY = 4
         const val LOG_INTERVAL = 5
         const val GRAPH_WINDOW = 6
-        val all = listOf(WHEEL, STOP_THRESHOLD, AUTO_PAUSE, AUTO_PAUSE_DELAY, LOG_INTERVAL, GRAPH_WINDOW)
+        const val SPEED_LED_ENABLED = 7
+        const val SPEED_LED_TOLERANCE_2S = 8
+        const val SPEED_LED_TOLERANCE_5S = 9
+        const val SPEED_LED_TOLERANCE_10S = 10
+        const val SPEED_LED_BRIGHTNESS = 11
+        val all = listOf(
+            WHEEL,
+            STOP_THRESHOLD,
+            AUTO_PAUSE,
+            AUTO_PAUSE_DELAY,
+            LOG_INTERVAL,
+            GRAPH_WINDOW,
+            SPEED_LED_ENABLED,
+            SPEED_LED_TOLERANCE_2S,
+            SPEED_LED_TOLERANCE_5S,
+            SPEED_LED_TOLERANCE_10S,
+            SPEED_LED_BRIGHTNESS,
+        )
     }
 
     private object Type {
@@ -100,6 +122,26 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
         if (windowSeconds in 10..300) set(Key.GRAPH_WINDOW, Type.U32, windowSeconds.toInt())
     }
 
+    fun setSpeedLedEnabled(enabled: Boolean) =
+        set(Key.SPEED_LED_ENABLED, Type.BOOLEAN, if (enabled) 1 else 0)
+
+    fun setSpeedLedTolerance2s(valueKmh: Float) =
+        setFloatInRange(Key.SPEED_LED_TOLERANCE_2S, valueKmh, 0.1f..5f)
+
+    fun setSpeedLedTolerance5s(valueKmh: Float) =
+        setFloatInRange(Key.SPEED_LED_TOLERANCE_5S, valueKmh, 0.1f..5f)
+
+    fun setSpeedLedTolerance10s(valueKmh: Float) =
+        setFloatInRange(Key.SPEED_LED_TOLERANCE_10S, valueKmh, 0.1f..5f)
+
+    fun setSpeedLedBrightness(percent: Long) {
+        if (percent in 5..100) set(Key.SPEED_LED_BRIGHTNESS, Type.U32, percent.toInt())
+    }
+
+    private fun setFloatInRange(key: Int, value: Float, range: ClosedFloatingPointRange<Float>) {
+        if (value in range) set(key, Type.FLOAT32, value.toRawBits())
+    }
+
     private fun set(key: Int, type: Int, rawValue: Int) {
         if (connection.state.value != BikeConnectionState.Ready) return
         val payload = ByteBuffer.allocate(7).order(ByteOrder.LITTLE_ENDIAN)
@@ -121,10 +163,21 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
         val type = buffer.get().toInt() and 0xFF
         val raw = buffer.int
         val previous = mutableState.value
-        if ((key == Key.WHEEL || key == Key.STOP_THRESHOLD) && type != Type.FLOAT32) return
-        if (key == Key.AUTO_PAUSE && type != Type.BOOLEAN) return
+        if ((key == Key.WHEEL || key == Key.STOP_THRESHOLD ||
+                key == Key.SPEED_LED_TOLERANCE_2S ||
+                key == Key.SPEED_LED_TOLERANCE_5S ||
+                key == Key.SPEED_LED_TOLERANCE_10S) && type != Type.FLOAT32
+        ) {
+            return
+        }
+        if ((key == Key.AUTO_PAUSE || key == Key.SPEED_LED_ENABLED) &&
+            type != Type.BOOLEAN
+        ) {
+            return
+        }
         if ((key == Key.AUTO_PAUSE_DELAY || key == Key.LOG_INTERVAL ||
-                key == Key.GRAPH_WINDOW) && type != Type.U32
+                key == Key.GRAPH_WINDOW || key == Key.SPEED_LED_BRIGHTNESS) &&
+            type != Type.U32
         ) {
             return
         }
@@ -151,6 +204,26 @@ class DeviceSettingsRepository(private val connection: BikeConnectionService) {
             )
             Key.GRAPH_WINDOW -> previous.copy(
                 graphWindowSeconds = raw.toLong() and 0xFFFF_FFFFL,
+                loadedKeys = previous.loadedKeys + key,
+            )
+            Key.SPEED_LED_ENABLED -> previous.copy(
+                speedLedEnabled = raw != 0,
+                loadedKeys = previous.loadedKeys + key,
+            )
+            Key.SPEED_LED_TOLERANCE_2S -> previous.copy(
+                speedLedTolerance2sKmh = Float.fromBits(raw),
+                loadedKeys = previous.loadedKeys + key,
+            )
+            Key.SPEED_LED_TOLERANCE_5S -> previous.copy(
+                speedLedTolerance5sKmh = Float.fromBits(raw),
+                loadedKeys = previous.loadedKeys + key,
+            )
+            Key.SPEED_LED_TOLERANCE_10S -> previous.copy(
+                speedLedTolerance10sKmh = Float.fromBits(raw),
+                loadedKeys = previous.loadedKeys + key,
+            )
+            Key.SPEED_LED_BRIGHTNESS -> previous.copy(
+                speedLedBrightnessPercent = raw.toLong() and 0xFFFF_FFFFL,
                 loadedKeys = previous.loadedKeys + key,
             )
             else -> previous

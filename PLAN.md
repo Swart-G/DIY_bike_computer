@@ -9,10 +9,10 @@ Completed in firmware 1.0.0:
 - GPIO6 battery sampling, Li-Po SoC/trend and calibration persistence.
 - GPIO48 RGB speed-trend indication plus an optional 2/5/10-second F1 Ride page with
   independent persistent tolerances.
-- ST7796 health probing/framebuffer restore, FT6336 retry and dropped-scan tolerance,
-  flicker-free spoked-wheel bicycle boot animation with bounded logs, runtime SD
-  safe-first mount/preflight with bounded multi-attempt recovery, enlarged Back targets
-  and a four-phone NVS registry.
+- Proven 1.0 ST7796/SD shared-SPI ownership without background panel probes or automatic
+  bus/card reinitialization, FT6336 retry and dropped-scan tolerance, flicker-free
+  spoked-wheel bicycle boot animation with bounded logs, enlarged Back targets and a
+  four-phone NVS registry.
 - Settings/config validation, diagnostics, graph and USB MSC owner model.
 
 Verification remains hardware-dependent: execute the complete manual plan after wiring.
@@ -30,4 +30,5 @@ Version 2.0 development:
   USB ownership, GPS background behavior, media-player matrix and heap/performance.
 - Navigation intentionally ships provider-unavailable until a concrete routing provider
   is selected; all other features remain operational.
-- Firmware stays `2.1.0-dev` until every hardware gate in `docs/TEST_PLAN_V2.md` passes.
+- Firmware release `2.1.1` incorporates the completed hardware-driven SD/display
+  stability rollback; remaining acceptance checks stay documented in `docs/TEST_PLAN_V2.md`.

@@ -33,6 +33,12 @@ sample_index,ride_time_ms,state,speed_kmh,raw_speed_kmh,distance_m,avg_speed_kmh
 
 Строки append-only, decimal separator — точка. Интервал записи настраивается (`log_sample_interval_ms`, по умолчанию 1000 ms). Во время PAUSED также записываются samples с состоянием `PAUSED`.
 
+Прошивка не добавляет координаты в этот файл, потому что у ESP нет GPS. При экспорте
+полного CSV Android сохраняет все эти столбцы и добавляет к каждой строке ближайшие
+телефонные `timestamp_utc_ms,latitude,longitude,altitude_m,gps_accuracy_m,gps_speed_mps`.
+Если подходящей точки в пределах пяти секунд нет, поля остаются пустыми. Исходный
+append-only файл на устройстве при этом не изменяется.
+
 `events.csv`:
 
 ```csv

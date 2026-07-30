@@ -2,10 +2,9 @@
 
 The firmware is an autonomous bike computer: Hall speed acquisition, ST7796 touch UI, statistics, SD logging/recovery, battery telemetry, settings, diagnostics and USB MSC. It must boot without SD, Hall or FT6336.
 
-Boot order: serial/build info; backlight/TFT animated bicycle splash; touch; BLE startup
-and a bounded animated power-settle interval; SD; config (NVS defaults then valid SD
-config); Hall; battery; recovery; UI. Mounting SD after the radio's largest startup load
-step avoids leaving an already-mounted card latched after a marginal 3.3 V transient.
+Boot order: serial/build info; backlight/TFT animated bicycle splash; touch; SD; config
+(NVS defaults then valid SD config); Hall; battery; BLE startup; recovery; UI. This
+matches the firmware-1.0 SD initialization order validated on the target hardware.
 The splash retains the
 five latest bounded initialization results and advances the rotating wheel spokes and
 road animation between stages. It is composed in the PSRAM framebuffer and only the
@@ -14,34 +13,21 @@ exposed as visible blinking.
 No SD opens a Retry/Continue screen; Continue retains all live ride functions without
 persistent logging.
 
-SD mounting is fixed at 400 kHz because reliable shared-bus signalling is preferred to
-throughput; there is no high-speed retry.
-Before `SD.begin()` both chip selects remain high through a 20 ms quiet interval and
-160 explicit 400 kHz idle clocks. A runtime open/write failure triggers up to three
-bounded, progressively delayed remount attempts at 400 kHz without formatting. Before
-unmount, firmware sends CRC-valid `CMD12` and waits for the card to leave busy state so
-a stranded multi-block transfer cannot make the following `CMD0` ineffective. It then
-fully stops and restarts the ESP32 SPI peripheral with the fixed hardware pins before
-issuing idle clocks and mounting. Before SD
-traffic, ST7796 is returned from register-read mode to RAM-write mode at 400 kHz. If the
-display still holds shared MISO, later attempts keep ST7796 in hardware reset during
-mount, then request immediate panel reinitialization and framebuffer restoration. The
-SD diagnostic and ride start probe the mounted root through this recovery path before
-their first write. Append is retried only when the file did not open, so a possible
-partial CSV write is never duplicated. Only failed recovery changes the card to
-unavailable and activates ride sample buffering.
-Every bounded firmware SD session ends with both chip-select lines high and sixteen
-idle SPI clocks before the display can reclaim the shared bus. This prevents the card
-from carrying an unfinished SPI state into the next file open.
-TFT traffic is capped at 10 MHz (4 MHz reads), and both CS outputs use maximum drive
-strength with pull-ups to reduce false selection from shared-harness edge coupling.
+SD mounting and display access use the proven firmware-1.0 shared-SPI lifecycle. The
+card mounts once through the Arduino SD API at 10 MHz, with one ordinary 1 MHz fallback.
+A recursive mutex serializes the bus; both CS lines are deasserted at every ownership
+boundary, and ST7796 is parked in RAM-write mode before SD traffic. Firmware never
+formats after mount failure. It does not send raw `CMD12`, stop/restart the SPI
+peripheral, reset ST7796 to isolate MISO, preflight the root before a ride, or
+automatically remount and retry failed filesystem operations. A failed append marks SD
+unavailable and activates the existing ride sample buffer; retry/reboot is an explicit
+user action. TFT traffic runs at 20 MHz with 10 MHz register-read configuration.
 
-The ST7796 is health-checked from the main loop using its readable control registers.
-Two consecutive failed probes suspend panel writes while the latest PSRAM framebuffer
-continues to update. Firmware retries panel initialization about every two seconds and
-pushes that framebuffer after a successful probe, without rebooting the ESP. If register
-reads were unavailable during boot, a slower discovery probe enables monitoring after
-the panel appears. Display recovery is suspended while USB owns the shared SD bus.
+The ST7796 is initialized once during boot and is write-only during normal operation.
+There are no main-loop health-register probes or automatic panel reinitializations,
+because those reads and shared-bus resets destabilized otherwise healthy SD cards on
+the target hardware. A disconnected panel may therefore require an explicit device
+restart after its wiring is restored.
 FT6336 I2C communication is likewise retried once per second after repeated read errors.
 The bus runs at a conservative 100 kHz, initialization observes the controller's 300 ms
 post-reset reporting time, and a bounded 38 ms release grace masks a dropped scan without

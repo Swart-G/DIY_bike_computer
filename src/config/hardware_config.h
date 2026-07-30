@@ -35,9 +35,8 @@ static constexpr uint32_t BATTERY_REPORT_INTERVAL_MS = 2000;
 static constexpr float BATTERY_CHARGE_DELTA_V = 0.015f;
 static constexpr float BATTERY_FULL_VOLTAGE = 4.18f;
 
-static constexpr uint32_t TFT_SPI_FREQUENCY_HZ = 10000000UL;
-static constexpr uint32_t SD_SAFE_SPI_FREQUENCY_HZ = 400000UL;
-static constexpr uint8_t SD_MAX_OPEN_FILES = 10;
+static constexpr uint32_t TFT_SPI_FREQUENCY_HZ = 20000000UL;
+static constexpr uint32_t SD_SPI_FREQUENCY_HZ = 10000000UL;
 // 100 kHz leaves comfortable timing margin on the display FPC and is still
 // much faster than the FT6336's 60-100 Hz report rate.
 static constexpr uint32_t TOUCH_I2C_FREQUENCY_HZ = 100000UL;

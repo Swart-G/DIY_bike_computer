@@ -37,7 +37,11 @@ class CompanionDevicePairing(context: Context) {
                 ?: associatedDevice?.bluetoothDevice
             if (directDevice != null) return directDevice
         }
-        return remoteDevice(association.deviceMacAddress?.toString())
+        return if (Build.VERSION.SDK_INT >= 33) {
+            remoteDevice(association.deviceMacAddress?.toString())
+        } else {
+            null
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -53,6 +57,25 @@ class CompanionDevicePairing(context: Context) {
             }
         }.getOrNull()
     }
+
+    fun systemAssociationIdFor(address: String): Int? {
+        if (Build.VERSION.SDK_INT < 33) return null
+        return runCatching {
+            manager.myAssociations.firstOrNull {
+                it.deviceMacAddress?.toString().equals(address, ignoreCase = true)
+            }?.id
+        }.getOrNull()
+    }
+
+    @Suppress("DEPRECATION")
+    fun disassociate(systemAssociationId: Int?, bluetoothAddress: String): Boolean =
+        runCatching {
+            if (Build.VERSION.SDK_INT >= 33 && systemAssociationId != null) {
+                manager.disassociate(systemAssociationId)
+            } else {
+                manager.disassociate(bluetoothAddress)
+            }
+        }.isSuccess
 
     fun associate(callback: Callback) {
         val scanFilter = ScanFilter.Builder()

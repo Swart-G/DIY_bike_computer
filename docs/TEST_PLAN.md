@@ -5,7 +5,7 @@ For every section record firmware version, SD brand and battery voltage. Failure
 ## 1. Build and boot
 
 Steps: run `pio run`, upload, open `pio device monitor`, boot with all peripherals
-attached. Expected: version `2.1.0-dev`, memory information and one result per init
+attached. Expected: version `2.1.1`, memory information and one result per init
 stage; the bicycle wheel spokes and road visibly advance without a blank-frame flash,
 the latest boot-stage logs remain readable, then Menu/Recovery opens. Failure: compile
 error, boot loop, static/black display, dots on the wheel rims, visible splash blinking
@@ -18,16 +18,15 @@ Steps: remove SD, then separately disconnect Hall and FT6336; reboot and press C
 ## 3. Display and touch
 
 Steps: Settings → Diagnostics → Display; inspect RGB/white/black,
-primitives/text/orientation. While on a normal screen disconnect the TFT, wait for the
-Serial health failure, reconnect it without resetting power and wait up to five seconds.
-Diagnostics → Touch raw; tap all four corners and test two simultaneous points. Briefly
+primitives/text/orientation. Confirm Serial remains free of background ST7796 register
+probes during normal operation. Diagnostics → Touch raw; tap all four corners and test
+two simultaneous points. Briefly
 disconnect/reconnect FT6336. Diagnostics → Paint; draw rapid diagonals, Clear, Back.
 Make repeated short taps and slow presses across Home and Settings.
-Expected: 480×320 landscape, fixed normal backlight, the last UI frame returns
-automatically after TFT reconnection, FT6336 returns within about one second, both touch
+Expected: 480×320 landscape, fixed normal backlight, FT6336 returns within about one second, both touch
 points stay inside the bordered field without covering Paint/Back, every touch-down
 registers once without a false release while held, and paint is continuous. Failure:
-reboot, permanent black display, flicker, missing colours, missed taps, duplicated taps,
+unexpected TFT reinitialization, flicker, missing colours, missed taps, duplicated taps,
 shifted/inverted touch or UI overlap.
 
 ## 4. Hall and speed
@@ -49,23 +48,18 @@ with a controlled safe supply; do not over-discharge a Li-Po.
 ## 6. SD
 
 Steps: boot with FAT SD; Diagnostics → SD → Run test; inspect card
-type/capacity/free space/frequency and `/SDTEST.TXT` on a computer. The test separately
-verifies short-name root write/read and creation/validation of `/config`.
-Repeat after reinserting the card and immediately after a cold boot. Provoke one bounded
-open failure if possible and retain the Serial log. Expected: read/write match, no
-format prompt, three consecutive internal write/read cycles pass on the first Run,
-`SPI kHz` is 400, and `I/O recoveries` remains zero on healthy wiring. A
-transient failure performs at most three progressively delayed 400 kHz remount attempts
-and reports `SD recovered at 400 kHz, attempt N`; it never formats the card. Immediately
-start a ride and confirm the root preflight, `/rides` and the unique ride directory,
+type/capacity/free space/frequency and `/SDTEST.TXT` on a computer.
+Run the test repeatedly and repeat immediately after a cold boot. Expected: each
+single write/read comparison passes, no format prompt, and `SPI MHz` reports 10 (or 1
+after the one mount fallback). Immediately start a ride and confirm `/rides` and the unique ride directory,
 `meta.json`, both CSV headers and START all complete without ENODEV.
 Failure: UI crash, automatic format, corrupt test text, repeated append data, ENODEV on
-cycle 1/2/3 or ride start, reuse of an existing ride directory, or continuous retries.
-Also retain a cold-boot Serial trace: BLE must initialize before SD mount, and the first
+the first test or ride start, reuse of an existing ride directory, or any automatic
+runtime remount loop.
+Also retain a cold-boot Serial trace: SD must initialize before BLE, and the first
 post-boot SD access must not show `Card Failed! cmd: 0x0d`. If a display-isolated retry
-is forced, confirm the display is restored from its framebuffer without an ESP restart
-and the card becomes usable without removing device power.
-If `CMD13` still disappears at 400 kHz, record socket 3.3 V with a scope or min/max
+appears in the log, the tested 1.0 ownership model has regressed and the test fails.
+If `CMD13` still disappears, record socket 3.3 V with a scope or min/max
 meter during BLE startup and full-screen transfer, then repeat with the specified local
 decoupling, external CS pull-up and a known-good FAT32 card. Failure after those checks
 is a card/socket/wiring fault, not a filesystem-format condition.
@@ -84,7 +78,12 @@ Steps: Start a ride, wait one recovery interval, remove power during RIDING; reb
 
 ## 10. SD removal during ride
 
-Steps: start and generate pulses, remove SD, keep riding 2–3 minutes, reinsert, wait for retry, finish. Expected: speed/stats/UI continue; clear SD ERROR; samples are buffered then `SD_RESTORED` is appended when card returns; summary exposes logging gap if data could not fit. Failure: reset, blocked Hall interrupt, a false claim that all data was saved.
+Steps: start and generate pulses, remove SD, keep riding 2–3 minutes, then finish.
+Expected: speed/stats/UI continue, SD ERROR remains explicit, and samples are buffered
+within the documented limit; there is no background remount. Reinsert the card only
+after an explicit retry/reboot. The summary exposes a logging gap if data could not fit.
+Failure: reset, blocked Hall interrupt, automatic remount churn, or a false claim that
+all data was saved.
 
 ## 11. USB Mass Storage
 

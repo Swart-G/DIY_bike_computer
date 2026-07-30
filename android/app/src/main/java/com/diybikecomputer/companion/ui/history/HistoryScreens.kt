@@ -22,12 +22,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -52,6 +57,12 @@ private val RideAccent = Color(0xFF55D7C4)
 @Composable
 fun HistoryScreen(dao: RideDao, onRide: (String) -> Unit) {
     val rides by dao.observeRides().collectAsStateWithLifecycle(initialValue = emptyList())
+    var filter by remember { mutableStateOf(HistoryFilter.All) }
+    val visibleRides = when (filter) {
+        HistoryFilter.All -> rides
+        HistoryFilter.Verified -> rides.filter(RideEntity::synced)
+        HistoryFilter.NeedsSync -> rides.filterNot(RideEntity::synced)
+    }
 
     if (rides.isEmpty()) {
         EmptyHistory()
@@ -65,7 +76,30 @@ fun HistoryScreen(dao: RideDao, onRide: (String) -> Unit) {
         item {
             HistoryOverview(rides)
         }
-        items(rides, key = { it.rideId }) { ride ->
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HistoryFilter.entries.forEach { item ->
+                    FilterChip(
+                        selected = filter == item,
+                        onClick = { filter = item },
+                        label = { Text(item.label) },
+                    )
+                }
+            }
+        }
+        if (visibleRides.isEmpty()) {
+            item {
+                Text(
+                    "No rides in this filter",
+                    modifier = Modifier.padding(vertical = 18.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        items(visibleRides, key = { it.rideId }) { ride ->
             RideCard(ride = ride, onClick = { onRide(ride.rideId) })
         }
         item { Spacer(Modifier.height(4.dp)) }
@@ -245,6 +279,7 @@ fun RideDetailScreen(
     rideId: String,
     onBack: () -> Unit,
     onExportCsv: (String) -> Unit,
+    onExportXlsx: (String) -> Unit,
     onExportGpx: (String) -> Unit,
 ) {
     val ride by dao.observeRide(rideId).collectAsStateWithLifecycle(initialValue = null)
@@ -315,28 +350,41 @@ fun RideDetailScreen(
             }
         }
         item {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 FilledTonalButton(
                     onClick = { onExportCsv(rideId) },
                     enabled = ride?.synced == true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Export CSV")
+                    Text("Full CSV · telemetry + location")
+                }
+                OutlinedButton(
+                    onClick = { onExportXlsx(rideId) },
+                    enabled = ride != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Brief XLSX · ride summary")
                 }
                 Button(
                     onClick = { onExportGpx(rideId) },
                     enabled = points.isNotEmpty(),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Export GPX")
+                    Text("GPX · route")
                 }
             }
         }
         item { Spacer(Modifier.height(4.dp)) }
     }
+}
+
+private enum class HistoryFilter(val label: String) {
+    All("All"),
+    Verified("Verified"),
+    NeedsSync("Needs sync"),
 }
 
 @Composable

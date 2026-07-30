@@ -56,6 +56,9 @@ interface RideDao {
     @Query("SELECT * FROM ride_samples WHERE rideId = :rideId ORDER BY sampleIndex")
     fun observeSamples(rideId: String): Flow<List<RideSampleEntity>>
 
+    @Query("SELECT * FROM ride_samples WHERE rideId = :rideId ORDER BY sampleIndex")
+    suspend fun getSamples(rideId: String): List<RideSampleEntity>
+
     @Query("SELECT * FROM ride_events WHERE rideId = :rideId ORDER BY eventIndex")
     fun observeEvents(rideId: String): Flow<List<RideEventEntity>>
 

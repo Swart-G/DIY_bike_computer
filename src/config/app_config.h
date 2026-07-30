@@ -5,7 +5,7 @@
 
 namespace app {
 
-static constexpr const char* FIRMWARE_VERSION = "2.1.0-dev";
+static constexpr const char* FIRMWARE_VERSION = "2.1.1";
 static constexpr const char* BOARD_NAME = "ESP32-S3-N16R8";
 static constexpr const char* DISPLAY_NAME = "ST7796";
 static constexpr const char* TOUCH_NAME = "FT6336";

@@ -15,12 +15,6 @@
 namespace {
 
 constexpr uint16_t kFrameTransferRows = 4;
-constexpr uint32_t kDisplayHealthIntervalMs = 2500;
-constexpr uint32_t kDisplayRecoveryRetryMs = 1800;
-constexpr uint32_t kDisplayDiscoveryIntervalMs = 5000;
-constexpr uint8_t kDisplayFailuresBeforeRecovery = 2;
-constexpr uint8_t kCommandReadMadctl = 0x0B;
-constexpr uint8_t kCommandReadPixelFormat = 0x0C;
 constexpr int16_t kBootAnimationX = 166;
 constexpr int16_t kBootAnimationY = 43;
 constexpr int16_t kBootAnimationWidth = 148;
@@ -32,11 +26,6 @@ constexpr int8_t kSpokeX[16] = {
 constexpr int8_t kSpokeY[16] = {
     -12, -11, -8, -5, 0, 5, 8, 11, 12, 11, 8, 5, 0, -5, -8, -11,
 };
-
-bool isFloatingHealthSignature(uint8_t madctl, uint8_t pixelFormat) {
-  return (madctl == 0x00 && pixelFormat == 0x00) ||
-         (madctl == 0xFF && pixelFormat == 0xFF);
-}
 
 void drawBootBike(TFT_eSPI& gfx, uint8_t phase) {
   constexpr int16_t cx = hw::DISPLAY_WIDTH / 2;
@@ -80,26 +69,22 @@ void drawBootBike(TFT_eSPI& gfx, uint8_t phase) {
 
 }
 
-void DisplayManager::initializePanelLocked() {
-  hw::releaseSharedSpiDevices();
-  tft_.init();
-  tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
-  tft_.setRotation(hw::DISPLAY_ROTATION);
-  tft_.setTextFont(2);
-  tft_.setTextColor(TFT_WHITE, ui::BG);
-}
-
 bool DisplayManager::begin(uint8_t brightnessPercent) {
-  hw::configureSharedSpiChipSelects();
+  pinMode(hw::PIN_LCD_CS, OUTPUT);
+  pinMode(hw::PIN_SD_CS, OUTPUT);
+  hw::releaseSharedSpiDevices();
 
   pinMode(hw::PIN_LCD_BACKLIGHT, OUTPUT);
   setBrightness(0);
 
   {
     hw::SharedSpiBusGuard bus;
-    initializePanelLocked();
+    tft_.init();
+    tft_.invertDisplay(hw::DISPLAY_INVERT_COLORS);
+    tft_.setRotation(hw::DISPLAY_ROTATION);
+    tft_.setTextFont(2);
+    tft_.setTextColor(TFT_WHITE, ui::BG);
     tft_.fillScreen(ui::BG);
-    healthMonitoringAvailable_ = captureHealthSignatureLocked();
   }
 
   ready_ = true;
@@ -119,53 +104,6 @@ bool DisplayManager::begin(uint8_t brightnessPercent) {
   }
   setBrightness(brightnessPercent);
   return ready_;
-}
-
-bool DisplayManager::captureHealthSignatureLocked() {
-  const uint8_t madctl = tft_.readcommand8(kCommandReadMadctl);
-  const uint8_t pixelFormat = tft_.readcommand8(kCommandReadPixelFormat);
-  if (isFloatingHealthSignature(madctl, pixelFormat)) {
-    return false;
-  }
-  healthMadctl_ = madctl;
-  healthPixelFormat_ = pixelFormat;
-  return true;
-}
-
-bool DisplayManager::panelHealthMatchesLocked() {
-  const uint8_t madctl = tft_.readcommand8(kCommandReadMadctl);
-  const uint8_t pixelFormat = tft_.readcommand8(kCommandReadPixelFormat);
-  return !isFloatingHealthSignature(madctl, pixelFormat) &&
-         madctl == healthMadctl_ && pixelFormat == healthPixelFormat_;
-}
-
-void DisplayManager::restoreFrameLocked() {
-  if (!frameBufferReady_) {
-    tft_.fillScreen(ui::BG);
-    return;
-  }
-
-  uint16_t* framePixels = static_cast<uint16_t*>(frame_.getPointer());
-  if (framePixels == nullptr || frameTransferBuffer_ == nullptr || frameTransferRows_ == 0) {
-    frame_.pushSprite(0, 0);
-    return;
-  }
-
-  const int16_t w = tft_.width();
-  const int16_t h = tft_.height();
-  const bool oldSwapBytes = tft_.getSwapBytes();
-  tft_.setSwapBytes(false);
-  tft_.startWrite();
-  tft_.setAddrWindow(0, 0, w, h);
-  for (int16_t y = 0; y < h; y += frameTransferRows_) {
-    const int16_t rows = min<int16_t>(frameTransferRows_, h - y);
-    const size_t pixelCount = static_cast<size_t>(w) * rows;
-    memcpy(frameTransferBuffer_, framePixels + static_cast<size_t>(y) * w,
-           pixelCount * sizeof(uint16_t));
-    tft_.pushPixels(frameTransferBuffer_, static_cast<uint32_t>(pixelCount));
-  }
-  tft_.endWrite();
-  tft_.setSwapBytes(oldSwapBytes);
 }
 
 void DisplayManager::setBrightness(uint8_t percent) {
@@ -316,80 +254,6 @@ void DisplayManager::commitFrameArea(int16_t x, int16_t y, int16_t w, int16_t h)
   tft_.endWrite();
   tft_.setSwapBytes(oldSwapBytes);
   frameActive_ = false;
-}
-
-bool DisplayManager::service(uint32_t nowMs, bool allowRecovery) {
-  if (!allowRecovery || frameActive_ || directFrameBusLocked_) {
-    return false;
-  }
-
-  if (!healthMonitoringAvailable_) {
-    if (nowMs - lastHealthCheckMs_ < kDisplayDiscoveryIntervalMs) {
-      return false;
-    }
-    lastHealthCheckMs_ = nowMs;
-    hw::SharedSpiBusGuard bus;
-    if (!captureHealthSignatureLocked()) {
-      return false;
-    }
-    initializePanelLocked();
-    healthMonitoringAvailable_ = captureHealthSignatureLocked();
-    if (!healthMonitoringAvailable_) {
-      return false;
-    }
-    ready_ = true;
-    consecutiveHealthFailures_ = 0;
-    ++recoveryCount_;
-    restoreFrameLocked();
-    return true;
-  }
-
-  if (ready_ && nowMs - lastHealthCheckMs_ < kDisplayHealthIntervalMs) {
-    return false;
-  }
-  if (!ready_ && nowMs - lastRecoveryAttemptMs_ < kDisplayRecoveryRetryMs) {
-    return false;
-  }
-
-  if (ready_) {
-    lastHealthCheckMs_ = nowMs;
-    hw::SharedSpiBusGuard bus;
-    if (panelHealthMatchesLocked()) {
-      consecutiveHealthFailures_ = 0;
-      return false;
-    }
-    if (++consecutiveHealthFailures_ < kDisplayFailuresBeforeRecovery) {
-      return false;
-    }
-    ready_ = false;
-    Serial.println("[DISPLAY] ST7796 health probe failed; entering recovery");
-  }
-
-  lastRecoveryAttemptMs_ = nowMs;
-  hw::SharedSpiBusGuard bus;
-  initializePanelLocked();
-  if (!panelHealthMatchesLocked()) {
-    ready_ = false;
-    return false;
-  }
-
-  ready_ = true;
-  consecutiveHealthFailures_ = 0;
-  ++recoveryCount_;
-  restoreFrameLocked();
-  return true;
-}
-
-bool DisplayManager::reinitializeAfterSharedBusReset() {
-  hw::SharedSpiBusGuard bus;
-  initializePanelLocked();
-  healthMonitoringAvailable_ = captureHealthSignatureLocked();
-  ready_ = true;
-  consecutiveHealthFailures_ = 0;
-  lastHealthCheckMs_ = millis();
-  ++recoveryCount_;
-  restoreFrameLocked();
-  return true;
 }
 
 void DisplayManager::resetBoot(const String& version) {

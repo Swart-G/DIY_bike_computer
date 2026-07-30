@@ -22,24 +22,19 @@
 | 47 | TFT backlight PWM |
 | 48 | Built-in addressable RGB LED |
 
-TFT is ST7796, 480×320 landscape, shared SPI at 10 MHz with 4 MHz register reads.
-Both shared-bus chip-select outputs use maximum ESP32 drive strength plus internal
-pull-ups to resist edge coupling on the harness. GPIO13/MISO must remain
-connected to the TFT as well as the shared SD bus because runtime recovery validates
-ST7796 control-register reads before restoring the framebuffer. SD uses the same bus
-with separate CS and runs at a fixed 400 kHz; there is no high-speed fallback. Runtime
-recovery never formats the card. Before every remount firmware holds both CS lines high
-for 20 ms and supplies another 160 clocks at 400 kHz. Recovery first issues a valid
-`CMD12` to terminate a stranded multi-block transfer, then restarts the SPI peripheral
-on GPIO12/13/11 before `CMD0`. If ST7796 still owns MISO, a bounded retry holds the
-display in hardware reset during the SD mount and immediately restores its framebuffer
-afterward. FT6336 I²C address is `0x38`; the production bus
+TFT is ST7796, 480×320 landscape, shared SPI at 20 MHz with 10 MHz register reads.
+GPIO13/MISO remains connected to both the TFT and SD socket. SD uses the same bus with
+its own CS and mounts first at 10 MHz, with one ordinary 1 MHz fallback attempt. The
+proven 1.0 ownership model serializes every transaction with a recursive mutex, keeps
+TFT CS and SD CS mutually exclusive, and parks ST7796 in RAM-write mode before selecting
+the card. Firmware does not issue raw SD commands, restart the SPI peripheral, hold the
+display in reset, background-probe the panel, automatically remount after an I/O error,
+or format after a mount failure. FT6336 I²C address is `0x38`; the production bus
 runs at 100 kHz for FPC noise margin, and mapping remains configurable through
 swap/invert constants.
 
-If the card still loses `CMD13` at 400 kHz while idle MISO is high and the TFT is held
-in reset, firmware cannot correct the remaining electrical fault because SD power has
-no controllable GPIO. The production wiring must then provide a physical 10 kΩ pull-up
+If SD mount or I/O errors remain, firmware cannot power-cycle the card because SD power
+has no controllable GPIO. The production wiring should provide a physical 10 kΩ pull-up
 from SD CS/GPIO15 to 3.3 V, 100 nF ceramic plus 10–47 µF low-ESR decoupling directly at
 the SD socket VCC/GND, short SCK/MOSI/MISO/CS conductors and a solid common ground.
 For persistent failures, verify the 3.3 V rail at the socket under BLE/display load and

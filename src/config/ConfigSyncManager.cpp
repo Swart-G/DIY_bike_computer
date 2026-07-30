@@ -88,6 +88,28 @@ void ConfigSyncManager::sendValue(uint16_t key, uint16_t requestSequence,
       payload[2] = static_cast<uint8_t>(ValueType::U32);
       bikeproto::writeU32(payload + 3, settings_->graphWindowSeconds);
       break;
+    case RgbSpeedTrendEnabled:
+      payload[2] = static_cast<uint8_t>(ValueType::Boolean);
+      payload[3] = settings_->rgbSpeedTrendEnabled ? 1 : 0;
+      break;
+    case RgbStableTolerance2s:
+      payload[2] = static_cast<uint8_t>(ValueType::Float32);
+      bikeproto::writeFloat(payload + 3, settings_->rgbSpeedTrendToleranceKmh);
+      break;
+    case RgbStableTolerance5s:
+      payload[2] = static_cast<uint8_t>(ValueType::Float32);
+      bikeproto::writeFloat(payload + 3,
+                            settings_->rgbSpeedTrendTolerance5sKmh);
+      break;
+    case RgbStableTolerance10s:
+      payload[2] = static_cast<uint8_t>(ValueType::Float32);
+      bikeproto::writeFloat(payload + 3,
+                            settings_->rgbSpeedTrendTolerance10sKmh);
+      break;
+    case RgbBrightness:
+      payload[2] = static_cast<uint8_t>(ValueType::U32);
+      bikeproto::writeU32(payload + 3, settings_->rgbLedBrightnessPercent);
+      break;
     default:
       sendResult(key, Result::UnknownKey, requestSequence, link);
       return;
@@ -146,6 +168,35 @@ ConfigSyncManager::Result ConfigSyncManager::setValue(
       if (type != ValueType::U32) return Result::WrongType;
       if (raw < 10 || raw > 300) return Result::InvalidValue;
       next.graphWindowSeconds = raw;
+      break;
+    case RgbSpeedTrendEnabled:
+      if (type != ValueType::Boolean) return Result::WrongType;
+      if (value[0] > 1 || value[1] || value[2] || value[3])
+        return Result::InvalidValue;
+      next.rgbSpeedTrendEnabled = value[0] != 0;
+      break;
+    case RgbStableTolerance2s:
+      if (type != ValueType::Float32) return Result::WrongType;
+      if (!isfinite(number) || number < 0.1f || number > 5.0f)
+        return Result::InvalidValue;
+      next.rgbSpeedTrendToleranceKmh = number;
+      break;
+    case RgbStableTolerance5s:
+      if (type != ValueType::Float32) return Result::WrongType;
+      if (!isfinite(number) || number < 0.1f || number > 5.0f)
+        return Result::InvalidValue;
+      next.rgbSpeedTrendTolerance5sKmh = number;
+      break;
+    case RgbStableTolerance10s:
+      if (type != ValueType::Float32) return Result::WrongType;
+      if (!isfinite(number) || number < 0.1f || number > 5.0f)
+        return Result::InvalidValue;
+      next.rgbSpeedTrendTolerance10sKmh = number;
+      break;
+    case RgbBrightness:
+      if (type != ValueType::U32) return Result::WrongType;
+      if (raw < 5 || raw > 100) return Result::InvalidValue;
+      next.rgbLedBrightnessPercent = static_cast<uint8_t>(raw);
       break;
     default:
       return Result::UnknownKey;
