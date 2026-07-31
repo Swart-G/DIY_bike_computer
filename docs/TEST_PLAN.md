@@ -5,7 +5,7 @@ For every section record firmware version, SD brand and battery voltage. Failure
 ## 1. Build and boot
 
 Steps: run `pio run`, upload, open `pio device monitor`, boot with all peripherals
-attached. Expected: version `2.1.1`, memory information and one result per init
+attached. Expected: version `2.2.0`, memory information and one result per init
 stage; the bicycle wheel spokes and road visibly advance without a blank-frame flash,
 the latest boot-stage logs remain readable, then Menu/Recovery opens. Failure: compile
 error, boot loop, static/black display, dots on the wheel rims, visible splash blinking
@@ -44,10 +44,17 @@ Steps: Diagnostics → Hall; observe unconnected level. Feed safe 3.3 V/open-dra
 Steps: power from a measured 1S pack; Diagnostics → Battery; wait for several sample
 series; compare filtered voltage with meter; use CAL −/+ then SAVE; reboot. Continue a
 controlled discharge for at least five minutes and long enough to observe a one-percent
-drop, then connect a charger. Expected: GPIO6 raw ADC, ADC mV, instant/filtered battery
-voltage, factor, SoC and trend; every header shows the percent and initially `~ --`, then
-a smoothed `~ Nh NN m` estimate; charging shows `CHG`; saved calibration survives
-reboot. Failure: fabricated time before a usable decline, static value, implausible
+drop, then connect a USB data host and separately a charge-only adapter. Expected:
+GPIO6 raw ADC, ADC mV, instant/filtered battery voltage, factor, SoC, USB data presence
+and trend; every header shows the percent and initially `~ --`. After at least 60
+seconds and 0.2 percentage points of decline it may show a low-confidence smoothed
+`~ Nh NN m` estimate; quality becomes learned after five accumulated minutes and a
+one-point decline. A detected data host immediately shows `CHG` without changing the
+last trustworthy percent or treating 4.20 V as automatic 100%. Disconnect it: percent
+remains unchanged for 60 seconds, then converges smoothly to the resting-voltage SoC.
+A charge-only adapter with no data traffic may fall back to the slow voltage trend.
+Saved calibration survives reboot. Failure: fabricated time before a usable decline,
+an immediate 100% on USB, a percentage change during the 60-second hold, implausible
 voltage, fast percentage/time jitter or blocking UI. Verify low/critical visual state
 with a controlled safe supply; do not over-discharge a Li-Po.
 
@@ -76,7 +83,7 @@ Steps: Start, generate pulses while moving, stop without pausing, Pause, generat
 
 ## 8. Ride files and history
 
-Steps: inspect `/rides/ride_XXXXXX/` after Finish. Expected: `meta.json`, append-only `samples.csv`, `events.csv`, `summary.json`; headers exactly match LOG_FORMAT; no fake date/GPS. Menu → History shows summary-only rows and details and vertically scrolls when more than three rides exist. Verify Delete requires explicit confirmation, Cancel preserves the ride, confirmed deletion removes the complete ride folder even when it contains an additional file, and USB Storage enters MSC from the detail screen. Attempt deleting finished ride and active ride. Failure: malformed CSV/JSON, missing FINISH summary, deletion without confirmation, a retained/dead History row, wrong ride opened after scrolling, active ride deletion, or history requiring samples scan.
+Steps: inspect `/rides/ride_XXXXXX/` after Finish. Expected: `meta.json`, append-only `samples.csv`, `events.csv`, `summary.json`; headers exactly match LOG_FORMAT v2; no fabricated date or coordinate. A fresh authorized Android fix appears in the seven location columns with `gps_age_ms <= 5000`; without one they remain blank. Menu → History shows summary-only rows and details and vertically scrolls when more than three rides exist. Verify Delete requires explicit confirmation, Cancel preserves the ride, confirmed deletion removes the complete ride folder even when it contains an additional file, and USB Storage enters MSC from the detail screen. Attempt deleting finished ride and active ride. Failure: malformed CSV/JSON, a mismatched/stale coordinate, missing FINISH summary, deletion without confirmation, a retained/dead History row, wrong ride opened after scrolling, active ride deletion, or history requiring samples scan.
 
 ## 9. Recovery
 
@@ -112,6 +119,18 @@ Back applying a draft, invalid values crashing boot, or calibration not persisti
 ## 13. Long-duration test
 
 Steps: run at least three hours with real or pulse-generator input; vary speed, pauses and graph pages; retain SD logs; note free/min heap at start/end. Expected: no watchdog reset, stable counters, monotonic samples, no unbounded heap decline, rolling graph and files grow normally across `millis()`-like long operation. Failure: missed pulses under UI load, fragmentation, SD corruption, stuck graph or bad timers.
+
+For an instrumented run, upload the normal firmware, open Settings → Diagnostics →
+Dev Mode and execute on the `/dev/ttyACM*` native USB Serial/JTAG port
+`python3 scripts/capture_dev_monitor.py --duration 10800`. Retain both JSONL and the
+generated report. Dev output must remain valid, ordered and near its two-second cadence;
+any reset/panic, falling stack margin, unbounded heap decline or sustained loop stalls
+fails the run. Run `scripts/dev_raw_api.py` and exercise `help`, `snapshot`, `self_test`,
+screen preview, RGB override, `ride_control` start/pause/resume/finish through the
+normal logger, and the guarded SD/media commands. Leave the screen and
+verify commands and `DEV` samples stop while the programming port remains present. Dev
+telemetry is observational and must not alter Hall/ride/SD results; test USB MSC only
+after leaving Dev Mode.
 
 ## 14. Speed trend RGB LED
 

@@ -2,6 +2,12 @@
 #include <stdint.h>
 namespace batterymath {
 inline float calibratedVoltage(float adcVoltage, float dividerRatio, float calibration) { return adcVoltage * dividerRatio * calibration; }
+inline float smoothPercent(float displayedPercent, float measuredPercent) {
+  return displayedPercent * 0.90f + measuredPercent * 0.10f;
+}
+inline bool runtimeEstimateLearned(uint32_t observedMs, float observedDrop) {
+  return observedMs >= 5UL * 60UL * 1000UL && observedDrop >= 1.0f;
+}
 inline float percentFromVoltage(float v) {
   static constexpr float volts[] = {3.20f,3.35f,3.50f,3.60f,3.70f,3.75f,3.80f,3.85f,3.90f,4.00f,4.10f,4.20f};
   static constexpr float pct[] = {0,3,8,14,25,35,45,55,65,78,90,100};

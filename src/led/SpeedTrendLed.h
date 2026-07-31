@@ -30,6 +30,8 @@ class SpeedTrendLed {
               uint32_t nowMs);
   SpeedTrendState state() const { return state_; }
   const SpeedTrendSnapshot& snapshot() const { return snapshot_; }
+  void setDiagnosticRgb(uint8_t red, uint8_t green, uint8_t blue);
+  void clearDiagnosticRgb();
 
  private:
   struct Sample {
@@ -55,4 +57,5 @@ class SpeedTrendLed {
   SpeedTrendSnapshot snapshot_;
   bool ledOn_ = false;
   uint8_t shownBrightnessPercent_ = 0;
+  bool diagnosticOverride_ = false;
 };

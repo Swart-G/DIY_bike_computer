@@ -9,6 +9,7 @@ namespace ui {
 class RainLockOverlay {
  public:
   static void draw(TFT_eSPI& tft, const RainLockManager& manager);
+  static void drawEnableConfirm(TFT_eSPI& tft);
 
  private:
   static void dim(TFT_eSPI& tft);

@@ -9,6 +9,7 @@ class UsbMassStorageManager {
   bool begin(StorageManager& storage);
   void end(StorageManager& storage);
   bool active() const { return active_; }
+  bool dataConnected() const;
   const String& status() const { return status_; }
 
  private:

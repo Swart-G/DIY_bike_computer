@@ -197,9 +197,18 @@ void RideScreen::drawNavigation(TFT_eSPI& tft,
 }
 
 void RideScreen::drawMedia(TFT_eSPI& tft, const RideViewModel& model) {
-  if (!model.media || !model.media->available) return;
+  if (!model.media || !model.mediaPageEnabled) return;
   const media::MediaState& state = *model.media;
   tft.fillRect(18, 61, 444, 194, BG);
+  if (!state.available) {
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TEXT, BG);
+    tft.drawString("Nothing playing", 240, 116, 4);
+    tft.setTextColor(TEXT_MUTED, BG);
+    tft.drawString("Start playback or grant media access", 240, 150, 2);
+    tft.drawString("in the Android companion.", 240, 173, 2);
+    return;
+  }
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TEXT_MUTED, BG);
   tft.drawString("Now playing", 24, 67, 1);

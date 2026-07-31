@@ -96,6 +96,7 @@ Sequence is a per-direction wrapping `u16`. Responses repeat the request sequenc
 | `0x40` | MEDIA_STATE | Android -> ESP |
 | `0x41` | MEDIA_ACTION | ESP -> Android |
 | `0x50` | NAV_STATE | Android -> ESP |
+| `0x51` | LOCATION_FIX | Android -> ESP |
 | `0x60` | CONFIG_GET | Android -> ESP |
 | `0x61` | CONFIG_VALUE | ESP -> Android |
 | `0x62` | CONFIG_SET | Android -> ESP |
@@ -158,8 +159,8 @@ ESP for a limited time. Successful bonding creates a random 64-bit `association_
 stored in NVS and Android storage. The passkey is never stored.
 
 Privileged/application-authoritative messages are `TIME_SYNC`, `RIDE_LIST_REQUEST`,
-`RIDE_DOWNLOAD_REQUEST`, `FILE_ACK`, `MEDIA_STATE`, `NAV_STATE`, `CONFIG_GET` and
-`CONFIG_SET`. They require:
+`RIDE_DOWNLOAD_REQUEST`, `FILE_ACK`, `MEDIA_STATE`, `NAV_STATE`, `LOCATION_FIX`,
+`CONFIG_GET` and `CONFIG_SET`. They require:
 
 1. encrypted bonded BLE link;
 2. successful HELLO;
@@ -261,6 +262,27 @@ u8 street[street_len]   maximum 64 UTF-8 bytes
 Maneuvers are `0 STRAIGHT`, `1 TURN_LEFT`, `2 TURN_RIGHT`, `3 SLIGHT_LEFT`,
 `4 SLIGHT_RIGHT`, `5 SHARP_LEFT`, `6 SHARP_RIGHT`, `7 UTURN`, `8 ROUNDABOUT`,
 `9 ROUNDABOUT_EXIT`, `10 DESTINATION`, `255 UNKNOWN`.
+
+LOCATION_FIX is exactly 33 bytes and is sent without ACK at the system location
+cadence. Integers are fixed-point so both implementations validate identical bounds:
+
+```text
+u32 ride_id
+u64 timestamp_utc_ms
+u8 flags                bit 0 altitude, bit 1 accuracy, bit 2 speed
+i32 latitude_e7
+i32 longitude_e7
+i32 altitude_mm         zero when flag absent
+u32 accuracy_mm         zero when flag absent
+u32 speed_mmps          zero when flag absent
+```
+
+The frame must carry `PRIVILEGED`. ESP accepts it only while the exact `ride_id` is
+RIDING or PAUSED, latitude/longitude are in geographic range, timestamp is within
+2020–2100, altitude is −2000..20000 m, accuracy is 0<value<=1000 m and speed is
+0..200 m/s. Unknown flags, wrong ride/state or invalid ranges are rejected. An accepted
+fix is held only in RAM and considered fresh for five seconds; format-v2 ride samples
+persist fresh values and their monotonic age.
 
 Configuration values use:
 

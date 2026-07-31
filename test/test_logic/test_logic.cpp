@@ -8,7 +8,9 @@
 #include "speed/RideStateMachine.h"
 #include "speed/SpeedMath.h"
 #include "led/SpeedTrendMath.h"
+#include "location/PhoneLocation.h"
 #include "protocol_vectors.generated.h"
+#include "ui/components/HeaderLayout.h"
 
 // Host-independent state-machine implementation is compiled into this embedded Unity target.
 #include "../../src/speed/RideStateMachine.cpp"
@@ -106,6 +108,18 @@ void test_battery_math() {
   TEST_ASSERT_FLOAT_WITHIN(.001f,4.2f,batterymath::calibratedVoltage(2.1f,2,1));
   TEST_ASSERT_FLOAT_WITHIN(.1f,25,batterymath::percentFromVoltage(3.70f));
   TEST_ASSERT_FLOAT_WITHIN(.1f,100,batterymath::percentFromVoltage(4.25f));
+  TEST_ASSERT_FLOAT_WITHIN(.001f,53.0f,batterymath::smoothPercent(50.0f,80.0f));
+  TEST_ASSERT_FALSE(batterymath::runtimeEstimateLearned(60000, 0.2f));
+  TEST_ASSERT_FALSE(batterymath::runtimeEstimateLearned(300000, 0.9f));
+  TEST_ASSERT_TRUE(batterymath::runtimeEstimateLearned(300000, 1.0f));
+}
+void test_rain_header_hit_tracks_battery_layout() {
+  TEST_ASSERT_EQUAL_INT16(132, ui::headerRainIconCenterX());
+  TEST_ASSERT_TRUE(ui::headerRainHit(105, 0));
+  TEST_ASSERT_TRUE(ui::headerRainHit(132, 40));
+  TEST_ASSERT_TRUE(ui::headerRainHit(159, 57));
+  TEST_ASSERT_FALSE(ui::headerRainHit(104, 20));
+  TEST_ASSERT_FALSE(ui::headerRainHit(160, 20));
 }
 void test_ride_pause_and_distance() {
   app::AppSettings cfg; RideStateMachine r; r.begin(&cfg); r.start(100,0); r.update(1100,20,1); TEST_ASSERT_FLOAT_WITHIN(.001f,2.194f,r.stats().distanceM); TEST_ASSERT_EQUAL_UINT32(1000,static_cast<uint32_t>(r.stats().movingMs)); TEST_ASSERT_FLOAT_WITHIN(.01f,7.8984f,r.stats().averageMovingSpeedKmh);
@@ -218,6 +232,30 @@ void test_protocol_maximum_payload_vector() {
       protocolvectors::kMaximumPayloadCrc,
       bikeproto::readU16(encoded + length - sizeof(uint16_t)));
 }
+void test_phone_location_validation_and_freshness() {
+  phonegeo::LocationFix fix;
+  fix.available = true;
+  fix.rideId = 17;
+  fix.timestampUtcMs = 1800000000123ULL;
+  fix.latitudeE7 = 557558260;
+  fix.longitudeE7 = 376173000;
+  fix.altitudeMm = 156250;
+  fix.accuracyMm = 3500;
+  fix.speedMmps = 7250;
+  fix.flags = phonegeo::FixFlags::HasAltitude |
+              phonegeo::FixFlags::HasAccuracy |
+              phonegeo::FixFlags::HasSpeed;
+  fix.receivedAtMs = 1000;
+  TEST_ASSERT_TRUE(fix.validValues());
+  TEST_ASSERT_TRUE(fix.fresh(6000));
+  TEST_ASSERT_FALSE(fix.fresh(6001));
+  TEST_ASSERT_DOUBLE_WITHIN(0.0000001, 55.755826, fix.latitude());
+  fix.latitudeE7 = 900000001;
+  TEST_ASSERT_FALSE(fix.validValues());
+  fix.latitudeE7 = 557558260;
+  fix.accuracyMm = 0;
+  TEST_ASSERT_FALSE(fix.validValues());
+}
 void setup() {
   Serial.begin(115200);
   // Native ESP32-S3 USB/JTAG can enumerate after the application has started;
@@ -228,6 +266,7 @@ void setup() {
   RUN_TEST(test_settings_validation);
   RUN_TEST(test_speed_trend_tolerance);
   RUN_TEST(test_battery_math);
+  RUN_TEST(test_rain_header_hit_tracks_battery_layout);
   RUN_TEST(test_ride_pause_and_distance);
   RUN_TEST(test_auto_pause_is_motion_state_not_ride_state);
   RUN_TEST(test_rain_lock_requires_continuous_two_point_hold);
@@ -235,6 +274,7 @@ void setup() {
   RUN_TEST(test_protocol_matches_canonical_vectors);
   RUN_TEST(test_protocol_partial_multiple_and_crc_error);
   RUN_TEST(test_protocol_maximum_payload_vector);
+  RUN_TEST(test_phone_location_validation_and_freshness);
   UNITY_END();
 }
 void loop() {}

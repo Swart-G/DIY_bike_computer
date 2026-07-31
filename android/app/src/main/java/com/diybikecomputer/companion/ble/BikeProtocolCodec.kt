@@ -38,6 +38,7 @@ object BikeProtocol {
         const val MEDIA_STATE = 0x40
         const val MEDIA_ACTION = 0x41
         const val NAVIGATION_STATE = 0x50
+        const val LOCATION_FIX = 0x51
         const val CONFIG_GET = 0x60
         const val CONFIG_VALUE = 0x61
         const val CONFIG_SET = 0x62

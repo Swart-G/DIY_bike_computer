@@ -17,6 +17,8 @@
 #include "ui/UiRouter.h"
 #include "usb/UsbMassStorageManager.h"
 
+class DevMonitor;
+
 class UiApp {
  public:
   void begin(DisplayManager& display, TouchManager& touch, StorageManager& storage,
@@ -24,9 +26,21 @@ class UiApp {
              SpeedTrendLed& speedTrend,
              RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
              RideRepository& repository, PhoneLinkManager& phone,
-             app::AppSettings& settings);
+             app::AppSettings& settings, DevMonitor& devMonitor);
  void loop();
   bool rainLocked() const { return rainLock_.locked(); }
+  uint8_t currentScreenId() const {
+    return static_cast<uint8_t>(router_.current());
+  }
+  uint8_t rainLockStateId() const {
+    return static_cast<uint8_t>(rainLock_.state());
+  }
+  bool rainConfirmVisible() const { return rainEnableConfirm_; }
+  bool setDevPreview(uint16_t screenIndex);
+  void clearDevPreview();
+  bool devPreviewActive() const { return devPreviewActive_; }
+  bool handleDevRideAction(const char* action, String& error);
+  bool startUsbStorageFromDev();
 
  private:
   using Screen = UiScreen;
@@ -59,6 +73,7 @@ class UiApp {
   void drawSensorTest();
   void drawBatteryTest();
   void drawSystemInfo();
+  void drawDevMonitor();
   void drawSettings();
   void drawSettingsRide();
   void drawSettingsDisplay();
@@ -112,6 +127,7 @@ class UiApp {
   RideLogger* logger_ = nullptr;
   RideRepository* repository_ = nullptr;
   PhoneLinkManager* phone_ = nullptr;
+  DevMonitor* devMonitor_ = nullptr;
   app::AppSettings* settings_ = nullptr;
   app::AppSettings settingsEdit_;
   RainLockManager rainLock_;
@@ -160,7 +176,10 @@ class UiApp {
   bool batteryCriticalEventLogged_ = false;
   bool exactPreviewActive_ = false;
   uint16_t exactPreviewIndex_ = 0;
+  bool devPreviewActive_ = false;
+  uint16_t devPreviewIndex_ = 0;
   bool settingsOpenedFromRide_ = false;
+  bool rainEnableConfirm_ = false;
   uint32_t settingsNoticeUntilMs_ = 0;
   uint8_t lastPhoneLinkState_ = 0xFF;
   uint32_t lastPairingCode_ = 0;

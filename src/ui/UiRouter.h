@@ -19,6 +19,7 @@ enum class UiScreen : uint8_t {
   SensorTest,
   BatteryTest,
   SystemInfo,
+  DevMonitor,
   Settings,
   SettingsRide,
   SettingsDisplay,

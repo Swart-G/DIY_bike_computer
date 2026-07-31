@@ -213,6 +213,13 @@ class BikeConnectionService(context: Context) {
 
     fun knownDevice(): KnownDevice? = devices.knownDevice()
 
+    fun ensureConnected(): Boolean = when (mutableState.value) {
+        BikeConnectionState.Connecting,
+        BikeConnectionState.Initializing,
+        BikeConnectionState.Ready -> true
+        else -> connectKnown()
+    }
+
     fun send(messageType: Int, flags: Int, payload: ByteArray): Boolean {
         val sequence = nextSequence.getAndUpdate { current ->
             if (current >= 0xFFFF) 1 else current + 1
@@ -246,7 +253,7 @@ class BikeConnectionService(context: Context) {
         val payload = ByteBuffer.allocate(3 + 1 + 1 + 8 + 4 + 1 + name.size)
             .order(ByteOrder.LITTLE_ENDIAN)
             .put(2)
-            .put(0)
+            .put(2)
             .put(0)
             .put(1)
             .put(BikeProtocol.VERSION.toByte())

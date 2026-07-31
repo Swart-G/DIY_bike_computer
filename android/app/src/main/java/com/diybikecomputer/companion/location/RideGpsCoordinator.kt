@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.diybikecomputer.companion.ble.BikeConnectionService
-import com.diybikecomputer.companion.rides.DeviceEntity
-import com.diybikecomputer.companion.rides.RideDatabase
-import com.diybikecomputer.companion.rides.RideEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,12 +12,11 @@ import kotlinx.coroutines.launch
 class RideGpsCoordinator(
     private val context: Context,
     private val connection: BikeConnectionService,
-    private val database: RideDatabase,
     private val gps: GpsRepository,
 ) {
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
-    private var activeRideKey: String? = null
+    private var activeRideId: Long? = null
 
     init {
         scope.launch {
@@ -36,7 +32,7 @@ class RideGpsCoordinator(
                 if (telemetry.rideState == 1 && telemetry.rideId != 0L) {
                     start(telemetry.rideId)
                 } else if ((telemetry.rideState == 0 || telemetry.rideState == 3) &&
-                    activeRideKey != null
+                    (activeRideId != null || RideLocationService.hasActiveSession(context))
                 ) {
                     stop()
                 }
@@ -58,58 +54,27 @@ class RideGpsCoordinator(
     }
 
     private suspend fun start(numericRideId: Long) {
-        if (!gps.enabled()) return
-        val device = connection.knownDevice() ?: return
-        val rideKey = "${java.lang.Long.toUnsignedString(device.deviceId)}:$numericRideId"
-        if (activeRideKey == rideKey) return
-        database.deviceDao().upsert(
-            DeviceEntity(
-                deviceId = device.deviceId,
-                associationId = device.associationId,
-                displayName = device.displayName,
-                lastSeenUtcMs = System.currentTimeMillis(),
-                protocolVersion = 1,
-            ),
-        )
-        if (database.rideDao().getRide(rideKey) == null) {
-            database.rideDao().upsertRide(
-                RideEntity(
-                    rideId = rideKey,
-                    deviceId = device.deviceId,
-                    formatVersion = 1,
-                    startedAtUtcMs = System.currentTimeMillis(),
-                    finishedAtUtcMs = null,
-                    finished = false,
-                    distanceM = 0.0,
-                    movingTimeMs = 0,
-                    elapsedTimeMs = 0,
-                    averageSpeedKmh = 0.0,
-                    maxSpeedKmh = 0.0,
-                    syncRevision = 0,
-                    synced = false,
-                ),
-            )
-        }
-        activeRideKey = rideKey
+        if (!gps.enabled() || numericRideId !in 1..0xFFFF_FFFFL) return
+        if (activeRideId == numericRideId) return
+        activeRideId = numericRideId
         val started = runCatching {
             ContextCompat.startForegroundService(
                 context,
                 Intent(context, RideLocationService::class.java)
                     .setAction(RideLocationService.ACTION_START)
-                    .putExtra(RideLocationService.EXTRA_RIDE_ID, rideKey),
+                    .putExtra(RideLocationService.EXTRA_RIDE_ID, numericRideId),
             )
         }.getOrNull() != null
-        if (!started) activeRideKey = null
+        if (!started) {
+            activeRideId = null
+            gps.setRecordingStatus("Android refused to start location forwarding")
+        }
     }
 
     private fun stop() {
-        activeRideKey = null
-        val requested = runCatching {
-            context.startService(
-                Intent(context, RideLocationService::class.java)
-                    .setAction(RideLocationService.ACTION_STOP),
-            )
-        }.getOrNull() != null
-        if (!requested) RideLocationService.forceStop(context)
+        activeRideId = null
+        // Direct stop is legal from the background and avoids trying to start
+        // a second service command merely to stop an existing foreground service.
+        RideLocationService.forceStop(context)
     }
 }

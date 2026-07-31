@@ -24,6 +24,25 @@ void BatteryMonitor::updateSettings(const app::AppSettings& settings) {
   criticalPercent_ = settings.batteryCriticalPercent;
 }
 
+void BatteryMonitor::setUsbConnected(bool connected, uint32_t nowMs) {
+  if (connected == usbConnected_) return;
+
+  usbConnected_ = connected;
+  if (connected) {
+    postUsbPercentHold_ = false;
+    state_ = BatteryState::Charging;
+    runtimeAnchorMs_ = 0;
+    runtimeObservedMs_ = 0;
+    runtimeObservedDrop_ = 0.0f;
+    smoothedPercentPerHour_ = 0.0f;
+    runtimeEstimateReady_ = false;
+    runtimeEstimateQuality_ = RuntimeEstimateQuality::Unavailable;
+  } else {
+    usbDisconnectedAtMs_ = nowMs;
+    postUsbPercentHold_ = true;
+  }
+}
+
 void BatteryMonitor::update(uint32_t nowMs) {
   if (!enabled_) return;
   if (lastSampleMs_ != 0 && nowMs - lastSampleMs_ < hw::BATTERY_SAMPLE_INTERVAL_MS) return;
@@ -44,9 +63,26 @@ void BatteryMonitor::completeSeries(uint32_t nowMs) {
   const float adcV = (total / static_cast<float>(hw::BATTERY_SERIES_SAMPLES - 2)) / 1000.0f;
   instantVoltage_ = batterymath::calibratedVoltage(adcV, hw::BATTERY_VOLTAGE_DIVIDER_RATIO, calibrationFactor_);
   filteredVoltage_ = filteredVoltage_ < 0.1f ? instantVoltage_ : filteredVoltage_ * 0.90f + instantVoltage_ * 0.10f;
-  const uint8_t estimated = static_cast<uint8_t>(roundf(estimatePercent(filteredVoltage_)));
-  if (estimated > stablePercent_ + 1 || estimated + 1 < stablePercent_) stablePercent_ = estimated;
-  percent_ = stablePercent_;
+  const float estimated = estimatePercent(filteredVoltage_);
+  if (!percentInitialized_) {
+    // On a cold boot there is no trustworthy pre-charge value to preserve. Avoid
+    // reporting the charger-raised 4.20 V as a confirmed full battery.
+    displayedPercent_ = usbConnected_ && estimated >= 100.0f ? 99.0f : estimated;
+    percent_ = static_cast<uint8_t>(roundf(displayedPercent_));
+    percentInitialized_ = true;
+  } else if (!usbConnected_) {
+    if (postUsbPercentHold_ &&
+        nowMs - usbDisconnectedAtMs_ >= kPostUsbPercentHoldMs) {
+      postUsbPercentHold_ = false;
+    }
+    if (!postUsbPercentHold_) {
+      // Keep the fractional accumulator: rounding every intermediate update can
+      // permanently stick when measured and displayed values differ by <5%.
+      displayedPercent_ =
+          batterymath::smoothPercent(displayedPercent_, estimated);
+      percent_ = static_cast<uint8_t>(roundf(displayedPercent_));
+    }
+  }
   pushTrend(filteredVoltage_);
   updateState();
   updateRuntimeEstimate(nowMs);
@@ -73,6 +109,7 @@ const char* BatteryMonitor::trendText() const {
 }
 
 void BatteryMonitor::updateState() {
+  if (usbConnected_) { state_ = BatteryState::Charging; return; }
   if (trendCount_ < 3) { state_ = BatteryState::WarmingUp; return; }
   const char* trend = trendText();
   if (strcmp(trend, "CHARGING") == 0) state_ = BatteryState::Charging;
@@ -85,47 +122,64 @@ void BatteryMonitor::updateState() {
 void BatteryMonitor::updateRuntimeEstimate(uint32_t nowMs) {
   if (state_ == BatteryState::Charging) {
     runtimeAnchorMs_ = 0;
+    runtimeObservedMs_ = 0;
+    runtimeObservedDrop_ = 0.0f;
     smoothedPercentPerHour_ = 0.0f;
     runtimeEstimateReady_ = false;
+    runtimeEstimateQuality_ = RuntimeEstimateQuality::Unavailable;
     return;
   }
-  if (state_ == BatteryState::WarmingUp || percent_ == 0) return;
+  if (state_ == BatteryState::WarmingUp || displayedPercent_ <= 0.0f) return;
 
   if (runtimeAnchorMs_ == 0) {
     runtimeAnchorMs_ = nowMs;
-    runtimeAnchorPercent_ = percent_;
+    runtimeAnchorPercent_ = displayedPercent_;
     return;
   }
-  if (percent_ > runtimeAnchorPercent_) {
+  if (displayedPercent_ > runtimeAnchorPercent_ + 0.35f) {
     runtimeAnchorMs_ = nowMs;
-    runtimeAnchorPercent_ = percent_;
-    runtimeEstimateReady_ = false;
+    runtimeAnchorPercent_ = displayedPercent_;
     return;
   }
 
   const uint32_t elapsedMs = nowMs - runtimeAnchorMs_;
-  const uint8_t drop = runtimeAnchorPercent_ - percent_;
-  if (elapsedMs < 5UL * 60UL * 1000UL || drop < 1) return;
+  const float drop = runtimeAnchorPercent_ - displayedPercent_;
+  if (elapsedMs < kEarlyRuntimeWindowMs ||
+      drop < kEarlyRuntimeDropPercent) {
+    return;
+  }
 
   const float percentPerHour =
       drop * (3600000.0f / static_cast<float>(elapsedMs));
-  if (percentPerHour < 0.15f || percentPerHour > 60.0f) {
+  if (percentPerHour < 0.15f || percentPerHour > 120.0f) {
     runtimeAnchorMs_ = nowMs;
-    runtimeAnchorPercent_ = percent_;
+    runtimeAnchorPercent_ = displayedPercent_;
     return;
   }
+  runtimeObservedMs_ += elapsedMs;
+  runtimeObservedDrop_ += drop;
+  runtimeEstimateQuality_ =
+      batterymath::runtimeEstimateLearned(runtimeObservedMs_,
+                                          runtimeObservedDrop_)
+          ? RuntimeEstimateQuality::Learned
+          : RuntimeEstimateQuality::Early;
+  const float newWeight = runtimeEstimateQuality_ ==
+                                  RuntimeEstimateQuality::Learned
+                              ? 0.15f
+                              : 0.25f;
   smoothedPercentPerHour_ =
       smoothedPercentPerHour_ > 0.0f
-          ? smoothedPercentPerHour_ * 0.75f + percentPerHour * 0.25f
+          ? smoothedPercentPerHour_ * (1.0f - newWeight) +
+                percentPerHour * newWeight
           : percentPerHour;
   const int32_t remaining = static_cast<int32_t>(
-      roundf((percent_ / smoothedPercentPerHour_) * 60.0f));
+      roundf((displayedPercent_ / smoothedPercentPerHour_) * 60.0f));
   runtimeRemainingMinutes_ =
       static_cast<int16_t>(constrain(remaining, 1L, 5999L));
   runtimeEstimateReady_ = true;
   runtimeEstimateAtMs_ = nowMs;
   runtimeAnchorMs_ = nowMs;
-  runtimeAnchorPercent_ = percent_;
+  runtimeAnchorPercent_ = displayedPercent_;
 }
 
 int16_t BatteryMonitor::remainingMinutes() const {
@@ -164,7 +218,15 @@ String BatteryMonitor::diagnosticText() const {
       "\nADC: " + String(adcMillivolts_) + " mV\nInstant: " + String(instantVoltage_, 3) +
       " V\nFiltered: " + String(filteredVoltage_, 3) + " V\nCalibration: " + String(calibrationFactor_, 3) +
       "\nEstimate: " + String(percent_) + "%\nRuntime: " +
-      remainingTimeText() + "\nTrend: " + trendText() + "\nState: " +
+      remainingTimeText() + "\nUSB data: " +
+      String(usbConnected_ ? "connected" : "disconnected") +
+      "\nRuntime quality: " +
+      String(runtimeEstimateQuality_ == RuntimeEstimateQuality::Learned
+                 ? "learned"
+                 : (runtimeEstimateQuality_ == RuntimeEstimateQuality::Early
+                        ? "early"
+                        : "unavailable")) +
+      "\nTrend: " + trendText() + "\nState: " +
       stateText();
   return t;
 }

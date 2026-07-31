@@ -30,9 +30,6 @@ interface RideDao {
     suspend fun upsertEvents(events: List<RideEventEntity>)
 
     @Upsert
-    suspend fun upsertGpsPoints(points: List<GpsPointEntity>)
-
-    @Upsert
     suspend fun upsertFile(file: RideFileEntity)
 
     @Query("SELECT * FROM ride_files WHERE rideId = :rideId AND fileId = :fileId")
@@ -63,13 +60,7 @@ interface RideDao {
     fun observeEvents(rideId: String): Flow<List<RideEventEntity>>
 
     @Query("SELECT * FROM gps_points WHERE rideId = :rideId ORDER BY pointIndex")
-    fun observeGpsPoints(rideId: String): Flow<List<GpsPointEntity>>
-
-    @Query("SELECT * FROM gps_points WHERE rideId = :rideId ORDER BY pointIndex")
     suspend fun getGpsPoints(rideId: String): List<GpsPointEntity>
-
-    @Query("SELECT COALESCE(MAX(pointIndex), -1) FROM gps_points WHERE rideId = :rideId")
-    suspend fun lastGpsPointIndex(rideId: String): Long
 
     @Query("DELETE FROM ride_samples WHERE rideId = :rideId")
     suspend fun deleteSamples(rideId: String)

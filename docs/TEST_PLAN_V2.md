@@ -24,6 +24,12 @@ battery voltage.
 - Open Diagnostics → Display test → Next. In exact gallery, tap the left/right third
   to browse all 60 source screens and the center third to return. Compare against
   `rgb565_expected/` without overlays or scaling.
+- Open Diagnostics → Dev Mode on native USB Serial/JTAG and verify valid
+  `DEV {json}` records arrive every two seconds. Exercise every raw-API command,
+  including `ride_control` start/pause/resume/finish through the normal logger, and
+  verify invalid/oversized JSON is rejected without UI or Hall stalls. Back must stop
+  API responses and streaming without removing the programming port. Then open USB
+  Storage separately; an SD test must never run while MSC owns storage.
 - Inspect the complete background for a black/green seam: every normal clear must be
   `0x0861`; pure black is valid only in the K test patch and deliberate dim overlays.
 - Confirm runtime speed, distance, time, ride count, pairing code, battery, storage,
@@ -90,15 +96,17 @@ battery voltage.
 
 ## Rain Lock
 
-Test button hit area as well as visible icon. Verify:
+Test the 55×58 button hit area immediately right of Settings with the battery monitor
+both available and unavailable. Verify:
 
-- tap enables lock and shows a nonblocking enable toast;
+- tap opens a confirmation dialog; Cancel leaves touch unlocked, underlying swipes and
+  controls do nothing, and Enable activates the lock and shows its nonblocking toast;
 - speed, distance, timers, logging, recovery, battery, BLE telemetry, GPS/media/nav
   updates continue;
 - Pause/Resume/Finish, swipe, menu, history, settings, media and navigation taps do not
   reach normal handlers;
 - after the enable toast, an ordinary locked touch performs no original action
-  and shows only the compact hint immediately left of the Rain icon;
+  and shows only the compact hint immediately right of the Rain icon;
 - one finger, two fingers outside, left only and right only do not start progress;
 - correct left+right placement must remain valid for a 2.0-second pre-hold
   before the timer/ripple overlay opens; during this pre-hold only two small
@@ -149,15 +157,32 @@ Test button hit area as well as visible icon. Verify:
 
 ## GPS
 
-Test permission allowed/denied, GPS on/off, screen locked, BLE gap/reconnect and finish.
-Ride remains valid in every failure case; reconnect attaches to the existing `ride_id`.
-Map and GPX are hidden when no points exist. Compare primary distance against ESP Hall,
-not Android GPS.
+Enable GPS Assist and grant precise location first, then `Allow all the time`. On
+Android 10 verify the second runtime prompt; on Android 11+ verify the app permission
+page is opened. Deny either step and revoke either permission later: GPS Assist must
+turn off with a visible status and the app must not crash.
 
-Export a synchronized ride with and without GPS. The full CSV must retain the complete
-firmware header and append the six Android location columns; points more than five
-seconds away leave blank fields. Open the brief XLSX in Excel or LibreOffice and verify
-it contains summary metrics only, not per-sample rows.
+Start one ride with the app visible and another with the app backgrounded and screen
+locked. In both cases verify the persistent `Sending location to bike computer`
+notification. While the ride remains active, open firmware Dev Mode and capture at
+least three fresh phone fixes: `location.accepted` must increase,
+`location.rejected` must not, `fresh` must be true and `ride_id` must match. Leave
+Location off for more than five seconds and verify `fresh:false`; restore it and verify
+accepted packets resume. Disconnect BLE: the Android status must say the fix was not
+stored, then forwarding must resume after reconnect without replaying old fixes.
+
+Finish and inspect the device-owned format-v2 `samples.csv`. Its seven location columns
+must contain only fixes whose `gps_age_ms` is at most 5000; gaps stay blank. Confirm no
+new rows appear in Android Room `gps_points`. Kill/restart the app process during an
+active ride: only the numeric ride session may resume, never a stored coordinate.
+Synchronize the finished ride and verify route/GPX are parsed from the copied device
+CSV without a Room location insert. Compare primary distance against ESP Hall, not
+Android GPS.
+
+Export synchronized v1 and v2 rides with and without GPS. A v2 full CSV must be an
+exact copy of the firmware samples file rather than a second location merge. Repeated
+timestamps de-duplicate into one GPX track point. Open the brief XLSX in Excel or
+LibreOffice and verify it contains summary metrics only, not per-sample rows.
 
 ## Media
 

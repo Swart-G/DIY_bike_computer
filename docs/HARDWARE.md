@@ -43,7 +43,12 @@ GPIO as an invented SD power switch.
 
 Battery divider is `BAT+ — 1 MΩ — node — 1 MΩ — GND`, with a 100 kΩ series resistor from node to GPIO6. Nominal ratio is 2.0: 4.2 V battery yields about 2.1 V ADC. There is no capacitor, so firmware intentionally discards initial samples and uses a distributed median/trimmed series. Never feed 5 V into ESP32 GPIO, TFT VCC or Hall signal. TFT and Hall are powered from 3.3 V; MH-CD42 OUT-5V goes only to ESP32 VIN through the physical switch.
 
-The external Type-C data connector is native ESP32-S3 USB. A USB connection alone is not a charge signal; charging is inferred only from a slow voltage trend.
+The external Type-C data connector is native ESP32-S3 USB. Firmware detects a data
+host from USB Serial/JTAG SOF traffic and from TinyUSB mount events while MSC is
+active; it never samples GPIO19/20 as general GPIO. A charge-only adapter may provide
+no USB data traffic and therefore remains detectable only from a slow battery-voltage
+trend. Reliable VBUS-only detection requires a hardware divider to a separately
+authorized input; no such GPIO is present in this hardware contract.
 
 The built-in RGB LED is the single-wire addressable LED declared by the `esp32s3`
 Arduino variant on GPIO48. Firmware writes it from the main loop only when colour or

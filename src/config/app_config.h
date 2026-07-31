@@ -6,12 +6,12 @@
 
 namespace app {
 
-static constexpr const char* FIRMWARE_VERSION = "2.1.1";
+static constexpr const char* FIRMWARE_VERSION = "2.2.0";
 static constexpr const char* BOARD_NAME = "ESP32-S3-N16R8";
 static constexpr const char* DISPLAY_NAME = "ST7796";
 static constexpr const char* TOUCH_NAME = "FT6336";
 static constexpr uint8_t CONFIG_FORMAT_VERSION = 1;
-static constexpr uint8_t RIDE_LOG_FORMAT_VERSION = 1;
+static constexpr uint8_t RIDE_LOG_FORMAT_VERSION = 2;
 static constexpr uint8_t RECOVERY_FORMAT_VERSION = 1;
 // Version 2.0 has no user-facing brightness control. The legacy config field is kept
 // in AppSettings so format-1 files continue to parse, but runtime always uses this value.

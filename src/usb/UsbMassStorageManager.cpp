@@ -13,6 +13,14 @@ extern "C" {
 #define BIKE_USB_MSC_AVAILABLE 0
 #endif
 
+#if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_IDF_TARGET_ESP32S3) && \
+    __has_include(<HWCDC.h>)
+#include <HWCDC.h>
+#define BIKE_USB_JTAG_PRESENCE_AVAILABLE 1
+#else
+#define BIKE_USB_JTAG_PRESENCE_AVAILABLE 0
+#endif
+
 #include <SD.h>
 
 #include "bus/SharedSpiBus.h"
@@ -21,6 +29,7 @@ namespace {
 
 #if BIKE_USB_MSC_AVAILABLE
 USBMSC g_msc;
+volatile bool g_tinyUsbMounted = false;
 static constexpr uint8_t kSdPdrv = 0;
 static constexpr uint32_t kSectorSize = 512;
 
@@ -89,9 +98,28 @@ bool mscStartStopCallback(uint8_t powerCondition, bool start, bool loadEject) {
   (void)loadEject;
   return true;
 }
+
+void usbEventCallback(void*, esp_event_base_t, int32_t eventId, void*) {
+  if (eventId == ARDUINO_USB_STARTED_EVENT) {
+    g_tinyUsbMounted = true;
+  } else if (eventId == ARDUINO_USB_STOPPED_EVENT) {
+    g_tinyUsbMounted = false;
+  }
+}
 #endif
 
 }  // namespace
+
+bool UsbMassStorageManager::dataConnected() const {
+#if BIKE_USB_MSC_AVAILABLE
+  if (active_) return g_tinyUsbMounted;
+#endif
+#if BIKE_USB_JTAG_PRESENCE_AVAILABLE
+  return HWCDC::isPlugged();
+#else
+  return false;
+#endif
+}
 
 bool UsbMassStorageManager::begin(StorageManager& storage) {
   if (active_) {
@@ -123,6 +151,8 @@ bool UsbMassStorageManager::begin(StorageManager& storage) {
   g_msc.onWrite(mscWriteCallback);
   g_msc.onStartStop(mscStartStopCallback);
   g_msc.mediaPresent(true);
+  USB.onEvent(ARDUINO_USB_STARTED_EVENT, usbEventCallback);
+  USB.onEvent(ARDUINO_USB_STOPPED_EVENT, usbEventCallback);
 
   const uint32_t sectorCount = static_cast<uint32_t>(cardBytes / kSectorSize);
   if (!g_msc.begin(sectorCount, kSectorSize)) {
@@ -148,6 +178,9 @@ void UsbMassStorageManager::end(StorageManager& storage) {
   }
 #endif
   active_ = false;
+#if BIKE_USB_MSC_AVAILABLE
+  g_tinyUsbMounted = false;
+#endif
   storage.setUsbModeActive(false);
   status_ = "USB Mass Storage stopped";
 }

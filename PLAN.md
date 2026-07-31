@@ -23,7 +23,7 @@ Version 2.0 development:
 
 - Phases 0–10 are software-complete and build-verified for firmware and Android:
   sourcepack UI, Rain Lock, BLE/protocol/pairing, telemetry/time, resumable ride sync,
-  GPS/Room/history/export, MediaSession, experimental `NavigationProvider`, safe config
+  GPS/history/export, MediaSession, experimental `NavigationProvider`, safe config
   sync and distinct Auto Pause motion state.
 - Phase 11 remains a real-device acceptance gate: sourcepack visual comparison, FT6336
   two-point/water-like tests, BLE bonding/reconnect across phones, long ride/SD removal,
@@ -35,3 +35,7 @@ Version 2.0 development:
 - The 2.1.1 maintenance audit bounds live framebuffer transfers, validates persisted
   numeric configuration, hardens BLE framing/write timeouts and ride imports, and
   publishes the Android companion under a persistent release-signing certificate.
+- Release `2.2.0` moves live phone location ownership to the bike computer: Android
+  forwards validated fixes without a Room insert, firmware accepts only the matching
+  active ride and stores fresh fixes in format-v2 `samples.csv`. Legacy v1 rides remain
+  readable and the Dev stream exposes end-to-end location counters.

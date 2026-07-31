@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,11 +47,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.diybikecomputer.companion.rides.RideDao
 import com.diybikecomputer.companion.rides.RideEntity
+import com.diybikecomputer.companion.rides.GpsPointEntity
+import com.diybikecomputer.companion.rides.RideGpsFileReader
 import com.diybikecomputer.companion.rides.RideSampleEntity
 import com.diybikecomputer.companion.ui.ride.GpsRouteMap
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val RideAccent = Color(0xFF55D7C4)
 
@@ -284,7 +289,14 @@ fun RideDetailScreen(
 ) {
     val ride by dao.observeRide(rideId).collectAsStateWithLifecycle(initialValue = null)
     val samples by dao.observeSamples(rideId).collectAsStateWithLifecycle(initialValue = emptyList())
-    val points by dao.observeGpsPoints(rideId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val points by produceState<List<GpsPointEntity>>(
+        initialValue = emptyList(),
+        rideId,
+        ride?.syncRevision,
+        ride?.synced,
+    ) {
+        value = withContext(Dispatchers.IO) { RideGpsFileReader.read(dao, rideId) }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

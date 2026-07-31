@@ -5,6 +5,7 @@
 #include "config/ConfigSyncManager.h"
 #include "config/hardware_config.h"
 #include "display/DisplayManager.h"
+#include "dev/DevMonitor.h"
 #include "led/SpeedTrendLed.h"
 #include "phone/PhoneLinkManager.h"
 #include "speed/HallSensor.h"
@@ -36,6 +37,7 @@ PhoneLinkManager g_phone;
 RideSyncManager g_rideSync;
 ConfigSyncManager g_configSync;
 UiApp g_ui;
+DevMonitor g_devMonitor;
 uint32_t g_appliedClockGeneration = 0;
 
 void printBootInfo() {
@@ -120,15 +122,21 @@ void setup() {
   g_ride.begin(&g_settings);
   g_ui.begin(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed,
              g_speedTrendLed, g_ride, g_battery,
-             g_rideLogger, g_rideRepository, g_phone, g_settings);
+             g_rideLogger, g_rideRepository, g_phone, g_settings,
+             g_devMonitor);
 
   g_display.addBootLog("Ready", true, "opening UI");
   g_display.animateBoot(220);
+  g_devMonitor.attach(g_display, g_touch, g_storage, g_usb, g_sensor, g_speed,
+                      g_speedTrendLed, g_ride, g_battery, g_rideLogger,
+                      g_phone, g_ui, g_rideSync, g_configSync);
   Serial.println("Boot complete");
 }
 
 void loop() {
+  g_devMonitor.noteLoopStart(micros());
   const uint32_t nowMs = millis();
+  g_battery.setUsbConnected(g_usb.dataConnected(), nowMs);
   g_phone.update(nowMs);
   if (g_phone.clock().generation() != g_appliedClockGeneration) {
     g_appliedClockGeneration = g_phone.clock().generation();
@@ -165,5 +173,6 @@ void loop() {
                          g_battery.state() == BatteryState::Critical;
   g_rideSync.setRuntimeState(telemetry.rideState, g_usb.active());
   g_phone.updateLiveData(telemetry, nowMs);
+  g_devMonitor.update(nowMs);
   yield();
 }

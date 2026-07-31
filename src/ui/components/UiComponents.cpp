@@ -1,6 +1,7 @@
 #include "ui/components/UiComponents.h"
 
 #include "ui/UiTheme.h"
+#include "ui/components/HeaderLayout.h"
 
 namespace ui {
 
@@ -74,7 +75,8 @@ void Components::header(TFT_eSPI& tft, const String& title, const HeaderStatus& 
   right -= 34;
 
   if (status.showRain) {
-    IconRenderer::draw(tft, Icon::Rain, right - 7, 20,
+    IconRenderer::draw(tft, Icon::Rain,
+                       headerRainIconCenterX(), 20,
                        status.rainLocked ? ORANGE : TEXT_MUTED);
   }
   if (status.showSettings) {

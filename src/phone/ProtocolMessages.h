@@ -43,6 +43,7 @@ enum class MessageType : uint8_t {
   MediaState = 0x40,
   MediaAction = 0x41,
   NavigationState = 0x50,
+  LocationFix = 0x51,
   ConfigGet = 0x60,
   ConfigValue = 0x61,
   ConfigSet = 0x62,

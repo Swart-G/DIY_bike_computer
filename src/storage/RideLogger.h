@@ -4,6 +4,7 @@
 
 #include "battery/BatteryMonitor.h"
 #include "config/app_config.h"
+#include "location/PhoneLocation.h"
 #include "speed/RideStateMachine.h"
 #include "speed/SpeedCalculator.h"
 
@@ -15,7 +16,8 @@ class RideLogger {
   bool start(StorageManager& storage, const app::AppSettings& settings, const BatteryMonitor& battery, String& error);
   bool resume(StorageManager& storage, const RideRecoveryData& recovery, String& error);
   bool logSample(StorageManager& storage, const RideStateMachine& ride, const SpeedCalculator& speed,
-                 const HallSensorSnapshot& sensor, const BatteryMonitor& battery, uint32_t nowMs);
+                 const HallSensorSnapshot& sensor, const BatteryMonitor& battery,
+                 const phonegeo::LocationState& location, uint32_t nowMs);
   bool event(StorageManager& storage, const RideStateMachine& ride, const char* event, const char* details = "");
   bool finish(StorageManager& storage, const RideStateMachine& ride, const BatteryMonitor& battery, String& error);
   void close() { active_ = false; }
@@ -24,6 +26,7 @@ class RideLogger {
   const char* folder() const { return folder_; }
   uint32_t sampleIndex() const { return sampleIndex_; }
   bool loggingGap() const { return loggingGap_; }
+  uint8_t bufferedCount() const { return bufferedCount_; }
   float batteryStartVoltage() const { return batteryStart_; }
   float batteryMinVoltage() const { return batteryMin_; }
   float batteryMaxVoltage() const { return batteryMax_; }
@@ -41,9 +44,12 @@ class RideLogger {
   char folder_[32] = {0};
   bool active_ = false, loggingGap_ = false;
   float batteryStart_ = 0, batteryMin_ = 0, batteryMax_ = 0;
-  char buffered_[8][256] = {};
+  char buffered_[8][384] = {};
   uint8_t bufferedHead_ = 0, bufferedCount_ = 0;
   ClockManager* clock_ = nullptr;
   uint64_t rideStartedMonotonicMs_ = 0;
   int64_t startedAtUtcMs_ = 0;
+  uint64_t lastGpsTimestampUtcMs_ = 0;
+  uint32_t gpsFixCount_ = 0;
+  uint8_t rideFormatVersion_ = app::RIDE_LOG_FORMAT_VERSION;
 };

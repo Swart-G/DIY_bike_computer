@@ -141,11 +141,16 @@ void SecondaryScreens::diagnostics(TFT_eSPI& tft, const HeaderStatus& header,
   ui_exact::ExactScreenRenderer(tft).draw(
       ui_exact::ScreenId::SCREEN_80_DIAGNOSTICS);
   Components::header(tft, "Diagnostics", header);
+  // The source asset contains the old full-width USB control. Clear its whole
+  // footer before drawing the two replacement buttons so no border or label
+  // can remain visible in the gap between them.
+  tft.fillRect(0, 258, 480, 62, BG);
+  Components::button(tft, 18, 266, 214, 41, "Dev Mode", true, false, true);
+  Components::button(tft, 248, 266, 214, 41, "USB Storage", false, false,
+                     sdAvailable);
   if (!sdAvailable) {
     Components::menuTile(tft, 18, 125, 214, 56, Icon::Storage, "SD test",
                          String(), false, false);
-    Components::button(tft, 18, 266, 444, 41, "USB Storage", false, false,
-                       false);
   }
 }
 

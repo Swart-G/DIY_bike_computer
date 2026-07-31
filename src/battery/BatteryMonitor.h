@@ -5,11 +5,13 @@
 #include "config/app_config.h"
 
 enum class BatteryState { WarmingUp, Normal, Low, Critical, Charging, Stable, Discharging };
+enum class RuntimeEstimateQuality : uint8_t { Unavailable, Early, Learned };
 
 class BatteryMonitor {
  public:
   bool begin(const app::AppSettings& settings);
   void update(uint32_t nowMs);
+  void setUsbConnected(bool connected, uint32_t nowMs);
   void updateSettings(const app::AppSettings& settings);
   bool enabled() const { return enabled_; }
   int adcPin() const { return adcPin_; }
@@ -21,6 +23,12 @@ class BatteryMonitor {
   BatteryState state() const { return state_; }
   int16_t remainingMinutes() const;
   bool charging() const { return state_ == BatteryState::Charging; }
+  bool usbConnected() const { return usbConnected_; }
+  RuntimeEstimateQuality runtimeEstimateQuality() const {
+    return runtimeEstimateQuality_;
+  }
+  uint32_t runtimeObservedMs() const { return runtimeObservedMs_; }
+  float runtimeObservedDrop() const { return runtimeObservedDrop_; }
   String remainingTimeText() const;
   const char* trendText() const;
   String stateText() const;
@@ -29,6 +37,9 @@ class BatteryMonitor {
 
  private:
   static constexpr uint8_t kHistorySamples = 30;
+  static constexpr uint32_t kPostUsbPercentHoldMs = 60000UL;
+  static constexpr uint32_t kEarlyRuntimeWindowMs = 60000UL;
+  static constexpr float kEarlyRuntimeDropPercent = 0.20f;
   float estimatePercent(float voltage) const;
   void completeSeries(uint32_t nowMs);
   void pushTrend(float voltage);
@@ -50,15 +61,23 @@ class BatteryMonitor {
   float instantVoltage_ = 0;
   float filteredVoltage_ = 0;
   uint8_t percent_ = 0;
-  uint8_t stablePercent_ = 0;
+  float displayedPercent_ = 0.0f;
+  bool percentInitialized_ = false;
+  bool usbConnected_ = false;
+  bool postUsbPercentHold_ = false;
+  uint32_t usbDisconnectedAtMs_ = 0;
   float trend_[kHistorySamples] = {0};
   uint8_t trendCount_ = 0;
   uint8_t trendIndex_ = 0;
   BatteryState state_ = BatteryState::WarmingUp;
   uint32_t runtimeAnchorMs_ = 0;
-  uint8_t runtimeAnchorPercent_ = 0;
+  float runtimeAnchorPercent_ = 0.0f;
+  uint32_t runtimeObservedMs_ = 0;
+  float runtimeObservedDrop_ = 0.0f;
   float smoothedPercentPerHour_ = 0.0f;
   int16_t runtimeRemainingMinutes_ = 0;
   uint32_t runtimeEstimateAtMs_ = 0;
   bool runtimeEstimateReady_ = false;
+  RuntimeEstimateQuality runtimeEstimateQuality_ =
+      RuntimeEstimateQuality::Unavailable;
 };

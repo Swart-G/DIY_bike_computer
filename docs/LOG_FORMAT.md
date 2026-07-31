@@ -1,6 +1,10 @@
 # Формат данных production-прошивки
 
-Все форматы имеют `format_version: 1`. Устройство не создаёт фиктивные даты: так как GPS/RTC нет, идентификатор заезда выдаётся в NVS.
+Конфигурация и recovery сохраняют `format_version: 1`. Новые поездки используют
+`format_version: 2`; старые каталоги поездок v1 остаются читаемыми и не
+переписываются. Устройство не создаёт фиктивные даты или координаты: идентификатор
+заезда выдаётся в NVS, а геопозиция существует только после валидного fix от
+авторизованного Android companion.
 
 ## Конфигурация
 
@@ -23,21 +27,28 @@
   summary.json
 ```
 
-`meta.json` содержит версию формата, `ride_id`, версию firmware, плату, экран, тач, окружность колеса, pulses/revolution, active level датчика и `started_at: null`, `started_at_source: "unavailable"`.
+`meta.json` содержит версию формата, `ride_id`, версию firmware, плату, экран, тач,
+окружность колеса, pulses/revolution, active level датчика,
+`location_source: "android_companion"` и nullable абсолютное время старта.
 
 `samples.csv` всегда содержит единственный header:
 
 ```csv
-sample_index,ride_time_ms,state,speed_kmh,raw_speed_kmh,distance_m,avg_speed_kmh,max_speed_kmh,elapsed_time_ms,recording_time_ms,moving_time_ms,pause_time_ms,pulse_count,rejected_pulse_count,battery_voltage,battery_percent
+sample_index,ride_time_ms,state,speed_kmh,raw_speed_kmh,distance_m,avg_speed_kmh,max_speed_kmh,elapsed_time_ms,recording_time_ms,moving_time_ms,pause_time_ms,pulse_count,rejected_pulse_count,battery_voltage,battery_percent,timestamp_utc_ms,latitude,longitude,altitude_m,gps_accuracy_m,gps_speed_mps,gps_age_ms
 ```
 
-Строки append-only, decimal separator — точка. Интервал записи настраивается (`log_sample_interval_ms`, по умолчанию 1000 ms). Во время PAUSED также записываются samples с состоянием `PAUSED`.
+Строки append-only, decimal separator — точка. Интервал записи настраивается
+(`log_sample_interval_ms`, по умолчанию 1000 ms). Во время PAUSED также записываются
+samples с состоянием `PAUSED`.
 
-Прошивка не добавляет координаты в этот файл, потому что у ESP нет GPS. При экспорте
-полного CSV Android сохраняет все эти столбцы и добавляет к каждой строке ближайшие
-телефонные `timestamp_utc_ms,latitude,longitude,altitude_m,gps_accuracy_m,gps_speed_mps`.
-Если подходящей точки в пределах пяти секунд нет, поля остаются пустыми. Исходный
-append-only файл на устройстве при этом не изменяется.
+Android отправляет `LocationFix` только для сообщённого ESP активного `ride_id` и не
+сохраняет live fix в Room. Прошивка проверяет ID поездки, UTC-диапазон, широту,
+долготу, высоту, точность и скорость. Последний принятый fix добавляется к строке лишь
+пока его возраст по монотонному времени ESP не превышает 5000 ms; `gps_age_ms`
+фиксирует этот возраст. Если свежего fix нет, все семь location-полей остаются
+пустыми. Опциональные altitude/accuracy/speed могут быть пустыми независимо.
+Повторение одного timestamp в соседних sample-строках означает удержание того же
+свежего fix, а не новую GPS-точку.
 
 `events.csv`:
 
@@ -47,7 +58,13 @@ ride_time_ms,event,details
 
 Поддерживаемые события: `START`, `PAUSE`, `RESUME`, `FINISH`, `RECOVERED_AS_PAUSED`, `SD_ERROR`, `SD_RESTORED`, `BATTERY_LOW`, `BATTERY_CRITICAL`, `CONFIG_CHANGED`, `USB_STORAGE_REQUESTED`.
 
-После штатного Finish создаётся атомарный `summary.json` с полями: `distance_m`, `max_speed_kmh`, `average_moving_speed_kmh`, `average_recording_speed_kmh`, `elapsed_time_ms`, `recording_time_ms`, `moving_time_ms`, `pause_time_ms`, `stopped_time_ms`, accepted/rejected pulse count и battery start/end/min/max voltage. `logging_gap: true` означает, что часть данных была буферизована или не могла быть записана из-за SD error.
+После штатного Finish создаётся атомарный `summary.json` с полями: `distance_m`,
+`max_speed_kmh`, `average_moving_speed_kmh`, `average_recording_speed_kmh`,
+`elapsed_time_ms`, `recording_time_ms`, `moving_time_ms`, `pause_time_ms`,
+`stopped_time_ms`, accepted/rejected pulse count, `gps_fix_count` и battery
+start/end/min/max voltage. `gps_fix_count` считает уникальные timestamp, реально
+попавшие в samples текущей сессии. `logging_gap: true` означает, что часть данных была
+буферизована или не могла быть записана из-за SD error.
 
 ## Recovery и надёжность
 

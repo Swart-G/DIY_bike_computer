@@ -92,6 +92,15 @@ At boot, a non-empty application registry without any controller bond is unusabl
 cleared automatically so the Phone screen returns to unpaired instead of entering a
 repeating PIN/error loop.
 
+Phone location uses privileged BLE `LocationFix` messages containing the current ESP
+`ride_id`, UTC timestamp, latitude/longitude E7 and bounded optional altitude,
+accuracy and speed. Firmware accepts them only on an authorized negotiated GPS Assist
+session while that exact ride is RIDING or PAUSED. The most recent fix is held in RAM,
+expires after five seconds and is appended to the normal format-v2 `samples.csv`; no
+separate filesystem owner or write path is introduced. Invalid, stale or mismatched
+fixes never become coordinates. Disconnecting the phone merely leaves location fields
+blank while Hall ride data continues.
+
 The exact UI baseline is compiled from all 60 RLE565 assets in
 `bike_computer_v2_exact_sourcepack`. Full-screen and sprite background is RGB565
 `0x0861`. Runtime state replaces example text only inside dynamic regions; speed,
@@ -102,22 +111,39 @@ screens as a pixel-exact gallery for panel comparison.
 
 Rain Lock globally intercepts touch after `TouchManager` and before `UiApp`. It never
 blocks Hall, ride state/statistics, logging/recovery, battery, BLE or display updates.
+Its Ride-header icon is immediately right of Settings and has a 55×58 touch target.
+The first tap opens a Cancel/Enable confirmation dialog; only Enable activates the
+global lock, and no underlying swipe or ride control is accepted by the dialog.
 Unlock requires both FT6336 contacts in the sourcepack target zones continuously for
 3000 ms; release, invalid tracking or leaving a zone resets progress. Rain Lock is OFF
 after every reboot.
 
-Battery GPIO6/ADC1 is production-enabled. A nonblocking sampling state machine discards initial readings, takes seven samples, applies trimmed mean, divider and stored calibration factor, then low-pass filters for UI. SoC uses a 1S Li-Po interpolation table with percentage hysteresis. States include normal/low/critical plus charging/discharging/stable trend; USB is not treated as proof of charging.
+Battery GPIO6/ADC1 is production-enabled. A nonblocking sampling state machine discards initial readings, takes seven samples, applies trimmed mean, divider and stored calibration factor, then low-pass filters for UI. SoC uses a 1S Li-Po interpolation table and a 0.90/0.10 displayed-percentage low-pass filter. A detected USB data host immediately selects Charging and freezes the last trustworthy SoC instead of mapping charger-raised 4.20 V to 100%. After USB disconnect, SoC remains frozen for 60 seconds and then converges to the voltage estimate. A charge-only adapter without USB traffic still uses the slow voltage trend as a fallback; GPIO19/20 are never sampled as general GPIO.
 The common header prints SoC beside the battery and a `~ Nh NN m` runtime estimate.
-Runtime is learned from the observed percentage decline over at least five minutes,
-smoothed between updates and withheld as `~ --` until sufficient discharge history
-exists; charging is shown as `CHG` instead of a fabricated remaining time.
+An explicitly low-confidence early estimate may appear after at least 60 seconds and
+0.2 percentage points of observed decline. It becomes learned after at least five
+accumulated minutes and one percentage point, and is smoothed between updates. Until an
+early estimate exists the header shows `~ --`; charging shows `CHG` instead of a
+fabricated remaining time. Diagnostics and Dev telemetry expose early/learned quality.
 
 USB MSC has a strict owner model. RIDING is refused; PAUSED is checkpointed and files are closed; IDLE/PAUSED SD is exposed to host. No FAT operation is permitted while active. Safe eject followed by reboot is the supported exit path.
 
 Diagnostics: display primitives, both raw FT6336 touch points, paint, SD read/write/card
-information, USB, Hall raw state and counters, battery raw/calibrated values, and system
-info including BLE/protocol state. Runtime work is timer/state-machine driven; ISR
-contains only timestamp/counter filtering.
+information, USB, Hall raw state and counters, battery raw/calibrated values, system
+info including BLE/protocol state, and an explicit Dev Mode screen. Dev Mode uses the
+native USB Serial/JTAG endpoint for bounded `DEV {json}` telemetry and a line-oriented
+raw API. It can snapshot all subsystems, run guarded self/SD tests, preview exact UI
+assets, override the RGB test output, issue media actions, control a diagnostic ride
+through the normal logger/recovery path, and perform a confirmed, deferred transition
+to USB MSC after releasing Serial/JTAG. Leaving the screen
+disables commands/telemetry and clears overrides without removing the programming
+port. It is part of the normal firmware, is never enabled at boot and cannot run while
+USB MSC owns storage. Runtime work is timer/state-machine driven; ISR contains only
+timestamp/counter filtering.
+
+Dev telemetry exposes the accepted phone fix, freshness/age, ride ID and accepted or
+rejected packet counters. This is the authoritative end-to-end check that Android
+location reached the firmware; GPS Assist capability alone is not proof of a fix.
 
 Every header Back chevron has a 126×58 touch target even though its visual remains
 compact. Touch Raw maps both contacts into a dedicated bordered 444×98 field that never

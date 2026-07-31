@@ -41,9 +41,12 @@ class MediaBleCoordinator(
         }
         scope.launch {
             while (true) {
-                delay(1_000)
+                val current = repository.state.value
+                delay(if (current.available && current.playing) 1_000 else 5_000)
+                // Also retry paused/idle state. The first update after HELLO can
+                // coincide with manifest/config traffic and a full BLE queue.
                 val media = repository.state.value
-                if (media.available && media.playing) sendState(media)
+                if (media.available) sendState(media)
             }
         }
     }

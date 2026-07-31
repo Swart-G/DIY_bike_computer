@@ -8,10 +8,12 @@ import android.companion.CompanionDeviceManager
 import android.content.pm.PackageManager
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.provider.Settings
+import android.service.notification.NotificationListenerService
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,9 +29,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.diybikecomputer.companion.device.CompanionDevicePairing
 import com.diybikecomputer.companion.device.KnownDevice
+import com.diybikecomputer.companion.ble.BikeConnectionForegroundService
 import com.diybikecomputer.companion.ui.BikeComputerApp
 import com.diybikecomputer.companion.ui.theme.BikeComputerTheme
 import com.diybikecomputer.companion.media.MediaBridgeService
+import com.diybikecomputer.companion.location.LocationPermissionAction
+import com.diybikecomputer.companion.location.LocationPermissionPolicy
 import com.diybikecomputer.companion.rides.RideExporter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -41,10 +46,12 @@ class MainActivity : ComponentActivity() {
     private val association by lazy { CompanionDevicePairing(this) }
     private val app by lazy { application as BikeComputerApplication }
     private var gpsEnabled by mutableStateOf(false)
+    private var gpsStatusMessage by mutableStateOf("Off")
     private var mediaAccessEnabled by mutableStateOf(false)
     private var pairingInProgress by mutableStateOf(false)
     private var pairingMessage by mutableStateOf<String?>(null)
     private var pendingExportRideId: String? = null
+    private var notificationPermissionRequested = false
     private val exporter by lazy { RideExporter(contentResolver, app.database) }
     private val csvExport = registerForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv"),
@@ -99,6 +106,7 @@ class MainActivity : ComponentActivity() {
                 device,
                 association.systemAssociationIdFor(device.address),
             )
+            activateBackgroundConnection()
         } else {
             pairingMessage = "No device was selected"
         }
@@ -123,16 +131,45 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACCESS_FINE_LOCATION,
                 ) == PackageManager.PERMISSION_GRANTED
         if (fineGranted) {
-            app.gpsRepository.setEnabled(true)
-            gpsEnabled = true
-            app.gpsCoordinator.onEnabled()
+            requestBackgroundLocationIfNeeded()
+        } else {
+            disableGpsAssist("Precise location permission is required")
         }
+    }
+    private val backgroundLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted || hasBackgroundLocationPermission()) {
+            enableGpsAssist()
+        } else {
+            disableGpsAssist("Allow all the time is required for reliable ride forwarding")
+        }
+    }
+    private val backgroundLocationSettings = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (hasBackgroundLocationPermission()) {
+            enableGpsAssist()
+        } else {
+            disableGpsAssist("Location permission is not set to Allow all the time")
+        }
+    }
+    private val reconnectPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        if (hasNearbyPermission()) ensureKnownDeviceConnection()
+    }
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        // A foreground service remains legal when notifications are denied,
+        // but asking keeps its persistent connection state visible to the user.
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        gpsEnabled = app.gpsRepository.enabled()
-        mediaAccessEnabled = hasMediaAccess()
+        refreshGpsPermissionState()
+        refreshMediaAccess()
         setContent {
             BikeComputerTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -144,6 +181,7 @@ class MainActivity : ComponentActivity() {
                         database = app.database,
                         rideSync = app.rideSync,
                         gpsEnabled = gpsEnabled,
+                        gpsStatusMessage = gpsStatusMessage,
                         mediaAccessEnabled = mediaAccessEnabled,
                         pairingInProgress = pairingInProgress,
                         pairingMessage = pairingMessage,
@@ -171,16 +209,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        if (hasNearbyPermission() && !connection.connectKnown()) {
-            association.latestAssociatedDevice()?.let { device ->
-                connection.connect(device, association.systemAssociationIdFor(device.address))
-            }
+        if (hasNearbyPermission()) {
+            ensureKnownDeviceConnection()
+        } else if (connection.knownDevice() != null) {
+            reconnectPermissions.launch(requiredNearbyPermissions())
         }
     }
 
     override fun onResume() {
         super.onResume()
-        mediaAccessEnabled = hasMediaAccess()
+        refreshMediaAccess()
+        refreshGpsPermissionState()
     }
 
     private fun requestPairing() {
@@ -195,22 +234,125 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestGpsAssist() {
-        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        if (Build.VERSION.SDK_INT >= 33) {
-            permissions += Manifest.permission.POST_NOTIFICATIONS
+        when (
+            LocationPermissionPolicy.nextAction(
+                Build.VERSION.SDK_INT,
+                hasPreciseLocationPermission(),
+                hasBackgroundLocationPermission(),
+            )
+        ) {
+            LocationPermissionAction.RequestForeground -> {
+                gpsStatusMessage = "Grant precise location to forward it to the bike"
+                // Android 12+ ignores a fine-only request; coarse and fine must
+                // be requested together.
+                locationPermissions.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                    ),
+                )
+            }
+            LocationPermissionAction.RequestBackgroundPermission -> {
+                gpsStatusMessage =
+                    "Grant background location for rides started with the app closed"
+                if (Build.VERSION.SDK_INT >= 29) {
+                    backgroundLocationPermission.launch(
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                    )
+                } else {
+                    // Defensive fallback: the pure policy currently never selects
+                    // this branch below Android 10.
+                    enableGpsAssist()
+                }
+            }
+            LocationPermissionAction.OpenAppSettings -> openBackgroundLocationSettings()
+            LocationPermissionAction.Enable -> enableGpsAssist()
         }
-        locationPermissions.launch(permissions.toTypedArray())
     }
 
     private fun handleGpsSetting(enabled: Boolean) {
         if (enabled) {
             requestGpsAssist()
         } else {
-            app.gpsRepository.setEnabled(false)
-            gpsEnabled = false
-            app.gpsCoordinator.onDisabled()
+            disableGpsAssist("Off")
         }
     }
+
+    private fun requestBackgroundLocationIfNeeded() {
+        requestGpsAssist()
+    }
+
+    private fun openBackgroundLocationSettings() {
+        gpsStatusMessage = "Grant background location for rides started with the app closed"
+        val optionLabel = if (Build.VERSION.SDK_INT >= 30) {
+            packageManager.backgroundPermissionOptionLabel
+        } else {
+            "Allow all the time"
+        }
+        Toast.makeText(
+            this,
+            "Location permission: select $optionLabel",
+            Toast.LENGTH_LONG,
+        ).show()
+        backgroundLocationSettings.launch(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:$packageName"),
+            ),
+        )
+    }
+
+    private fun enableGpsAssist() {
+        if (!hasPreciseLocationPermission() || !hasBackgroundLocationPermission()) {
+            disableGpsAssist("Required location permission is missing")
+            return
+        }
+        app.gpsRepository.setEnabled(true)
+        gpsEnabled = true
+        gpsStatusMessage = app.gpsRepository.recordingStatus()
+            .takeUnless { it.isBlank() || it == "Off" }
+            ?: "Ready · sends only during an active bike ride"
+        requestNotificationPermissionIfNeeded()
+        app.gpsCoordinator.onEnabled()
+    }
+
+    private fun disableGpsAssist(message: String) {
+        app.gpsRepository.setEnabled(false)
+        gpsEnabled = false
+        gpsStatusMessage = message
+        app.gpsCoordinator.onDisabled()
+    }
+
+    private fun refreshGpsPermissionState() {
+        if (!app.gpsRepository.enabled()) {
+            gpsEnabled = false
+            if (gpsStatusMessage == "Ready · sends only during an active bike ride") {
+                gpsStatusMessage = "Off"
+            }
+            return
+        }
+        if (hasPreciseLocationPermission() && hasBackgroundLocationPermission()) {
+            gpsEnabled = true
+            gpsStatusMessage = app.gpsRepository.recordingStatus()
+                .takeUnless { it.isBlank() || it == "Off" }
+                ?: "Ready · sends only during an active bike ride"
+        } else {
+            disableGpsAssist("Permission was revoked; enable GPS Assist again")
+        }
+    }
+
+    private fun hasPreciseLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasBackgroundLocationPermission(): Boolean =
+        Build.VERSION.SDK_INT < 29 ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
 
     private fun forgetDevice(device: KnownDevice) {
         connection.forgetDevice(device.bluetoothAddress)
@@ -219,6 +361,9 @@ class MainActivity : ComponentActivity() {
                 ?: association.systemAssociationIdFor(device.bluetoothAddress),
             device.bluetoothAddress,
         )
+        if (connection.knownDevice() == null) {
+            BikeConnectionForegroundService.stop(this)
+        }
     }
 
     private fun beginAssociation() {
@@ -237,6 +382,7 @@ class MainActivity : ComponentActivity() {
                             it,
                             if (Build.VERSION.SDK_INT >= 33) association.id else null,
                         )
+                        activateBackgroundConnection()
                     }
                         ?: run {
                             pairingMessage = "Associated device address is unavailable"
@@ -270,6 +416,48 @@ class MainActivity : ComponentActivity() {
             "enabled_notification_listeners",
         ).orEmpty().split(':').any {
             ComponentName.unflattenFromString(it) == expected
+        }
+    }
+
+    private fun ensureKnownDeviceConnection() {
+        val started = connection.ensureConnected()
+        var hasDevice = connection.knownDevice() != null
+        if (!started) {
+            association.latestAssociatedDevice()?.let { device ->
+                connection.connect(
+                    device,
+                    association.systemAssociationIdFor(device.address),
+                )
+                hasDevice = true
+            }
+        }
+        if (started || hasDevice) activateBackgroundConnection()
+    }
+
+    private fun activateBackgroundConnection() {
+        BikeConnectionForegroundService.start(this)
+        requestNotificationPermissionIfNeeded()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < 33 || notificationPermissionRequested ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermissionRequested = true
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun refreshMediaAccess() {
+        mediaAccessEnabled = hasMediaAccess()
+        if (mediaAccessEnabled) {
+            NotificationListenerService.requestRebind(
+                ComponentName(this, MediaBridgeService::class.java),
+            )
         }
     }
 

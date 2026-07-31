@@ -25,9 +25,9 @@ bool PhoneLinkManager::begin() {
   deviceInfo[0] = bikeproto::kProtocolVersion;
   deviceInfo[1] = bikeproto::kProtocolVersion;
   deviceInfo[2] = 2;
-  deviceInfo[3] = 0;
+  deviceInfo[3] = 2;
   deviceInfo[4] = 0;
-  deviceInfo[5] = 1;  // development build
+  deviceInfo[5] = 0;  // release build
   bikeproto::writeU32(deviceInfo + 6, bikeproto::kImplementedCapabilities);
   bikeproto::writeU64(deviceInfo + 10, deviceId_);
 
@@ -167,6 +167,12 @@ void PhoneLinkManager::prepareForUsb() {
 
 void PhoneLinkManager::updateLiveData(const LiveTelemetryInput& data,
                                       uint32_t nowMs) {
+  currentRideState_ = data.rideState;
+  currentRideId_ = data.rideId;
+  if ((data.rideState == 0 || data.rideState == 3) &&
+      locationState_.fix.available) {
+    locationState_.fix.available = false;
+  }
   if (!liveDataInitialized_) {
     liveDataInitialized_ = true;
     previousRideState_ = data.rideState;
@@ -358,6 +364,7 @@ void PhoneLinkManager::resetSession() {
     navigationState_ = navigation::NavigationState();
     ++navigationRevision_;
   }
+  locationState_ = phonegeo::LocationState();
 }
 
 void PhoneLinkManager::processIncoming() {
@@ -422,6 +429,10 @@ void PhoneLinkManager::handleFrame(const bikeproto::Frame& frame) {
   }
   if (frame.type == bikeproto::MessageType::NavigationState) {
     handleNavigationState(frame);
+    return;
+  }
+  if (frame.type == bikeproto::MessageType::LocationFix) {
+    handleLocationFix(frame);
     return;
   }
   if (config_ && config_->handleFrame(frame, *this)) return;
@@ -524,6 +535,54 @@ void PhoneLinkManager::handleNavigationState(const bikeproto::Frame& frame) {
   if (!next.available) next = navigation::NavigationState();
   navigationState_ = next;
   ++navigationRevision_;
+}
+
+void PhoneLinkManager::handleLocationFix(const bikeproto::Frame& frame) {
+  auto reject = [&](bikeproto::ErrorCode code, const char* detail) {
+    ++locationState_.rejectedCount;
+    sendError(code, frame.type, frame.sequence, detail);
+  };
+  if (!state_.authorized ||
+      (state_.capabilities & bikeproto::Capability::GpsAssist) == 0 ||
+      (frame.flags & bikeproto::FrameFlags::Privileged) == 0) {
+    reject(bikeproto::ErrorCode::NotAuthorized,
+           "authorized GPS Assist required");
+    return;
+  }
+  if (frame.payloadLength != 33) {
+    reject(bikeproto::ErrorCode::MalformedFrame,
+           "location payload must be 33 bytes");
+    return;
+  }
+
+  phonegeo::LocationFix next;
+  next.rideId = bikeproto::readU32(frame.payload);
+  next.timestampUtcMs = bikeproto::readU64(frame.payload + 4);
+  next.flags = frame.payload[12];
+  next.latitudeE7 =
+      static_cast<int32_t>(bikeproto::readU32(frame.payload + 13));
+  next.longitudeE7 =
+      static_cast<int32_t>(bikeproto::readU32(frame.payload + 17));
+  next.altitudeMm =
+      static_cast<int32_t>(bikeproto::readU32(frame.payload + 21));
+  next.accuracyMm = bikeproto::readU32(frame.payload + 25);
+  next.speedMmps = bikeproto::readU32(frame.payload + 29);
+  next.receivedAtMs = millis();
+  next.available = true;
+
+  if ((currentRideState_ != 1 && currentRideState_ != 2) ||
+      !currentRideId_ || next.rideId != currentRideId_) {
+    reject(bikeproto::ErrorCode::InvalidState,
+           "location does not match active ride");
+    return;
+  }
+  if (!next.validValues()) {
+    reject(bikeproto::ErrorCode::InvalidValue,
+           "invalid location values");
+    return;
+  }
+  locationState_.fix = next;
+  ++locationState_.acceptedCount;
 }
 
 bool PhoneLinkManager::sendMediaAction(media::Action action,
@@ -660,15 +719,16 @@ void PhoneLinkManager::sendHelloAck(uint16_t requestSequence) {
   size_t offset = 0;
   payload[offset++] = bikeproto::kProtocolVersion;
   payload[offset++] = 2;
+  payload[offset++] = 2;
   payload[offset++] = 0;
   payload[offset++] = 0;
-  payload[offset++] = 1;
   bikeproto::writeU64(payload + offset, deviceId_);
   offset += 8;
   bikeproto::writeU64(payload + offset, associationId_);
   offset += 8;
   bikeproto::writeU32(payload + offset, bikeproto::kImplementedCapabilities);
   offset += 4;
+  payload[offset++] = 2;
   payload[offset++] = 1;
   payload[offset++] = app::RIDE_LOG_FORMAT_VERSION;
   const uint8_t displayNameLength = strlen(kDisplayName);

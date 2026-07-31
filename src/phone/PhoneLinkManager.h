@@ -4,6 +4,7 @@
 
 #include "media/MediaState.h"
 #include "navigation/NavigationState.h"
+#include "location/PhoneLocation.h"
 #include "phone/BikeProtocol.h"
 #include "phone/BleTransport.h"
 #include "phone/PhoneState.h"
@@ -70,8 +71,13 @@ class PhoneLinkManager {
   const navigation::NavigationState& navigationState() const {
     return navigationState_;
   }
+  const phonegeo::LocationState& locationState() const { return locationState_; }
   uint32_t mediaRevision() const { return mediaRevision_; }
   uint32_t navigationRevision() const { return navigationRevision_; }
+  bool mediaSupported() const {
+    return ready() &&
+           (state_.capabilities & bikeproto::Capability::MediaControl) != 0;
+  }
   bool sendMediaAction(media::Action action, uint64_t positionMs = 0);
 
   bool sendMessage(bikeproto::MessageType type, uint8_t flags,
@@ -97,6 +103,7 @@ class PhoneLinkManager {
   void handleTimeSync(const bikeproto::Frame& frame);
   void handleMediaState(const bikeproto::Frame& frame);
   void handleNavigationState(const bikeproto::Frame& frame);
+  void handleLocationFix(const bikeproto::Frame& frame);
   void sendHelloAck(uint16_t requestSequence);
   bool sendResponse(bikeproto::MessageType type, uint16_t requestSequence,
                     const uint8_t* payload, uint16_t payloadLength,
@@ -134,6 +141,9 @@ class PhoneLinkManager {
   ConfigSyncManager* config_ = nullptr;
   media::MediaState mediaState_;
   navigation::NavigationState navigationState_;
+  phonegeo::LocationState locationState_;
   uint32_t mediaRevision_ = 0;
   uint32_t navigationRevision_ = 0;
+  uint32_t currentRideId_ = 0;
+  uint8_t currentRideState_ = 0;
 };

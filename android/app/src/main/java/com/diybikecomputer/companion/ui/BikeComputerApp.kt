@@ -72,6 +72,7 @@ fun BikeComputerApp(
     database: RideDatabase,
     rideSync: RideSyncManager,
     gpsEnabled: Boolean,
+    gpsStatusMessage: String,
     mediaAccessEnabled: Boolean,
     pairingInProgress: Boolean,
     pairingMessage: String?,
@@ -201,6 +202,7 @@ fun BikeComputerApp(
                         settings = settings,
                         telemetry = telemetry,
                         gpsEnabled = gpsEnabled,
+                        gpsStatusMessage = gpsStatusMessage,
                         mediaAccessEnabled = mediaAccessEnabled,
                         mediaPlayers = mediaPlayers,
                         preferredMediaPlayer = preferredMediaPlayer,
@@ -386,6 +388,7 @@ private fun SettingsPage(
     settings: DeviceSettings,
     telemetry: LiveTelemetry,
     gpsEnabled: Boolean,
+    gpsStatusMessage: String,
     mediaAccessEnabled: Boolean,
     mediaPlayers: List<MediaPlayerOption>,
     preferredMediaPlayer: String?,
@@ -512,14 +515,23 @@ private fun SettingsPage(
         SectionTitle("App settings", "Phone-side companion features")
         SettingsCard("Location") {
             ToggleSetting(
-                "Record ride location",
-                "Saved only while the ESP reports an active ride",
+                "Send ride location",
+                "Forwarded to the ESP; live fixes are not stored on the phone",
                 gpsEnabled,
                 true,
                 onGpsChanged,
             )
             Text(
-                "Full CSV export combines Hall telemetry with matching GPS points. " +
+                gpsStatusMessage,
+                color = if (gpsEnabled) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontSize = 12.sp,
+            )
+            Text(
+                "The bike computer stores fresh fixes in its samples.csv. " +
                     "Wheel distance remains authoritative.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
@@ -554,7 +566,7 @@ private fun SettingsPage(
             ReadOnlyRow("Display", "ST7796 · 480×320")
             ReadOnlyRow("Touch", "FT6336")
             ReadOnlyRow("System", "ESP32-S3-N16R8")
-            ReadOnlyRow("Firmware target", "2.1.1")
+            ReadOnlyRow("Firmware target", "2.2.0")
             ReadOnlyRow("Config values", "${settings.loadedKeys.size}/11 loaded")
             ReadOnlyRow("Ride sync", syncStatus)
             ReadOnlyRow("Navigation", navigationStatus)

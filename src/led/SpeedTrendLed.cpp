@@ -17,6 +17,7 @@ void SpeedTrendLed::begin(const app::AppSettings& settings) {
 void SpeedTrendLed::update(float speedKmh,
                            const app::AppSettings& settings,
                            uint32_t nowMs) {
+  if (diagnosticOverride_) return;
   if (!settings.rgbSpeedTrendEnabled) {
     if (ledOn_) off();
     resetHistory();
@@ -51,6 +52,18 @@ void SpeedTrendLed::update(float speedKmh,
       shownBrightnessPercent_ != settings.rgbLedBrightnessPercent) {
     show(next, settings.rgbLedBrightnessPercent);
   }
+}
+
+void SpeedTrendLed::setDiagnosticRgb(uint8_t red, uint8_t green,
+                                     uint8_t blue) {
+  diagnosticOverride_ = true;
+  neopixelWrite(hw::PIN_RGB_LED, red, green, blue);
+}
+
+void SpeedTrendLed::clearDiagnosticRgb() {
+  diagnosticOverride_ = false;
+  ledOn_ = false;
+  shownBrightnessPercent_ = 0;
 }
 
 void SpeedTrendLed::resetHistory() {

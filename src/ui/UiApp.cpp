@@ -1,7 +1,9 @@
 #include "ui/UiApp.h"
 
 #include "config/hardware_config.h"
+#include "dev/DevMonitor.h"
 #include "ui/UiTheme.h"
+#include "ui/components/HeaderLayout.h"
 #include "ui/components/UiComponents.h"
 #include "ui/screens/HomeScreen.h"
 #include "ui/screens/RideScreen.h"
@@ -59,7 +61,7 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
                   SpeedTrendLed& speedTrend,
                   RideStateMachine& ride, BatteryMonitor& battery, RideLogger& logger,
                   RideRepository& repository, PhoneLinkManager& phone,
-                  app::AppSettings& settings) {
+                  app::AppSettings& settings, DevMonitor& devMonitor) {
   display_ = &display;
   touch_ = &touch;
   storage_ = &storage;
@@ -72,6 +74,7 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   logger_ = &logger;
   repository_ = &repository;
   phone_ = &phone;
+  devMonitor_ = &devMonitor;
   settings_ = &settings;
   rainLock_.reset();
   if (storage_->loggingEnabled()) {
@@ -90,6 +93,95 @@ void UiApp::begin(DisplayManager& display, TouchManager& touch, StorageManager& 
   } else {
     enter(Screen::Home);
   }
+}
+
+bool UiApp::setDevPreview(uint16_t screenIndex) {
+  if (screenIndex >= static_cast<uint16_t>(ui_exact::ScreenId::COUNT) ||
+      router_.current() != Screen::DevMonitor) {
+    return false;
+  }
+  devPreviewIndex_ = screenIndex;
+  devPreviewActive_ = true;
+  dirty_ = true;
+  return true;
+}
+
+void UiApp::clearDevPreview() {
+  if (!devPreviewActive_) return;
+  devPreviewActive_ = false;
+  dirty_ = true;
+}
+
+bool UiApp::handleDevRideAction(const char* action, String& error) {
+  error = "";
+  if (router_.current() != Screen::DevMonitor || !action || !action[0]) {
+    error = "dev_mode_required";
+    return false;
+  }
+
+  const uint32_t now = millis();
+  const HallSensorSnapshot sensor = sensor_->snapshot();
+  if (strcmp(action, "start") == 0) {
+    if (ride_->state() != RideState::IDLE &&
+        ride_->state() != RideState::FINISHED) {
+      error = "ride_already_active";
+      return false;
+    }
+    ride_->start(now, sensor.pulseCount);
+    batteryLowEventLogged_ = false;
+    batteryCriticalEventLogged_ = false;
+    if (storage_->loggingEnabled() &&
+        !logger_->start(*storage_, *settings_, *battery_, error)) {
+      ride_->newRide(now, sensor.pulseCount);
+      return false;
+    }
+    logger_->event(*storage_, *ride_, "START", "Dev API started ride");
+    saveRecoveryIfNeeded(now, true);
+  } else if (strcmp(action, "pause") == 0) {
+    if (ride_->state() != RideState::RIDING) {
+      error = "ride_not_riding";
+      return false;
+    }
+    logger_->event(*storage_, *ride_, "PAUSE", "Dev API paused ride");
+    ride_->pause(now);
+    saveRecoveryIfNeeded(now, true);
+  } else if (strcmp(action, "resume") == 0) {
+    if (ride_->state() != RideState::PAUSED) {
+      error = "ride_not_paused";
+      return false;
+    }
+    ride_->resume(now);
+    logger_->event(*storage_, *ride_, "RESUME", "Dev API resumed ride");
+    saveRecoveryIfNeeded(now, true);
+  } else if (strcmp(action, "finish") == 0) {
+    if (ride_->state() != RideState::RIDING &&
+        ride_->state() != RideState::PAUSED) {
+      error = "ride_not_active";
+      return false;
+    }
+    ride_->update(now, speed_->filteredKmh(), sensor.pulseCount,
+                  sensor.rejectedPulseCount);
+    ride_->finish(now);
+    if (!logger_->finish(*storage_, *ride_, *battery_, error)) return false;
+    clearRecovery();
+  } else {
+    error = "invalid_action";
+    return false;
+  }
+
+  dirty_ = true;
+  return true;
+}
+
+bool UiApp::startUsbStorageFromDev() {
+  if (router_.current() != Screen::DevMonitor || !storage_->sdAvailable() ||
+      ride_->state() == RideState::RIDING) {
+    return false;
+  }
+  startUsbMode();
+  if (!usb_->active()) return false;
+  enter(Screen::UsbStorage);
+  return true;
 }
 
 void UiApp::loop() {
@@ -225,11 +317,13 @@ void UiApp::loop() {
       currentScreen == Screen::TouchRawTest ||
       currentScreen == Screen::SensorTest ||
       currentScreen == Screen::BatteryTest ||
-      currentScreen == Screen::SystemInfo;
+      currentScreen == Screen::SystemInfo ||
+      currentScreen == Screen::DevMonitor;
   uint32_t drawInterval = settings_->uiUpdateIntervalMs;
   if (rainLock_.animationActive()) {
     drawInterval = 40;
-  } else if (phoneCountdown || currentScreen == Screen::SystemInfo) {
+  } else if (phoneCountdown || currentScreen == Screen::SystemInfo ||
+             currentScreen == Screen::DevMonitor) {
     drawInterval = 1000;
   } else if (currentScreen == Screen::TouchRawTest) {
     drawInterval = 100;
@@ -253,6 +347,12 @@ void UiApp::loop() {
 }
 
 void UiApp::enter(Screen screen) {
+  const Screen previous = router_.current();
+  if (previous == Screen::DevMonitor && screen != Screen::DevMonitor &&
+      devMonitor_) {
+    devMonitor_->stop();
+  }
+  if (screen != Screen::Ride) rainEnableConfirm_ = false;
   if (screen == Screen::SettingsWheel ||
       screen == Screen::SettingsStopThreshold ||
       screen == Screen::SettingsAutoPauseDelay ||
@@ -264,6 +364,11 @@ void UiApp::enter(Screen screen) {
     settingsEdit_ = *settings_;
   }
   router_.go(screen);
+  if (screen == Screen::DevMonitor && previous != Screen::DevMonitor &&
+      devMonitor_ && !devMonitor_->start()) {
+    lastMessage_ = "Dev monitor could not start";
+    router_.go(Screen::Diagnostics);
+  }
   dirty_ = true;
   lastPaintValid_ = false;
   rideTouchActive_ = false;
@@ -287,7 +392,8 @@ void UiApp::updateModel(uint32_t nowMs) {
   battery_->update(nowMs);
   recordGraphSample(nowMs);
   if (logger_->active()) {
-    logger_->logSample(*storage_, *ride_, *speed_, sensorSnapshot_, *battery_, nowMs);
+    logger_->logSample(*storage_, *ride_, *speed_, sensorSnapshot_, *battery_,
+                       phone_->locationState(), nowMs);
     logger_->retryPending(*storage_, *ride_);
     ride_->setRecoveryIdentity(logger_->rideId(), logger_->folder(), logger_->sampleIndex(), logger_->loggingGap());
     ride_->setRecoveryBattery(logger_->batteryStartVoltage(), logger_->batteryMinVoltage(), logger_->batteryMaxVoltage());
@@ -304,7 +410,7 @@ void UiApp::handleRideTouchStart(int16_t x, int16_t y, uint32_t nowMs) {
   rideTouchLastX_ = x;
   rideTouchLastY_ = y;
   rideTouchStartMs_ = nowMs;
-  rideSwipeCandidate_ = y >= kStatusBarH && y < kControlY;
+  rideSwipeCandidate_ = !rainEnableConfirm_ && y >= kStatusBarH && y < kControlY;
   rideSwipeHandled_ = false;
 }
 
@@ -561,7 +667,9 @@ void UiApp::handleTap(int16_t x, int16_t y) {
         enter(Screen::BatteryTest);
       } else if (hit(x, y, 248, 193, 214, 56)) {
         enter(Screen::SystemInfo);
-      } else if (hit(x, y, 18, 266, 444, 41) && storage_->sdAvailable()) {
+      } else if (hit(x, y, 18, 266, 214, 41)) {
+        enter(Screen::DevMonitor);
+      } else if (hit(x, y, 248, 266, 214, 41) && storage_->sdAvailable()) {
         startUsbMode();
         enter(Screen::UsbStorage);
       }
@@ -596,6 +704,14 @@ void UiApp::handleTap(int16_t x, int16_t y) {
     case Screen::SensorTest:
       if (hit(x, y, kBackX, kBackY, kBackW, kBackH) ||
           headerBackHit(x, y)) {
+        enter(Screen::Diagnostics);
+      }
+      break;
+    case Screen::DevMonitor:
+      if (devPreviewActive_) {
+        clearDevPreview();
+      } else if (headerBackHit(x, y) ||
+          hit(x, y, kBackX, kBackY, kBackW, kBackH)) {
         enter(Screen::Diagnostics);
       }
       break;
@@ -877,11 +993,20 @@ void UiApp::handleTap(int16_t x, int16_t y) {
       break;
 
     case Screen::Ride:
-      if (hit(x, y, 60, 2, 44, 36)) {
+      if (rainEnableConfirm_) {
+        if (hit(x, y, 72, 166, 168, 76)) {
+          rainEnableConfirm_ = false;
+          dirty_ = true;
+        } else if (hit(x, y, 240, 166, 168, 76)) {
+          rainEnableConfirm_ = false;
+          if (rainLock_.enable(millis())) dirty_ = true;
+        }
+      } else if (hit(x, y, 60, 2, 44, 36)) {
         settingsOpenedFromRide_ = true;
         enter(Screen::Settings);
-      } else if (hit(x, y, 321, 2, 44, 36)) {
-        if (rainLock_.enable(millis())) dirty_ = true;
+      } else if (ui::headerRainHit(x, y)) {
+        rainEnableConfirm_ = true;
+        dirty_ = true;
       } else if (rideMediaPage() && hit(x, y, 82, 201, 92, 47) &&
                  (phone_->mediaState().supportedActions &
                   media::ActionMask::Previous)) {
@@ -1009,6 +1134,9 @@ void UiApp::draw() {
     case Screen::SystemInfo:
       drawSystemInfo();
       break;
+    case Screen::DevMonitor:
+      drawDevMonitor();
+      break;
     case Screen::Settings:
       drawSettings();
       break;
@@ -1080,6 +1208,9 @@ void UiApp::draw() {
         break;
       case Screen::SystemInfo:
         display_->commitFrameArea(270, 48, 190, 226);
+        break;
+      case Screen::DevMonitor:
+        display_->commitFrameArea(18, 52, 444, 214);
         break;
       default:
         display_->commitFrame();
@@ -1577,6 +1708,62 @@ void UiApp::drawSystemInfo() {
   }
 }
 
+void UiApp::drawDevMonitor() {
+  TFT_eSPI& tft = display_->tft();
+  if (devPreviewActive_) {
+    ui_exact::ExactScreenRenderer(tft).draw(
+        static_cast<ui_exact::ScreenId>(devPreviewIndex_));
+    return;
+  }
+  tft.fillScreen(ui::BG);
+
+  ui::HeaderStatus header;
+  header.showBack = true;
+  header.phoneConnected = phone_->ready();
+  header.sdAvailable = storage_->sdAvailable();
+  header.batteryAvailable = battery_->enabled();
+  header.batteryPercent = battery_->percent();
+  ui::Components::header(tft, "Dev monitor", header);
+
+  const bool active = devMonitor_ && devMonitor_->active();
+  const bool connected = active && devMonitor_->hostConnected();
+  const uint16_t stateColor = connected ? ui::SUCCESS : ui::WARNING;
+  drawPanel(tft, 18, 56, 444, 52, ui::SURFACE, stateColor, connected);
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(stateColor, ui::SURFACE);
+  tft.drawString(connected ? "RAW API + JSONL ACTIVE" : "DEV MODE OFF", 34,
+                 74, 2);
+  tft.setTextColor(ui::TEXT_MUTED, ui::SURFACE);
+  tft.drawString("Native USB Serial/JTAG  /dev/ttyACM*", 34, 94, 1);
+
+  ui::Components::card(
+      tft, 18, 120, 140, 66, "SAMPLES",
+      active ? String(devMonitor_->samplesEmitted()) : String("OFF"));
+  ui::Components::card(
+      tft, 170, 120, 140, 66, "DROPPED",
+      active ? String(devMonitor_->droppedDocuments()) : String("-"));
+  ui::Components::card(
+      tft, 322, 120, 140, 66, "LOOP MAX",
+      active ? String(devMonitor_->maximumLoopPeriodUs() / 1000.0f, 1)
+             : String("-"),
+      active ? "ms" : String());
+
+  drawPanel(tft, 18, 198, 444, 62, ui::SURFACE, ui::BORDER);
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(ui::TEXT, ui::SURFACE);
+  tft.drawString(String("Heap ") + String(ESP.getFreeHeap() / 1024UL) +
+                     " KB    PSRAM " + String(ESP.getFreePsram() / 1024UL) +
+                     " KB",
+                 34, 216, 2);
+  tft.setTextColor(ui::TEXT_MUTED, ui::SURFACE);
+  tft.drawString("Run: python3 scripts/capture_dev_monitor.py", 34, 242, 1);
+
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(ui::TEXT_MUTED, ui::BG);
+  tft.drawString("Back disables commands and telemetry", 18, 290, 1);
+  drawBackButton();
+}
+
 void UiApp::drawSettings() {
   ui::SettingsStatus status;
   status.header.showBack = true;
@@ -1732,6 +1919,7 @@ void UiApp::drawRide() {
   model.speedTrend = speedTrend_ ? &speedTrend_->snapshot() : nullptr;
   model.navigation = &phone_->navigationState();
   model.media = &phone_->mediaState();
+  model.mediaPageEnabled = phone_->mediaSupported();
   model.epochNowMs =
       phone_->clock().epochNowMs(ClockManager::monotonicMs());
   model.utcOffsetSeconds = phone_->clock().utcOffsetSeconds();
@@ -1743,16 +1931,19 @@ void UiApp::drawRide() {
                                : ui::RideRenderMode::Full);
   ui::RideScreen::draw(display_->tft(), model);
   ui::RainLockOverlay::draw(display_->tft(), rainLock_);
+  if (rainEnableConfirm_) {
+    ui::RainLockOverlay::drawEnableConfirm(display_->tft());
+  }
 }
 
 uint8_t UiApp::ridePageCount() const {
   return 3 + (settings_ && settings_->rgbSpeedTrendEnabled ? 1 : 0) +
          (phone_ && phone_->navigationState().available ? 1 : 0) +
-         (phone_ && phone_->mediaState().available ? 1 : 0);
+         (phone_ && phone_->mediaSupported() ? 1 : 0);
 }
 
 bool UiApp::rideMediaPage() const {
-  if (!phone_ || !phone_->mediaState().available) return false;
+  if (!phone_ || !phone_->mediaSupported()) return false;
   const uint8_t index =
       3 + (settings_ && settings_->rgbSpeedTrendEnabled ? 1 : 0) +
       (phone_->navigationState().available ? 1 : 0);

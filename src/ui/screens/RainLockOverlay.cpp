@@ -3,7 +3,9 @@
 #include <math.h>
 
 #include "ui/UiTheme.h"
+#include "ui/components/HeaderLayout.h"
 #include "ui/components/IconRenderer.h"
+#include "ui/components/UiComponents.h"
 
 namespace ui {
 
@@ -20,6 +22,19 @@ void RainLockOverlay::draw(TFT_eSPI& tft, const RainLockManager& manager) {
     dim(tft);
     drawSuccess(tft);
   }
+}
+
+void RainLockOverlay::drawEnableConfirm(TFT_eSPI& tft) {
+  dim(tft);
+  panel(tft, 60, 62, 360, 188);
+  IconRenderer::draw(tft, Icon::Rain, 240, 92, WARNING);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TEXT, SURFACE_2);
+  tft.drawString("Enable Rain Lock?", 240, 124, 4);
+  tft.setTextColor(TEXT_MUTED, SURFACE_2);
+  tft.drawString("Touch controls will be blocked.", 240, 151, 2);
+  Components::button(tft, 84, 178, 146, 48, "Cancel");
+  Components::button(tft, 250, 178, 146, 48, "Enable", true);
 }
 
 void RainLockOverlay::dim(TFT_eSPI& tft) {
@@ -53,20 +68,20 @@ void RainLockOverlay::drawEnableToast(TFT_eSPI& tft) {
 
 void RainLockOverlay::drawHint(TFT_eSPI& tft,
                                const RainLockManager& manager) {
-  constexpr int16_t x = 74;
+  constexpr int16_t x = 162;
   constexpr int16_t y = 4;
-  constexpr int16_t w = 238;
+  constexpr int16_t w = 250;
   constexpr int16_t h = 32;
   tft.fillRoundRect(x, y, w, h, 9, SURFACE_2);
   tft.drawRoundRect(x, y, w, h, 9, WARNING);
-  tft.fillTriangle(x + w - 1, y + 10, 322, y + h / 2,
-                   x + w - 1, y + h - 10, WARNING);
+  tft.fillTriangle(x + 1, y + 10, headerRainIconCenterX() + 14,
+                   y + h / 2, x + 1, y + h - 10, WARNING);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TEXT, SURFACE_2);
   tft.drawString(manager.state() == RainLockState::Priming
                      ? "Keep holding both points"
                      : "Hold 2 points to unlock",
-                 x + w / 2 - 3, y + h / 2, 1);
+                 x + w / 2 + 3, y + h / 2, 1);
   const int16_t targets[] = {RainLockManager::kLeftX,
                              RainLockManager::kRightX};
   const uint16_t targetColor =

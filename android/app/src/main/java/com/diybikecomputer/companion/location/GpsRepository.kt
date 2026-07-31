@@ -11,4 +11,11 @@ class GpsRepository(context: Context) {
     fun setEnabled(enabled: Boolean) {
         preferences.edit().putBoolean("enabled", enabled).apply()
     }
+
+    fun recordingStatus(): String =
+        preferences.getString("recording_status", "Off").orEmpty()
+
+    fun setRecordingStatus(status: String) {
+        preferences.edit().putString("recording_status", status).apply()
+    }
 }

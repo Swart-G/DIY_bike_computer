@@ -152,7 +152,7 @@ class RideSyncManager(
         val revision = buffer.int.toLong() and 0xFFFF_FFFFL
         val declaredTotalSize = buffer.int.toLong() and 0xFFFF_FFFFL
         val fileCount = buffer.get().toInt() and 0xFF
-        if (numericRideId == 0L || formatVersion != SUPPORTED_RIDE_FORMAT ||
+        if (numericRideId == 0L || formatVersion !in SUPPORTED_RIDE_FORMATS ||
             !finished || !distanceM.isFinite() || distanceM < 0.0 ||
             durationMs < 0 || fileCount != REQUIRED_FILE_IDS.size ||
             buffer.remaining() != fileCount * 9
@@ -492,7 +492,7 @@ class RideSyncManager(
     }
 
     private companion object {
-        const val SUPPORTED_RIDE_FORMAT = 1
+        val SUPPORTED_RIDE_FORMATS = setOf(1, 2)
         const val MAX_RIDE_TOTAL_BYTES = 290L * 1024L * 1024L
         const val MINIMUM_FREE_SPACE_BYTES = 16L * 1024L * 1024L
         const val MAX_VERIFICATION_ATTEMPTS = 3

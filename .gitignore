@@ -1,6 +1,7 @@
 .pio/
 .vscode/
 *.log
+/artifacts/dev_monitor/
 __pycache__/
 *.py[cod]
 android/.gradle/

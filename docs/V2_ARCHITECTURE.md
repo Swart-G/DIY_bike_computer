@@ -1,6 +1,6 @@
 # DIY Bike Computer 2.0 architecture
 
-Status: architecture contract for firmware `2.1.1`.
+Status: architecture contract for firmware `2.2.0`.
 
 ## Product boundary
 
@@ -156,16 +156,17 @@ an enumerated `ride_id` and `file_id`, never a client-provided path. See
 `ClockManager` stores the last trusted Android epoch in milliseconds and the monotonic
 `millis()` captured with it. `epochNow()` derives time from the delta and handles
 `millis()` rollover. Reconnect resynchronizes. A ride created before time sync remains
-valid and uses nullable absolute timestamps. New timestamp fields are additive and do
-not change ride format version 1.
+valid and uses nullable absolute timestamps. Format-v2 rides add validated phone
+location columns directly to `samples.csv`; format-v1 rides remain read-only compatible.
 
 ## Android
 
 Android uses Kotlin, Compose Material 3, Room, coroutines and Flow, with `minSdk 26`.
 The BLE connection manager retries a known bonded address with bounded exponential
 backoff and never runs a permanent scan. GPS uses a foreground location service only
-during an ESP-authoritative active ride, keeping the process alive for active route
-recording. Media uses system MediaSession/MediaController. Navigation is behind
+during an ESP-authoritative active ride and forwards each fresh fix directly over BLE
+without a phone database write or retry queue. Media uses system
+MediaSession/MediaController. Navigation is behind
 `NavigationProvider` and a feature flag.
 
 See `ANDROID_APP.md`.

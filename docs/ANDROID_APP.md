@@ -52,40 +52,53 @@ READY -> DISCONNECTED
 any state -> ERROR
 ```
 
-GPS recording runs in a foreground location service. BLE stays process-local; during an
-active GPS ride the foreground service keeps the process alive, while loss of the
-Android process still cannot affect the ESP ride.
+GPS forwarding runs in a foreground location service. A separate `connectedDevice`
+foreground service keeps the paired BLE GATT/reconnect loop alive while the app UI is
+backgrounded and shows persistent connection state. Loss of the Android process still
+cannot affect the ESP ride.
 
 ## Permissions
 
 Permissions are requested with in-context explanations:
 
 - Nearby Devices during pairing;
-- foreground/background location only when GPS Assist is enabled;
+- notification permission for visible background BLE connection status on Android 13+;
+- approximate and precise location together only when GPS Assist is enabled;
+- background location in a second step: a runtime prompt on Android 10 or the app
+  permission page with `Allow all the time` on Android 11+;
 - notification access only during Media setup.
 
-Denial disables only the corresponding companion feature.
+Background location is required because the ESP may start a ride through BLE while the
+app activity is not visible. Denial or later revocation disables only GPS Assist and
+stops its service without affecting ride recording on the ESP.
 
 ## Data
 
-Logical Room entities: `Device`, `Ride`, `RideFile`, `GpsPoint`, `RideEvent`. Large raw
-CSV samples may remain as verified app-private files with indexed summaries instead of
-one Room row per sample. Imports are transactional and idempotent.
+Logical Room entities are `Device`, `Ride`, `RideFile`, `RideSample` and `RideEvent`.
+The legacy `GpsPoint` table remains read-only for already installed format-v1 history;
+new phone fixes are never inserted into it. Large raw CSV samples remain as verified
+app-private copies of the device-owned ride files with indexed non-location summaries.
+Imports are transactional and idempotent.
 
-Full CSV export is available for a synced ride. It preserves every firmware
-`samples.csv` column and appends `timestamp_utc_ms`, latitude, longitude, altitude,
-accuracy and diagnostic GPS speed from the nearest phone point within five seconds.
-Missing location stays blank and never fabricates a coordinate. Brief XLSX export
-contains only the ride summary (date, distance, moving/elapsed time, average/maximum
-speed, integrity and GPS point count), not the sample stream. GPX is offered only when
-GPS points exist. All exports use Android storage access APIs.
+Full CSV export is available for a synced ride. For format v2 it copies the verified
+device `samples.csv`, which already contains timestamp, latitude, longitude, altitude,
+accuracy, GPS speed and fix age. Missing location stays blank and never fabricates a
+coordinate. Brief XLSX and GPX parse those columns transiently without inserting them
+into Room; repeated timestamps are de-duplicated. All exports use Android storage
+access APIs. Legacy format-v1 export may still read previously stored legacy points.
 
 ## GPS Assist
 
-`RIDE_STARTED` starts/attaches a foreground location session keyed by ESP `ride_id`;
-`RIDE_FINISHED` ends it. Reconnect to the same active `ride_id` resumes that session and
-may leave an explicit gap. Hall-derived speed/distance remain the displayed primary
-values. Disabling location immediately stops the foreground service.
+`RIDE_STARTED` starts/attaches a foreground location session keyed by the numeric ESP
+`ride_id`; `RIDE_FINISHED` ends it. The service requests both GPS and network fixes,
+rejects cached fixes older than ten seconds and encodes valid values into privileged
+33-byte BLE `LocationFix` frames. There is no local point insert, disk retry queue or
+offline fallback: if the bike is disconnected or the BLE queue is busy, that fix is
+discarded and the next system fix is tried. Reconnect to the same active `ride_id`
+resumes forwarding and may therefore leave an explicit gap. Process restart restores
+only the active numeric ride ID, never a coordinate. Hall-derived speed/distance remain
+authoritative. Settings and the foreground notification distinguish ready,
+waiting-for-fix, sending and disconnected/discarded states.
 
 ## Media and navigation
 
@@ -95,6 +108,12 @@ Auto mode the playing session is preferred. A pinned but inactive player remains
 unavailable instead of silently controlling another source. Bounded title/artist/player
 strings and supported actions are sent to the ESP, and ESP actions are executed only
 when supported.
+
+The firmware exposes the Media ride page from the negotiated media capability, even
+before a player session exists. In that state it shows a prompt to start playback or
+grant notification access. The companion rebinds its notification listener on resume
+and periodically retries paused as well as playing state so a busy BLE queue cannot
+permanently hide the page.
 
 `NavigationProvider` exposes normalized maneuver state independent of a map SDK.
 Navigation is experimental and feature-gated; provider absence leaves every other

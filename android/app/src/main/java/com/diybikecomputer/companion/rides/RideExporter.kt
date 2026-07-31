@@ -17,6 +17,12 @@ class RideExporter(
             ?.verifiedPath?.let(::File)
             ?.takeIf(File::isFile) ?: return false
         val ride = dao.getRide(rideId) ?: return false
+        if (ride.formatVersion >= 2) {
+            resolver.openOutputStream(destination, "wt")?.use { output ->
+                source.inputStream().buffered().use { input -> input.copyTo(output) }
+            } ?: return false
+            return true
+        }
         val points = dao.getGpsPoints(rideId)
         val firstSampleElapsed = source.useLines { lines ->
             lines.drop(1).firstOrNull()?.let(::csvColumns)?.getOrNull(1)?.toLongOrNull()
@@ -82,7 +88,7 @@ class RideExporter(
     suspend fun exportSummaryXlsx(rideId: String, destination: Uri): Boolean {
         val dao = database.rideDao()
         val ride = dao.getRide(rideId) ?: return false
-        val gpsPointCount = dao.getGpsPoints(rideId).size
+        val gpsPointCount = RideGpsFileReader.read(dao, rideId).size
         resolver.openOutputStream(destination, "wt")?.use { output ->
             RideSummaryXlsx.write(output, ride, gpsPointCount)
         } ?: return false
@@ -90,7 +96,7 @@ class RideExporter(
     }
 
     suspend fun exportGpx(rideId: String, destination: Uri): Boolean {
-        val points = database.rideDao().getGpsPoints(rideId)
+        val points = RideGpsFileReader.read(database.rideDao(), rideId)
         if (points.isEmpty()) return false
         resolver.openOutputStream(destination, "wt")?.use { stream ->
             OutputStreamWriter(stream, Charsets.UTF_8).use { writer ->

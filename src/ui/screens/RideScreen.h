@@ -31,6 +31,7 @@ struct RideViewModel {
   bool trendPageEnabled = false;
   const SpeedTrendSnapshot* speedTrend = nullptr;
   const media::MediaState* media = nullptr;
+  bool mediaPageEnabled = false;
   const navigation::NavigationState* navigation = nullptr;
   int64_t epochNowMs = 0;
   int32_t utcOffsetSeconds = 0;

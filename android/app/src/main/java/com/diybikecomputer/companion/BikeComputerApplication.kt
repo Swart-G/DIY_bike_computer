@@ -25,7 +25,7 @@ class BikeComputerApplication : Application() {
     }
     val gpsRepository: GpsRepository by lazy { GpsRepository(this) }
     val gpsCoordinator: RideGpsCoordinator by lazy {
-        RideGpsCoordinator(this, connection, database, gpsRepository)
+        RideGpsCoordinator(this, connection, gpsRepository)
     }
     val mediaRepository: MediaRepository by lazy { MediaRepository(this) }
     val mediaCoordinator: MediaBleCoordinator by lazy {
